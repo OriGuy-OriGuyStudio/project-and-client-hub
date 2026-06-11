@@ -1,0 +1,100 @@
+@import "./styles/fonts.css";
+@import "./styles/brand-tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    direction: rtl;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "kern";
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+
+  /* Brand-tinted, thin scrollbars on dark surfaces */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(84, 62, 224, 0.4);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(84, 62, 224, 0.65);
+  }
+}
+
+@layer utilities {
+  /* Monospace for filenames / ids / code fragments */
+  .font-mono-code {
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* TipTap rich-text content (no typography plugin) */
+  .rte-content .ProseMirror {
+    outline: none;
+    min-height: 8rem;
+    color: var(--foreground);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .rte-content .ProseMirror:focus {
+    outline: none;
+  }
+  .rte-content h2 {
+    font-family: "Kaha", "Heebo", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0.75rem 0 0.5rem;
+  }
+  .rte-content p {
+    margin: 0.5rem 0;
+  }
+  .rte-content ul {
+    list-style: disc;
+    padding-inline-start: 1.5rem;
+    margin: 0.5rem 0;
+  }
+  .rte-content ol {
+    list-style: decimal;
+    padding-inline-start: 1.5rem;
+    margin: 0.5rem 0;
+  }
+  .rte-content strong {
+    font-weight: 700;
+  }
+  .rte-content em {
+    font-style: italic;
+  }
+
+  /* Respect reduced motion globally for CSS animations */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -1,0 +1,428 @@
+// ============================================================
+// Hand-authored to match supabase/migrations exactly.
+// Regenerate from the live project anytime with:
+//   npx supabase gen types typescript --linked > src/types/database.ts
+// ============================================================
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type UserRole = "admin" | "client" | "partner";
+export type PartnerLeadStatus =
+  | "submitted"
+  | "in_review"
+  | "quote_sent"
+  | "interested"
+  | "closed"
+  | "not_relevant";
+export type PartnerProjectType =
+  | "business_site"
+  | "ecommerce"
+  | "system"
+  | "other";
+export type ProjectStatus = "active" | "on_hold" | "completed" | "cancelled";
+export type StageStatus = "not_started" | "in_progress" | "done" | "blocked";
+export type ApprovalStatus = "pending" | "approved" | "needs_changes";
+export type TaskStatus = "open" | "in_progress" | "done";
+export type PaymentStatus = "pending" | "paid";
+export type ReferralStatus = "submitted" | "in_progress" | "closed" | "not_relevant";
+export type BrandColorRole =
+  | "primary"
+  | "secondary"
+  | "accent"
+  | "background"
+  | "text"
+  | "other";
+
+export type Profile = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  role: UserRole;
+  created_at: string;
+}
+
+export type AllowedEmail = {
+  email: string;
+  role: UserRole;
+  full_name: string | null;
+  business_name: string | null;
+  commission_rate: number | null;
+  commission_rate_min: number | null;
+  commission_rate_max: number | null;
+  commission_notes: string | null;
+  invited_by: string | null;
+  invited_at: string;
+}
+
+export type PartnerProfile = {
+  id: string;
+  commission_rate: number;
+  commission_rate_min: number | null;
+  commission_rate_max: number | null;
+  commission_notes: string | null;
+  referral_code: string;
+  is_active: boolean;
+  joined_at: string;
+}
+
+export type PartnerLead = {
+  id: string;
+  partner_id: string;
+  lead_name: string;
+  lead_phone: string | null;
+  lead_email: string | null;
+  project_type: PartnerProjectType | null;
+  notes: string | null;
+  quote_requested: boolean;
+  quote_file_url: string | null;
+  lead_interested: boolean;
+  status: PartnerLeadStatus;
+  deal_value: number | null;
+  commission_rate_at_close: number | null;
+  commission_amount: number | null;
+  payment_method: "bit" | "bank_transfer" | null;
+  payment_confirmed_at: string | null;
+  payment_confirmed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ReferralTracking = {
+  id: string;
+  partner_id: string;
+  referral_code: string;
+  ip_hash: string | null;
+  user_agent: string | null;
+  converted_to_lead_id: string | null;
+  clicked_at: string;
+}
+
+export type PartnerResource = {
+  id: string;
+  resource_type: "file" | "link" | "text_template" | null;
+  title: string;
+  description: string | null;
+  content: string | null;
+  file_url: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export type ClientBrand = {
+  id: string;
+  client_id: string;
+  business_name: string | null;
+  business_description: string | null;
+  logo_url: string | null;
+  logo_icon_url: string | null;
+  font_notes: string | null;
+  website_url: string | null;
+  social_links: Json;
+  updated_at: string;
+}
+
+export type BrandColor = {
+  id: string;
+  client_id: string;
+  hex_value: string;
+  label: string | null;
+  role: BrandColorRole | null;
+  sort_order: number;
+}
+
+export type Project = {
+  id: string;
+  title: string;
+  description: string | null;
+  client_id: string;
+  status: ProjectStatus;
+  figma_url: string | null;
+  staging_url: string | null;
+  live_url: string | null;
+  warranty_start_date: string | null;
+  warranty_end_date: string | null; // generated column
+  warranty_email_sent: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProjectStage = {
+  id: string;
+  project_id: string;
+  title: string;
+  assignee: UserRole | null;
+  due_date: string | null;
+  status: StageStatus;
+  order_index: number;
+}
+
+export type StageTask = {
+  id: string;
+  stage_id: string;
+  title: string;
+  is_done: boolean;
+  order_index: number;
+  created_at: string;
+}
+
+export type Approval = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  status: ApprovalStatus;
+  client_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FileRow = {
+  id: string;
+  project_id: string;
+  folder_path: string;
+  file_name: string;
+  storage_path: string;
+  file_size: number | null;
+  mime_type: string | null;
+  uploaded_by: string | null;
+  is_private: boolean;
+  created_at: string;
+}
+
+export type ProjectFolder = {
+  id: string;
+  project_id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type ChecklistItem = {
+  id: string;
+  project_id: string;
+  label: string;
+  is_sent: boolean;
+  sent_at: string | null;
+  file_id: string | null;
+}
+
+export type Task = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  assignee_id: string | null;
+  due_date: string | null;
+  status: TaskStatus;
+  is_private: boolean;
+  created_at: string;
+}
+
+export type ProjectDoc = {
+  id: string;
+  project_id: string;
+  title: string;
+  content_html: string | null;
+  is_private: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export type Payment = {
+  id: string;
+  project_id: string;
+  label: string;
+  amount: number | null;
+  currency: string;
+  due_date: string | null;
+  status: PaymentStatus;
+  payment_link: string | null;
+  invoice_file_id: string | null;
+  paid_at: string | null;
+}
+
+export type Message = {
+  id: string;
+  project_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export type ActivityLog = {
+  id: string;
+  project_id: string;
+  actor_id: string | null;
+  action_type: string;
+  description: string;
+  created_at: string;
+}
+
+export type AdminClientNote = {
+  id: string;
+  client_id: string;
+  content: string | null;
+  gender: "male" | "female" | "other" | null;
+  role_in_company: string | null;
+  updated_at: string;
+}
+
+export type ClientCallLog = {
+  id: string;
+  client_id: string;
+  summary: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+export type Notification = {
+  id: string;
+  audience: "admin" | "client";
+  recipient_id: string | null;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  project_id: string | null;
+  entity_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export type ClientFeedback = {
+  id: string;
+  client_id: string;
+  message: string;
+  status: "open" | "in_progress" | "resolved";
+  admin_reply: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Referral = {
+  id: string;
+  referrer_id: string;
+  referred_name: string;
+  referred_contact: string;
+  note: string | null;
+  status: ReferralStatus;
+  deal_value: number | null;
+  payment_method: "bit" | "bank_transfer" | null;
+  payment_confirmed_at: string | null;
+  payment_confirmed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreditTransaction = {
+  id: string;
+  client_id: string;
+  amount: number;
+  reason:
+    | "referral_submitted"
+    | "deal_closed"
+    | "reward_redeemed"
+    | "manual_adjustment"
+    | null;
+  referral_id: string | null;
+  note: string | null;
+  created_at: string;
+  created_by: string | null;
+}
+
+export type Reward = {
+  id: string;
+  name: string;
+  description: string | null;
+  credit_cost: number;
+  reward_type: "studio_pro" | "custom" | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type PartnerEnrollment = {
+  id: string;
+  client_id: string;
+  enrolled_at: string;
+  terms_accepted_at: string | null;
+  terms_version: string | null;
+}
+
+export type RewardRedemption = {
+  id: string;
+  client_id: string;
+  reward_id: string;
+  credits_spent: number;
+  redeemed_at: string;
+  status: "pending" | "fulfilled";
+  fulfilled_at: string | null;
+}
+
+/** Generic helper to derive Insert/Update shapes from a Row type. */
+// Insert/Update kept as Partial<Row>; required-field validity is enforced by
+// the database (NOT NULL / defaults). The Row type is what drives query typing.
+type TableShape<Row> = {
+  Row: Row;
+  Insert: Partial<Row>;
+  Update: Partial<Row>;
+  Relationships: [];
+};
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: TableShape<Profile>;
+      allowed_emails: TableShape<AllowedEmail>;
+      client_brand: TableShape<ClientBrand>;
+      brand_colors: TableShape<BrandColor>;
+      projects: TableShape<Project>;
+      project_stages: TableShape<ProjectStage>;
+      stage_tasks: TableShape<StageTask>;
+      approvals: TableShape<Approval>;
+      files: TableShape<FileRow>;
+      project_folders: TableShape<ProjectFolder>;
+      checklist_items: TableShape<ChecklistItem>;
+      tasks: TableShape<Task>;
+      project_docs: TableShape<ProjectDoc>;
+      payments: TableShape<Payment>;
+      messages: TableShape<Message>;
+      activity_log: TableShape<ActivityLog>;
+      admin_client_notes: TableShape<AdminClientNote>;
+      client_call_logs: TableShape<ClientCallLog>;
+      notifications: TableShape<Notification>;
+      client_feedback: TableShape<ClientFeedback>;
+      referrals: TableShape<Referral>;
+      credit_transactions: TableShape<CreditTransaction>;
+      rewards: TableShape<Reward>;
+      partner_enrollments: TableShape<PartnerEnrollment>;
+      reward_redemptions: TableShape<RewardRedemption>;
+      partner_profiles: TableShape<PartnerProfile>;
+      partner_leads: TableShape<PartnerLead>;
+      referral_tracking: TableShape<ReferralTracking>;
+      partner_resources: TableShape<PartnerResource>;
+    };
+    Views: Record<string, never>;
+    Functions: {
+      get_my_role: { Args: Record<string, never>; Returns: string };
+      ensure_my_profile: { Args: Record<string, never>; Returns: string | null };
+      is_admin: { Args: Record<string, never>; Returns: boolean };
+      get_client_credits: { Args: { p_client_id: string }; Returns: number };
+      redeem_reward: { Args: { p_reward_id: string }; Returns: string };
+      mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
+      owns_project: { Args: { p_project_id: string }; Returns: boolean };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}

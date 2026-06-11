@@ -1,0 +1,11 @@
+-- ============================================================
+-- 0014 — Enriched notifications (project/section context) + mark-read RPC
+-- ============================================================
+-- Applied via the Supabase MCP. Summary:
+--  * notifications gains project_id + entity_id (for in-list highlighting).
+--  * notify_admin() extended to (type,title,body,link,project_id,entity_id).
+--  * file/message/approval/checklist triggers now put the project title +
+--    section in the notification title, and carry project_id/entity_id.
+--  * mark_project_notifications_read(p_project_id) SECURITY DEFINER: clears a
+--    project's admin notifications (called when the admin opens the project).
+-- See the MCP migration "enrich_notifications" for the exact SQL (in the DB).

@@ -1,0 +1,58 @@
+/* ============================================================
+   Studio Ori Guy local brand fonts
+   Headings: "ככה התעוררתי" (LiaKahaItorarti)
+   Body:     "דיפלומט"      (LiaDiplomat)
+   ============================================================ */
+
+/* ---- Headings: LiaKahaItorarti ---- */
+@font-face {
+  font-family: "Kaha";
+  src: url("/fonts/kaha-light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Kaha";
+  src: url("/fonts/kaha-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Kaha";
+  src: url("/fonts/kaha-black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---- Body: LiaDiplomat ---- */
+@font-face {
+  font-family: "Diplomat";
+  src: url("/fonts/diplomat-light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Diplomat";
+  src: url("/fonts/diplomat-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Diplomat";
+  src: url("/fonts/diplomat-medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Diplomat";
+  src: url("/fonts/diplomat-extrabold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}

@@ -1,0 +1,16 @@
+-- ============================================================
+-- 0013 — Notifications + client feedback
+-- ============================================================
+-- Applied via the Supabase MCP. Canonical contents:
+--  * notifications (audience admin|client, recipient_id, type, title, body,
+--    link, is_read) with RLS: admin sees audience='admin', clients see their
+--    own; admin may insert client notifications; updates allowed to the owner.
+--  * notify_admin() helper (SECURITY DEFINER).
+--  * AFTER triggers that create an admin notification on client actions:
+--    referrals insert, files insert, messages insert (non-admin),
+--    approvals status change (non-admin), checklist is_sent (non-admin).
+--  * client_feedback (client submits, admin replies + status) with RLS;
+--    notify_feedback() trigger: insert -> notify admin; admin reply/status
+--    change -> notify the client (audience client, link /profile).
+-- See git history / the MCP migration "notifications_and_feedback" for the
+-- exact SQL (kept in the live DB).

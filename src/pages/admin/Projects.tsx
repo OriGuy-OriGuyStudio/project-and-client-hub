@@ -1,0 +1,226 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { FolderKanban, Plus } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ProjectCard } from "@/components/project/ProjectCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/sheet";
+import { supabase } from "@/lib/supabase";
+import { toast, toastError } from "@/hooks/use-toast";
+import { clampText } from "@/lib/sanitize";
+import { logActivity } from "@/lib/activity";
+import { useProjects } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
+import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { projectStatusHe } from "@/lib/status";
+import type { ProjectStatus } from "@/types/database";
+
+export default function Projects() {
+  const { data: projects, isLoading } = useProjects();
+  const { unreadProjectIds } = useNotifications();
+
+  return (
+    <div>
+      <PageHeader
+        title="פרויקטים"
+        subtitle="כל הפרויקטים בסטודיו. צור חדש ושייך אותו ללקוח."
+        actions={<CreateProjectDialog />}
+      />
+
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      ) : projects && projects.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((p, i) => (
+            <ProjectCard key={p.id} project={p} index={i} isNew={unreadProjectIds.has(p.id)} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={FolderKanban}
+          title="אין עדיין פרויקטים"
+          description="צור פרויקט ראשון ושייך אותו לאחד הלקוחות."
+          action={<CreateProjectDialog />}
+        />
+      )}
+    </div>
+  );
+}
+
+const STATUSES: ProjectStatus[] = ["active", "on_hold", "completed", "cancelled"];
+
+function CreateProjectDialog() {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: clients } = useClients();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    client_id: "",
+    title: "",
+    description: "",
+    status: "active" as ProjectStatus,
+    warranty_start_date: "",
+  });
+
+  function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  const activeClients = clients?.active ?? [];
+
+  async function save() {
+    if (!form.client_id) return toastError("בחר לקוח לפרויקט.");
+    const title = clampText(form.title.trim(), 200);
+    if (!title) return toastError("תן שם לפרויקט.");
+
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({
+        client_id: form.client_id,
+        title,
+        description: clampText(form.description.trim(), 2000) || null,
+        status: form.status,
+        warranty_start_date: form.warranty_start_date || null,
+      })
+      .select("id")
+      .single();
+    setSaving(false);
+
+    if (error || !data) return toastError("יצירת הפרויקט נכשלה.");
+
+    await logActivity({
+      projectId: data.id,
+      actorId: user?.id ?? null,
+      actionType: "project_created",
+      description: `הפרויקט "${title}" נוצר`,
+    });
+    toast({ title: "הפרויקט נוצר", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    setOpen(false);
+    navigate(`/projects/${data.id}`);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="size-4" /> פרויקט חדש
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>פרויקט חדש</DialogTitle>
+          <DialogDescription>
+            שייך את הפרויקט ללקוח קיים. אם הלקוח עדיין לא מופיע, ודא שהוא התחבר
+            פעם אחת.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="p-client">לקוח</Label>
+            {activeClients.length === 0 ? (
+              <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                אין עדיין לקוחות פעילים. הוסף לקוח ותן לו להתחבר פעם אחת.
+              </p>
+            ) : (
+              <select
+                id="p-client"
+                value={form.client_id}
+                onChange={(e) => update("client_id", e.target.value)}
+                className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">בחר לקוח…</option>
+                {activeClients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.full_name || c.email}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="p-title">שם הפרויקט</Label>
+            <Input
+              id="p-title"
+              value={form.title}
+              maxLength={200}
+              onChange={(e) => update("title", e.target.value)}
+              placeholder="לדוגמה: אתר תדמית"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="p-desc">תיאור</Label>
+            <Textarea
+              id="p-desc"
+              value={form.description}
+              maxLength={2000}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="כמה מילים על הפרויקט"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="p-status">סטטוס</Label>
+              <select
+                id="p-status"
+                value={form.status}
+                onChange={(e) => update("status", e.target.value as ProjectStatus)}
+                className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {projectStatusHe[s]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="p-warranty">תחילת אחריות</Label>
+              <Input
+                id="p-warranty"
+                type="date"
+                value={form.warranty_start_date}
+                onChange={(e) => update("warranty_start_date", e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={save} disabled={saving || activeClients.length === 0}>
+            {saving ? "יוצר…" : "יצירה"}
+          </Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            ביטול
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

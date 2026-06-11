@@ -1,0 +1,117 @@
+/* ============================================================
+   Studio Ori Guy — Brand Design Tokens
+   Raw palette (theme-independent) + semantic tokens for
+   LIGHT (:root) and DARK (.dark). Restrained, single green accent.
+   ============================================================ */
+
+:root {
+  /* ---- Raw brand palette (never changes per theme) ---- */
+  --brand-purple-light: #543ee0;
+  --brand-purple-base: #3a22d3;
+  --brand-purple-dark: #301daf;
+
+  --brand-green-light: #c5df90;
+  --brand-green-base: #b4d670; /* signature accent */
+  --brand-green-dark: #91be37;
+
+  --brand-cyan-light: #95ccda;
+  --brand-cyan-base: #77becf;
+  --brand-cyan-dark: #59afc5;
+
+  --bg-white-light: #fafaf9;
+  --bg-white-base: #f6f4f4;
+  --bg-white-dark: #e5dedb;
+
+  --bg-dark-purple-light: #1d1169;
+  --bg-dark-purple-base: #0e0935;
+  --bg-dark-purple-dark: #0a0623;
+
+  --accent-pink-base: #f22c61;
+  --accent-pink-dark: #e60f48;
+
+  --radius: 0.875rem;
+}
+
+/* ============================================================
+   LIGHT — bright, editorial, professional
+   ============================================================ */
+:root {
+  --background: #faf9fc;
+  --foreground: #181043;
+
+  --card: #ffffff;
+  --card-foreground: #181043;
+
+  --popover: #ffffff;
+  --popover-foreground: #181043;
+
+  --primary: #7faE2b; /* confident green, dark ink on top */
+  --primary-foreground: #0a0623;
+
+  --secondary: #f1eefb;
+  --secondary-foreground: #2a1b8c;
+
+  --muted: rgba(24, 16, 67, 0.045);
+  --muted-foreground: #6b6488;
+
+  --accent: #3a22d3; /* deep purple secondary accent / links */
+  --accent-foreground: #ffffff;
+
+  --destructive: #e60f48;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(58, 34, 211, 0.12);
+  --input: rgba(58, 34, 211, 0.2);
+  --ring: #7fae2b;
+
+  --sidebar: #f3f0fb;
+  --sidebar-foreground: #181043;
+
+  --link: #3a22d3;
+  --success: #5e8a1e;
+  --warning: #b45309;
+  --info: #2f7e93;
+}
+
+/* ============================================================
+   DARK — deeper than the base brand purples; green pops
+   ============================================================ */
+.dark {
+  /* Near-black, neutral charcoal with only a faint purple undertone.
+     Green stays the single accent; purple is structural, not dominant. */
+  --background: #0b0a10;
+  --foreground: #f2f2f6;
+
+  --card: #15141b;
+  --card-foreground: #f2f2f6;
+
+  --popover: #15141b;
+  --popover-foreground: #f2f2f6;
+
+  --primary: #b4d670; /* signature green on dark */
+  --primary-foreground: #0a0623;
+
+  --secondary: #211f2b;
+  --secondary-foreground: #ececf2;
+
+  --muted: rgba(242, 242, 246, 0.05);
+  --muted-foreground: #9a98a6;
+
+  --accent: #b4d670;
+  --accent-foreground: #0a0623;
+
+  --destructive: #f22c61;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(168, 166, 188, 0.13);
+  --input: rgba(168, 166, 188, 0.2);
+  --ring: #b4d670;
+
+  --sidebar: #08080c;
+  --sidebar-foreground: #f2f2f6;
+
+  --link: #95ccda;
+  --success: #b4d670;
+  --warning: #f59e0b;
+  --info: #77becf;
+}
