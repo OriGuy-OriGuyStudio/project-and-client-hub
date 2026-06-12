@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Dialog,
   DialogContent,
@@ -200,20 +201,17 @@ function ManageLeadDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="m-status">סטטוס</Label>
-            <select
+            <SelectMenu
               id="m-status"
+              variant="field"
+              ariaLabel="סטטוס"
               value={form.status}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, status: e.target.value as PartnerLeadStatus }))
-              }
-              className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {leadStatusHe[s]}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm((f) => ({ ...f, status: v }))}
+              options={STATUSES.map((s) => ({
+                value: s,
+                label: leadStatusHe[s],
+              }))}
+            />
           </div>
 
           {form.status === "closed" && (
@@ -246,21 +244,18 @@ function ManageLeadDialog({
 
               <div className="space-y-1.5">
                 <Label htmlFor="m-method">אמצעי תשלום</Label>
-                <select
+                <SelectMenu
                   id="m-method"
+                  variant="field"
+                  ariaLabel="אמצעי תשלום"
+                  placeholder="בחר…"
                   value={form.payment_method}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      payment_method: e.target.value as "" | "bit" | "bank_transfer",
-                    }))
-                  }
-                  className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">בחר…</option>
-                  <option value="bit">ביט</option>
-                  <option value="bank_transfer">העברה בנקאית</option>
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, payment_method: v }))}
+                  options={[
+                    { value: "bit", label: "ביט" },
+                    { value: "bank_transfer", label: "העברה בנקאית" },
+                  ]}
+                />
               </div>
 
               <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">

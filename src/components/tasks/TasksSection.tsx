@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
@@ -104,17 +105,17 @@ export function TasksSection({
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
           />
           <div className="flex flex-wrap items-center gap-3">
-            <select
+            <SelectMenu
+              ariaLabel="אחראי"
+              className="h-9 text-sm"
               value={form.assignee}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, assignee: e.target.value as typeof f.assignee }))
-              }
-              className="h-9 rounded-lg border border-input bg-field px-3 text-sm text-foreground"
-            >
-              <option value="none">ללא אחראי</option>
-              <option value="studio">הסטודיו</option>
-              <option value="client">הלקוח</option>
-            </select>
+              onChange={(v) => setForm((f) => ({ ...f, assignee: v }))}
+              options={[
+                { value: "none", label: "ללא אחראי" },
+                { value: "studio", label: "הסטודיו" },
+                { value: "client", label: "הלקוח" },
+              ]}
+            />
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
@@ -158,17 +159,16 @@ export function TasksSection({
                       )}
                     </div>
                     <div className="mt-2 flex items-center gap-1">
-                      <select
+                      <SelectMenu
+                        ariaLabel="סטטוס משימה"
+                        className="h-7 flex-1"
                         value={t.status}
-                        onChange={(e) => setStatus(t, e.target.value as TaskStatus)}
-                        className="h-7 flex-1 rounded-lg border border-input bg-field px-2 text-xs text-foreground"
-                      >
-                        {COLUMNS.map((c) => (
-                          <option key={c.key} value={c.key}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => setStatus(t, v)}
+                        options={COLUMNS.map((c) => ({
+                          value: c.key,
+                          label: c.label,
+                        }))}
+                      />
                       {isAdmin && (
                         <Button
                           variant="ghost"

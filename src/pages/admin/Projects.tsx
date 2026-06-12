@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Dialog,
   DialogContent,
@@ -142,19 +143,18 @@ function CreateProjectDialog() {
                 אין עדיין לקוחות פעילים. הוסף לקוח ותן לו להתחבר פעם אחת.
               </p>
             ) : (
-              <select
+              <SelectMenu
                 id="p-client"
+                variant="field"
+                ariaLabel="לקוח"
+                placeholder="בחר לקוח…"
                 value={form.client_id}
-                onChange={(e) => update("client_id", e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">בחר לקוח…</option>
-                {activeClients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.full_name || c.email}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => update("client_id", v)}
+                options={activeClients.map((c) => ({
+                  value: c.id,
+                  label: c.full_name || c.email,
+                }))}
+              />
             )}
           </div>
 
@@ -183,18 +183,17 @@ function CreateProjectDialog() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="p-status">סטטוס</Label>
-              <select
+              <SelectMenu
                 id="p-status"
+                variant="field"
+                ariaLabel="סטטוס"
                 value={form.status}
-                onChange={(e) => update("status", e.target.value as ProjectStatus)}
-                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {projectStatusHe[s]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => update("status", v)}
+                options={STATUSES.map((s) => ({
+                  value: s,
+                  label: projectStatusHe[s],
+                }))}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-warranty">תחילת אחריות</Label>

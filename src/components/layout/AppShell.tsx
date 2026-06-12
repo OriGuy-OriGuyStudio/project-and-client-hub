@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import gsap from "gsap";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { Footer } from "./Footer";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { toast } from "@/hooks/use-toast";
@@ -74,6 +75,7 @@ export function AppShell() {
             <Outlet />
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DotsGrid } from "@/components/brand/DotsGrid";
+import { Footer } from "@/components/layout/Footer";
 
 export default function Login() {
   const reduced = usePrefersReducedMotion();
@@ -108,6 +109,8 @@ export default function Login() {
           הטקסטים במערכת כתובים בלשון זכר מטעמי נוחות, ומיועדים לכל המגדרים.
         </p>
       </div>
+
+      <Footer className="absolute inset-x-0 bottom-0 z-20 justify-center border-t-0 bg-transparent text-[11px] sm:justify-between" />
     </div>
   );
 }

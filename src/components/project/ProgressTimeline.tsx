@@ -781,17 +781,17 @@ function AddStageDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="stage-assignee">באחריות</Label>
-              <select
+              <SelectMenu
                 id="stage-assignee"
+                variant="field"
+                ariaLabel="באחריות"
                 value={form.assignee}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, assignee: e.target.value as UserRole }))
-                }
-                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="admin">הסטודיו</option>
-                <option value="client">הלקוח</option>
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, assignee: v }))}
+                options={[
+                  { value: "admin", label: "הסטודיו" },
+                  { value: "client", label: "הלקוח" },
+                ]}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="stage-due">תאריך יעד</Label>

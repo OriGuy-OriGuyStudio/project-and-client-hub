@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
@@ -27,7 +28,6 @@ import type {
   StageTemplate,
   StageTemplateStage,
   StudioSettings,
-  UserRole,
 } from "@/types/database";
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL as string | undefined;
@@ -348,14 +348,16 @@ function TemplateEditor({ template }: { template: StageTemplate }) {
                 onChange={(e) => updateStage(i, { title: e.target.value })}
                 className="h-9 font-medium"
               />
-              <select
+              <SelectMenu
+                ariaLabel="באחריות"
+                className="h-9 shrink-0"
                 value={s.assignee}
-                onChange={(e) => updateStage(i, { assignee: e.target.value as UserRole })}
-                className="h-9 shrink-0 rounded-lg border border-input bg-field px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="admin">הסטודיו</option>
-                <option value="client">הלקוח</option>
-              </select>
+                onChange={(v) => updateStage(i, { assignee: v })}
+                options={[
+                  { value: "admin", label: "הסטודיו" },
+                  { value: "client", label: "הלקוח" },
+                ]}
+              />
               <Button
                 size="icon"
                 variant="ghost"
@@ -535,19 +537,13 @@ function ResourceEditor({ resource }: { resource: PartnerResource }) {
         </div>
         <div className="space-y-1.5">
           <Label>סוג</Label>
-          <select
+          <SelectMenu
+            variant="field"
+            ariaLabel="סוג"
             value={form.resource_type}
-            onChange={(e) =>
-              update("resource_type", e.target.value as NonNullable<PartnerResource["resource_type"]>)
-            }
-            className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {RESOURCE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => update("resource_type", v)}
+            options={RESOURCE_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
         </div>
       </div>
 

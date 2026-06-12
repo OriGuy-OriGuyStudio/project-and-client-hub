@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
@@ -87,17 +88,16 @@ function FeedbackRow({ item }: { item: AdminFeedback }) {
           className="min-h-16"
         />
         <div className="flex flex-col gap-2">
-          <select
+          <SelectMenu
+            ariaLabel="סטטוס"
+            className="h-9 text-sm"
             value={status}
-            onChange={(e) => setStatus(e.target.value as ClientFeedback["status"])}
-            className="h-9 rounded-lg border border-input bg-field px-2 text-sm text-foreground"
-          >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {feedbackStatusHe[s]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setStatus(v)}
+            options={STATUSES.map((s) => ({
+              value: s,
+              label: feedbackStatusHe[s],
+            }))}
+          />
           <Button size="sm" onClick={save} disabled={saving}>
             {saving ? "שומר…" : "שליחה"}
           </Button>

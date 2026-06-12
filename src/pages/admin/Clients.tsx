@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Dialog,
   DialogContent,
@@ -431,17 +432,19 @@ function EditClientDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="e-gender">מין</Label>
-                  <select
+                  <SelectMenu
                     id="e-gender"
+                    variant="field"
+                    ariaLabel="מין"
                     value={form.gender}
-                    onChange={(e) => update("gender", e.target.value)}
-                    className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground"
-                  >
-                    <option value="">לא צוין</option>
-                    <option value="male">זכר</option>
-                    <option value="female">נקבה</option>
-                    <option value="other">אחר</option>
-                  </select>
+                    onChange={(v) => update("gender", v)}
+                    options={[
+                      { value: "", label: "לא צוין" },
+                      { value: "male", label: "זכר" },
+                      { value: "female", label: "נקבה" },
+                      { value: "other", label: "אחר" },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="e-role">תפקיד בחברה</Label>

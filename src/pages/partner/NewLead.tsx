@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -118,13 +119,14 @@ export default function NewLead() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="l-type">סוג פרויקט</Label>
-          <select id="l-type" value={form.project_type}
-            onChange={(e) => update("project_type", e.target.value as PartnerProjectType)}
-            className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {TYPES.map((t) => (
-              <option key={t} value={t}>{projectTypeHe[t]}</option>
-            ))}
-          </select>
+          <SelectMenu
+            id="l-type"
+            variant="field"
+            ariaLabel="סוג פרויקט"
+            value={form.project_type}
+            onChange={(v) => update("project_type", v)}
+            options={TYPES.map((t) => ({ value: t, label: projectTypeHe[t] }))}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="l-notes">הערה</Label>
