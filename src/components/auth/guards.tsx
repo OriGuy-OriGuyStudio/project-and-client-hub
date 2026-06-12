@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
+import { LoginIntro } from "@/components/layout/WelcomingWords";
 import type { UserRole } from "@/types/database";
 
 /** The home route for each role. */
@@ -61,7 +62,13 @@ export function RedirectIfAuthed() {
   if (status === "loading") return <LoadingScreen />;
   if (status === "authenticated") return <Navigate to={homeFor(profile?.role)} replace />;
   if (status === "denied") return <Navigate to="/access-denied" replace />;
-  return <Outlet />;
+  return (
+    <>
+      {/* Greeting words play once over the login screen, then reveal it. */}
+      <LoginIntro />
+      <Outlet />
+    </>
+  );
 }
 
 /** /access-denied is only meaningful for the denied (whitelist-miss) state. */

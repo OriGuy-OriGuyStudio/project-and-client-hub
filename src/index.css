@@ -44,6 +44,28 @@
     color: var(--popover-foreground);
   }
 
+  /* Round, chrome-less native color picker (brand swatch chip). */
+  input.color-dot {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input.color-dot::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  input.color-dot::-webkit-color-swatch {
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+  }
+  input.color-dot::-moz-color-swatch {
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+  }
+
   /* Quiet, neutral scrollbars — the surface, not a feature */
   ::-webkit-scrollbar {
     width: 10px;
@@ -381,7 +403,7 @@
    numerals. RTL-anchored to the inline-start (right), digits LTR.
    ============================================================ */
 .loading-container {
-  z-index: 300;
+  z-index: 10000; /* above the AI bubble (z-9999) so the curtain fully covers */
   pointer-events: none;
   background-color: var(--background);
   position: fixed;
@@ -470,4 +492,101 @@
   line-height: 1;
   position: relative;
   color: var(--primary);
+}
+
+/* Welcoming-words intro (phase 1, before the number/bar loader). Own classes so
+   it never collides with the .loading-* curtain it hands off to. */
+.welcome-loader {
+  z-index: 10000; /* above the AI bubble (z-9999) so the curtain fully covers */
+  pointer-events: none;
+  background-color: var(--background);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.welcome-loader__screen {
+  pointer-events: auto;
+  color: var(--foreground);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  inset: 0;
+}
+.welcome-loader__words {
+  direction: ltr;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.welcome-loader__dot {
+  background-color: var(--primary);
+  border-radius: 50%;
+  width: 0.75em;
+  height: 0.75em;
+}
+.welcome-loader__word {
+  font-family: "Kaha", "Heebo", sans-serif;
+  font-size: 4.5em;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+@media screen and (max-width: 767px) {
+  .welcome-loader__words {
+    font-size: 3vw;
+  }
+}
+
+/* GlassButton — brand-tinted glassmorphism pill (the playful "disco" control). */
+.glass-button-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.glass-button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(180, 214, 112, 0.25);
+  background: rgba(180, 214, 112, 0.08);
+  color: var(--foreground);
+  font: inherit;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.25),
+    0 6px 20px rgba(0, 0, 0, 0.25);
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.12s ease;
+}
+.glass-button:hover {
+  background: rgba(180, 214, 112, 0.16);
+  border-color: rgba(180, 214, 112, 0.45);
+}
+.glass-button:active {
+  transform: scale(0.95);
+}
+.glass-button:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 0 2px var(--ring);
+}
+.glass-button-text {
+  position: relative;
+  z-index: 1;
+}
+.glass-button-shadow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  box-shadow: 0 10px 30px rgba(180, 214, 112, 0.28);
+  opacity: 0.55;
 }

@@ -8,6 +8,9 @@ export const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
  * no magic links, no email/password.
  */
 export async function signInWithGoogle() {
+  // Arm the post-login number/bar loader so it plays once when we return
+  // authenticated (consumed by PostLoginLoader). Cleared if login doesn't complete.
+  sessionStorage.setItem("sog-postlogin", "1");
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -15,7 +18,10 @@ export async function signInWithGoogle() {
       queryParams: { prompt: "select_account" },
     },
   });
-  if (error) throw error;
+  if (error) {
+    sessionStorage.removeItem("sog-postlogin");
+    throw error;
+  }
 }
 
 export async function signOut() {

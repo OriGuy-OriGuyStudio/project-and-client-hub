@@ -22,5 +22,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 /** Bucket holding all project files. Private - access via signed URLs only. */
 export const PROJECT_FILES_BUCKET = "project-files";
 
+/** Public bucket for client brand assets (logos). Served via stable public URLs. */
+export const BRAND_ASSETS_BUCKET = "brand-assets";
+
 /** Signed URL lifetime, in seconds (1 hour, per security spec). */
 export const SIGNED_URL_TTL = 60 * 60;

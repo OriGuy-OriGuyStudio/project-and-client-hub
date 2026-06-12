@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { InertiaPlugin } from "gsap/InertiaPlugin";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { onLoginRevealed } from "@/lib/login-reveal";
+import { onDotsDisco } from "@/lib/dots-fx";
 import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(InertiaPlugin);
@@ -10,19 +12,29 @@ type Dot = HTMLDivElement & {
   _isHole?: boolean;
   _inertiaApplied?: boolean;
   _lit?: boolean;
+  _introLit?: boolean;
 };
+
+type IntroMode = "sweep" | "disco" | "none";
 
 /**
  * Interactive dots-grid background (Osmo Supply "Glowing Interactive Dots
  * Grid"), brand-themed. Dots glow brand-green near the pointer and scatter with
  * inertia on fast moves / clicks. Used on the pre-login screens.
+ *
+ * Intro: once the login screen is revealed (the welcoming-words curtain is
+ * gone), the pointer effect is held back for ~2s while an intro plays — a
+ * diagonal "sweep" lighting the dots top-left → bottom-right (default), or a
+ * random "disco" twinkle. Only then does the pointer reactivity switch on.
  */
 export function DotsGrid({
   className,
   centerHole = true,
+  introMode = "sweep",
 }: {
   className?: string;
   centerHole?: boolean;
+  introMode?: IntroMode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
@@ -171,22 +183,137 @@ export function DotsGrid({
       });
     }
 
+    // --- Intro animations (play once when the login screen is revealed) ------
+
+    /** Diagonal wavefront top-left → bottom-right, lighting dots as it passes. */
+    function playSweepIntro(done: () => void) {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      dotCenters.forEach(({ el }) => (el._introLit = false));
+      const proxy = { c: -1 };
+      gsap.to(proxy, {
+        c: W + H,
+        duration: 1.5,
+        ease: "power1.inOut",
+        onUpdate() {
+          const c = proxy.c;
+          dotCenters.forEach(({ el, x, y }) => {
+            if (!el._introLit && x + y <= c) {
+              el._introLit = true;
+              gsap.to(el, {
+                backgroundColor: colors.active,
+                duration: 0.3,
+                ease: "power2.out",
+              });
+            }
+          });
+        },
+        onComplete() {
+          gsap.to(
+            dotCenters.map((d) => d.el),
+            {
+              backgroundColor: colors.base,
+              duration: 0.5,
+              delay: 0.15,
+              ease: "power1.inOut",
+              onComplete() {
+                dotCenters.forEach(({ el }) => {
+                  el._lit = false;
+                  el._introLit = false;
+                });
+                done();
+              },
+            }
+          );
+        },
+      });
+    }
+
+    /** Random twinkle — each dot pulses on at a random moment within ~1.5s. */
+    function playDiscoIntro(done: () => void) {
+      const els = dotCenters.map((d) => d.el);
+      const tl = gsap.timeline({
+        onComplete() {
+          els.forEach((el) => {
+            gsap.set(el, { backgroundColor: colors.base });
+            el._lit = false;
+          });
+          done();
+        },
+      });
+      els.forEach((el) => {
+        const at = Math.random() * 1.5;
+        tl.to(el, { backgroundColor: colors.active, duration: 0.15, ease: "power1.out" }, at);
+        tl.to(el, { backgroundColor: colors.base, duration: 0.45, ease: "power1.in" }, at + 0.15);
+      });
+      tl.to({}, { duration: 2 }, 0); // guarantee a ~2s floor
+    }
+
     buildGrid();
-
-    // Reduced motion: static field, no pointer reactivity.
-    if (reduced) return;
-
     window.addEventListener("resize", buildGrid);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("click", onClick);
 
-    return () => {
-      window.removeEventListener("resize", buildGrid);
+    // Reduced motion: static field, no intro, no pointer reactivity.
+    if (reduced) {
+      return () => {
+        window.removeEventListener("resize", buildGrid);
+        gsap.killTweensOf(dots);
+      };
+    }
+
+    let disposed = false;
+    let playing = false;
+
+    function attachPointer() {
+      if (disposed) return;
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("click", onClick);
+    }
+    function detachPointer() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("click", onClick);
+    }
+
+    function startIntro() {
+      if (disposed) return;
+      // One frame so buildGrid's measured dotCenters are ready.
+      requestAnimationFrame(() => {
+        if (disposed) return;
+        if (introMode === "none" || dotCenters.length === 0) {
+          attachPointer();
+          return;
+        }
+        playing = true;
+        (introMode === "disco" ? playDiscoIntro : playSweepIntro)(() => {
+          playing = false;
+          attachPointer();
+        });
+      });
+    }
+
+    // On-demand disco (the playful login button). Pause pointer reactivity for
+    // the duration so the twinkle reads cleanly, then resume.
+    function onDiscoRequest() {
+      if (disposed || playing || dotCenters.length === 0) return;
+      playing = true;
+      detachPointer();
+      playDiscoIntro(() => {
+        playing = false;
+        attachPointer();
+      });
+    }
+
+    const offReveal = onLoginRevealed(startIntro);
+    const offDisco = onDotsDisco(onDiscoRequest);
+
+    return () => {
+      disposed = true;
+      offReveal();
+      offDisco();
+      detachPointer();
+      window.removeEventListener("resize", buildGrid);
       gsap.killTweensOf(dots);
     };
-  }, [reduced, centerHole]);
+  }, [reduced, centerHole, introMode]);
 
   return (
     <div className={cn("dots-grid", className)} aria-hidden>

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type {
   AdminClientNote,
+  BrandColor,
   ClientBrand,
   ClientCallLog,
   Profile,
@@ -11,6 +12,7 @@ import type {
 export interface ClientDetailData {
   profile: Profile | null;
   brand: ClientBrand | null;
+  colors: BrandColor[];
   note: AdminClientNote | null;
   calls: ClientCallLog[];
   projects: Project[];
@@ -29,6 +31,7 @@ export function useClientDetail(clientId: string | undefined) {
       const [
         { data: profile },
         { data: brand },
+        { data: colors },
         { data: note },
         { data: calls },
         { data: projects },
@@ -38,6 +41,7 @@ export function useClientDetail(clientId: string | undefined) {
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
+        supabase.from("brand_colors").select("*").eq("client_id", id).order("sort_order"),
         supabase.from("admin_client_notes").select("*").eq("client_id", id).maybeSingle(),
         supabase.from("client_call_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }),
         supabase.from("projects").select("*").eq("client_id", id).order("updated_at", { ascending: false }),
@@ -49,6 +53,7 @@ export function useClientDetail(clientId: string | undefined) {
       return {
         profile: profile ?? null,
         brand: brand ?? null,
+        colors: colors ?? [],
         note: note ?? null,
         calls: calls ?? [],
         projects: projects ?? [],

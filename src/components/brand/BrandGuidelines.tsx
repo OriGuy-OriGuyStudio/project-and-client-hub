@@ -7,6 +7,11 @@ import {
 } from "@/components/ui/collapsible";
 import { Card } from "@/components/ui/card";
 import { ColorSwatch } from "./ColorSwatch";
+import {
+  iconForPlatform,
+  labelForPlatform,
+  normalizeSocialLinks,
+} from "./social";
 import { cn } from "@/lib/utils";
 import type { BrandColor, ClientBrand } from "@/types/database";
 
@@ -28,8 +33,7 @@ export function BrandGuidelines({
     !!brand?.font_notes;
   const [open, setOpen] = useState(hasContent);
 
-  const social = (brand?.social_links ?? {}) as Record<string, string>;
-  const socialEntries = Object.entries(social).filter(([, v]) => !!v);
+  const socialEntries = normalizeSocialLinks(brand?.social_links);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -119,17 +123,21 @@ export function BrandGuidelines({
                       אתר
                     </a>
                   )}
-                  {socialEntries.map(([key, url]) => (
-                    <a
-                      key={key}
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="text-link hover:underline"
-                    >
-                      {key}
-                    </a>
-                  ))}
+                  {socialEntries.map((s, i) => {
+                    const Icon = iconForPlatform(s.platform);
+                    return (
+                      <a
+                        key={`${s.platform}-${i}`}
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="flex items-center gap-1 text-link hover:underline"
+                      >
+                        <Icon className="size-4" />
+                        {labelForPlatform(s.platform)}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </>

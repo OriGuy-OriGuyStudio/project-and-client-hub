@@ -1,7 +1,49 @@
-import { supabase, PROJECT_FILES_BUCKET, SIGNED_URL_TTL } from "./supabase";
+import { supabase, PROJECT_FILES_BUCKET, BRAND_ASSETS_BUCKET, SIGNED_URL_TTL } from "./supabase";
 import type { FileRow } from "@/types/database";
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
+
+/** Logos are small; mirror the brand-assets bucket's 5MB / image-only limits. */
+export const MAX_BRAND_ASSET_BYTES = 5 * 1024 * 1024; // 5MB
+const BRAND_ASSET_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/svg+xml",
+]);
+
+/** Client-side gate for a logo upload (storage policy enforces the same). */
+export function validateBrandAsset(file: File): string | null {
+  if (file.size > MAX_BRAND_ASSET_BYTES) {
+    return "הקובץ גדול מדי. הגודל המרבי ללוגו הוא 5MB.";
+  }
+  if (!BRAND_ASSET_MIME.has(file.type)) {
+    return "סוג קובץ לא נתמך. אפשר PNG, JPG, WEBP או SVG.";
+  }
+  return null;
+}
+
+/**
+ * Upload a brand asset (logo) to the PUBLIC brand-assets bucket and return its
+ * stable public URL (suitable for a persisted <img src>). Admin-only per the
+ * storage RLS. Path convention: <clientId>/<uuid>-<name>.
+ */
+export async function uploadBrandAsset(params: {
+  clientId: string;
+  file: File;
+}): Promise<string> {
+  const { clientId, file } = params;
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const storagePath = `${clientId}/${crypto.randomUUID()}-${safeName}`;
+
+  const { error } = await supabase.storage
+    .from(BRAND_ASSETS_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+
+  return supabase.storage.from(BRAND_ASSETS_BUCKET).getPublicUrl(storagePath).data
+    .publicUrl;
+}
 
 // Mirrors the storage bucket's server-side allow-list exactly.
 export const ALLOWED_MIME = new Set([

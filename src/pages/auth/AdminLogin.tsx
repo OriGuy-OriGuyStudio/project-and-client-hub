@@ -5,6 +5,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DotsGrid } from "@/components/brand/DotsGrid";
+import { DiscoButton } from "@/components/brand/DiscoButton";
 import { Footer } from "@/components/layout/Footer";
 
 /** Owner-facing entry. Same Google OAuth, copy directed at the admin (Ori). */
@@ -108,6 +109,8 @@ export default function AdminLogin() {
           הרגיל.
         </p>
       </div>
+
+      <DiscoButton className="absolute bottom-16 left-1/2 z-20 -translate-x-1/2 sm:bottom-20" />
 
       <Footer className="absolute inset-x-0 bottom-0 z-20 justify-center border-t-0 bg-transparent text-[11px] sm:justify-between" />
     </div>

@@ -7,6 +7,7 @@ import {
   Handshake,
   Mail,
   MessageCircle,
+  Palette,
   Phone,
   Sparkles,
 } from "lucide-react";
@@ -17,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectCard } from "@/components/project/ProjectCard";
+import { ColorSwatch } from "@/components/brand/ColorSwatch";
+import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import { useClientDetail } from "@/hooks/useClientDetail";
 
 const genderHe: Record<string, string> = { male: "זכר", female: "נקבה", other: "אחר" };
@@ -54,7 +57,12 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, note, calls, projects, referralCount, credits, enrolled } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled } = data;
+  const hasBrand =
+    !!brand?.logo_url ||
+    !!brand?.business_name ||
+    !!brand?.business_description ||
+    colors.length > 0;
   const phone = profile.phone;
 
   return (
@@ -127,6 +135,54 @@ export default function ClientDetail() {
           <div>
             <p className="text-sm font-medium text-foreground">מידע אישי</p>
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{note.content}</p>
+          </div>
+        )}
+      </Card>
+
+      {/* Brand identity */}
+      <Card className="space-y-4 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <Palette className="size-5 text-brand-cyan-base" />
+            זהות מותג
+          </h2>
+          <BrandIdentityEditor clientId={profile.id} brand={brand} colors={colors} />
+        </div>
+
+        {!hasBrand ? (
+          <p className="text-sm text-muted-foreground">
+            עדיין לא הוגדרה זהות מותג. לחץ על "עריכת זהות מותג" כדי להתחיל.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {(brand?.logo_url || brand?.business_name) && (
+              <div className="flex items-center gap-3">
+                {brand?.logo_url && (
+                  <img
+                    src={brand.logo_url}
+                    alt={brand.business_name ?? "לוגו"}
+                    className="h-14 w-14 rounded-xl object-contain"
+                  />
+                )}
+                {brand?.business_name && (
+                  <p className="font-heading text-lg font-bold text-foreground">
+                    {brand.business_name}
+                  </p>
+                )}
+              </div>
+            )}
+            {brand?.business_description && (
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {brand.business_description}
+              </p>
+            )}
+            {colors.length > 0 && (
+              <div className="flex flex-wrap gap-5">
+                {colors.map((c) => (
+                  <ColorSwatch key={c.id} color={c} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Card>
