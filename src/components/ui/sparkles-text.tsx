@@ -1,4 +1,4 @@
-import { CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
@@ -17,34 +17,40 @@ interface SparklesTextProps {
   className?: string;
   text: string;
   sparklesCount?: number;
-  colors?: { first: string; second: string };
+  /** Brand palette to draw sparkles from (picked at random). */
+  colors?: string[];
 }
+
+// Brand greens + a touch of cyan for variety.
+const BRAND_SPARKLES = ["#B4D670", "#c5df90", "#91be37", "#77becf"];
 
 /**
  * Text with small twinkling sparkles (adapted from Magic UI). Defaults to the
- * brand greens and honours prefers-reduced-motion (renders plain text then).
+ * brand palette and honours prefers-reduced-motion (renders plain text then).
  */
 export function SparklesText({
   text,
-  colors = { first: "#B4D670", second: "#c5df90" },
+  colors = BRAND_SPARKLES,
   className,
-  sparklesCount = 6,
+  sparklesCount = 7,
   ...props
 }: SparklesTextProps) {
   const reduced = usePrefersReducedMotion();
   const [sparkles, setSparkles] = useState<Sparkle[]>([]);
+  const palette = colors.join(",");
 
   useEffect(() => {
     if (reduced) return;
+    const pool = palette.split(",");
 
     const generateStar = (): Sparkle => {
       const starX = `${Math.random() * 100}%`;
       const starY = `${Math.random() * 100}%`;
-      const color = Math.random() > 0.5 ? colors.first : colors.second;
+      const color = pool[Math.floor(Math.random() * pool.length)];
       const delay = Math.random() * 2;
       const scale = Math.random() * 1 + 0.3;
       const lifespan = Math.random() * 10 + 5;
-      const id = `${starX}-${starY}-${Date.now()}`;
+      const id = `${starX}-${starY}-${Date.now()}-${Math.random()}`;
       return { id, x: starX, y: starY, color, delay, scale, lifespan };
     };
 
@@ -59,19 +65,10 @@ export function SparklesText({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [colors.first, colors.second, sparklesCount, reduced]);
+  }, [palette, sparklesCount, reduced]);
 
   return (
-    <span
-      className={cn("relative inline-block", className)}
-      {...props}
-      style={
-        {
-          "--sparkles-first-color": colors.first,
-          "--sparkles-second-color": colors.second,
-        } as CSSProperties
-      }
-    >
+    <span className={cn("relative inline-block", className)} {...props}>
       {sparkles.map((sparkle) => (
         <SparkleSvg key={sparkle.id} {...sparkle} />
       ))}
@@ -87,7 +84,7 @@ function SparkleSvg({ id, x, y, color, delay, scale }: Sparkle) {
       className="pointer-events-none absolute z-20"
       initial={{ opacity: 0, left: x, top: y }}
       animate={{ opacity: [0, 1, 0], scale: [0, scale, 0], rotate: [75, 120, 150] }}
-      transition={{ duration: 0.8, repeat: Infinity, delay }}
+      transition={{ duration: 1.5, repeat: Infinity, delay }}
       width="21"
       height="21"
       viewBox="0 0 21 21"

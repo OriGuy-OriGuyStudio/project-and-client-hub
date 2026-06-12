@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Loader } from "./loader";
 
 /**
  * Branded loading indicator — a green arc orbiting the studio mark.
@@ -57,7 +58,9 @@ export function BrandSpinner({
 export function CenteredLoader({ label = "טוען…" }: { label?: string }) {
   return (
     <div className="flex min-h-[40vh] w-full items-center justify-center">
-      <BrandSpinner size={56} label={label} />
+      <Loader size={34}>
+        <span className="text-base">{label}</span>
+      </Loader>
     </div>
   );
 }
