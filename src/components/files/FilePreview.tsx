@@ -29,7 +29,7 @@ export function FilePreview({ file }: { file: FileRow }) {
 
   if (!previewable) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg bg-background/40 text-muted-foreground">
+      <div className="flex h-32 items-center justify-center rounded-lg bg-field text-muted-foreground">
         <FileText className="size-8" />
       </div>
     );
@@ -39,7 +39,7 @@ export function FilePreview({ file }: { file: FileRow }) {
 
   if (!url) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg bg-background/40 text-muted-foreground">
+      <div className="flex h-32 items-center justify-center rounded-lg bg-field text-muted-foreground">
         <ImageIcon className="size-8" />
       </div>
     );

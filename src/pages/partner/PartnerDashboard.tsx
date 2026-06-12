@@ -95,7 +95,7 @@ export default function PartnerDashboard() {
               <span className="text-sm">לינק ההפניה האישי שלך</span>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <code className="flex-1 rounded-xl border border-border bg-background/40 px-3 py-2 font-mono-code text-sm text-foreground">
+              <code className="flex-1 rounded-xl border border-border bg-field px-3 py-2 font-mono-code text-sm text-foreground">
                 {refLink || "—"}
               </code>
               <Button variant="secondary" onClick={copyLink} disabled={!refLink}>

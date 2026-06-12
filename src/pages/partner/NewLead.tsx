@@ -120,7 +120,7 @@ export default function NewLead() {
           <Label htmlFor="l-type">סוג פרויקט</Label>
           <select id="l-type" value={form.project_type}
             onChange={(e) => update("project_type", e.target.value as PartnerProjectType)}
-            className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {TYPES.map((t) => (
               <option key={t} value={t}>{projectTypeHe[t]}</option>
             ))}

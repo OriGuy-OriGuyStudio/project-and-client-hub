@@ -62,6 +62,7 @@
 
   --border: rgba(58, 34, 211, 0.12);
   --input: rgba(58, 34, 211, 0.2);
+  --field: rgba(24, 16, 67, 0.04); /* input/select fill */
   --ring: #7fae2b;
 
   --sidebar: #f3f0fb;
@@ -114,6 +115,7 @@
 
   --border: rgba(168, 166, 188, 0.13);
   --input: rgba(168, 166, 188, 0.2);
+  --field: rgba(255, 255, 255, 0.05); /* input/select fill */
   --ring: #b4d670;
 
   --sidebar: #08080c;

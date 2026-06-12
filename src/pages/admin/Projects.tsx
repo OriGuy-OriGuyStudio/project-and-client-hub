@@ -146,7 +146,7 @@ function CreateProjectDialog() {
                 id="p-client"
                 value={form.client_id}
                 onChange={(e) => update("client_id", e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">בחר לקוח…</option>
                 {activeClients.map((c) => (
@@ -187,7 +187,7 @@ function CreateProjectDialog() {
                 id="p-status"
                 value={form.status}
                 onChange={(e) => update("status", e.target.value as ProjectStatus)}
-                className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>

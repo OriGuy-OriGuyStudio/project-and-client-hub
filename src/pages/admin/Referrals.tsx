@@ -218,7 +218,7 @@ function ManageReferralDialog({
               id="rf-status"
               value={form.status}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ReferralStatus }))}
-              className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -249,7 +249,7 @@ function ManageReferralDialog({
                   onChange={(e) =>
                     setForm((f) => ({ ...f, payment_method: e.target.value as "" | "bit" | "bank_transfer" }))
                   }
-                  className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground"
+                  className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground"
                 >
                   <option value="">בחר…</option>
                   <option value="bit">ביט</option>

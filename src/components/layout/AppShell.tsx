@@ -1,12 +1,24 @@
 import { useEffect, useRef } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import gsap from "gsap";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { toast } from "@/hooks/use-toast";
 
 const GENDER_NOTE_KEY = "sog-gender-note";
+
+const TITLE_MAP: Record<string, string> = Object.fromEntries(
+  [...adminNav, ...clientNav, ...partnerNav].map((n) => [n.to, n.label])
+);
+
+function titleForPath(path: string): string {
+  if (TITLE_MAP[path]) return TITLE_MAP[path];
+  if (path.startsWith("/projects/")) return "פרויקט";
+  if (path.startsWith("/admin/clients/")) return "כרטיס לקוח";
+  return "";
+}
 
 /**
  * Authenticated app frame. On first mount it runs the GSAP load sequence:
@@ -14,6 +26,7 @@ const GENDER_NOTE_KEY = "sog-gender-note";
  */
 export function AppShell() {
   const reduced = usePrefersReducedMotion();
+  const location = useLocation();
   const sidebarRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -28,6 +41,14 @@ export function AppShell() {
     });
     return () => ctx.revert();
   }, [reduced]);
+
+  // Keep the browser tab title in sync with the current page.
+  useEffect(() => {
+    const label = titleForPath(location.pathname);
+    document.title = label
+      ? `${label} · Studio Ori Guy`
+      : "Studio Ori Guy · פורטל לקוחות";
+  }, [location.pathname]);
 
   // One-time note: copy is masculine grammatical form, addresses everyone.
   useEffect(() => {

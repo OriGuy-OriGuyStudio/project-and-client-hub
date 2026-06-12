@@ -29,7 +29,7 @@ export function InternalChat({
   const { requestNotify } = useNotifyClient();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages", projectId],
@@ -63,8 +63,11 @@ export function InternalChat({
     };
   }, [projectId, qc]);
 
+  // Keep the chat pinned to the latest message by scrolling the list itself —
+  // NOT scrollIntoView, which would scroll the whole project page down on open.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages?.length]);
 
   async function send() {
@@ -98,7 +101,7 @@ export function InternalChat({
         <WhatsAppButton projectTitle={projectTitle} />
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto pe-1">
+      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto pe-1">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -140,7 +143,6 @@ export function InternalChat({
             );
           })
         )}
-        <div ref={endRef} />
       </div>
 
       <div className="mt-3 flex items-center gap-2">

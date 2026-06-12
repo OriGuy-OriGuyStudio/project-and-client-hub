@@ -109,7 +109,7 @@ export function TasksSection({
               onChange={(e) =>
                 setForm((f) => ({ ...f, assignee: e.target.value as typeof f.assignee }))
               }
-              className="h-9 rounded-lg border border-input bg-background/40 px-3 text-sm text-foreground"
+              className="h-9 rounded-lg border border-input bg-field px-3 text-sm text-foreground"
             >
               <option value="none">ללא אחראי</option>
               <option value="studio">הסטודיו</option>
@@ -161,7 +161,7 @@ export function TasksSection({
                       <select
                         value={t.status}
                         onChange={(e) => setStatus(t, e.target.value as TaskStatus)}
-                        className="h-7 flex-1 rounded-lg border border-input bg-background/40 px-2 text-xs text-foreground"
+                        className="h-7 flex-1 rounded-lg border border-input bg-field px-2 text-xs text-foreground"
                       >
                         {COLUMNS.map((c) => (
                           <option key={c.key} value={c.key}>

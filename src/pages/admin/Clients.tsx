@@ -435,7 +435,7 @@ function EditClientDialog({
                     id="e-gender"
                     value={form.gender}
                     onChange={(e) => update("gender", e.target.value)}
-                    className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground"
+                    className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground"
                   >
                     <option value="">לא צוין</option>
                     <option value="male">זכר</option>

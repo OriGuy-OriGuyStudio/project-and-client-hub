@@ -27,9 +27,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="flex h-16 items-center gap-2 px-6">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
-          OG
-        </div>
+        <img src="/brand/logo-mark.svg" alt="" className="size-8 shrink-0" />
         <span className="font-heading text-base font-bold text-foreground">
           Studio Ori Guy
         </span>

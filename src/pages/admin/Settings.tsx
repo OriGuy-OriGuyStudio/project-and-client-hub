@@ -351,7 +351,7 @@ function TemplateEditor({ template }: { template: StageTemplate }) {
               <select
                 value={s.assignee}
                 onChange={(e) => updateStage(i, { assignee: e.target.value as UserRole })}
-                className="h-9 shrink-0 rounded-lg border border-input bg-background/40 px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-9 shrink-0 rounded-lg border border-input bg-field px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="admin">הסטודיו</option>
                 <option value="client">הלקוח</option>
@@ -540,7 +540,7 @@ function ResourceEditor({ resource }: { resource: PartnerResource }) {
             onChange={(e) =>
               update("resource_type", e.target.value as NonNullable<PartnerResource["resource_type"]>)
             }
-            className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {RESOURCE_TYPES.map((t) => (
               <option key={t.value} value={t.value}>

@@ -140,7 +140,7 @@ export function DocsSection({
                     "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-start text-sm transition-colors",
                     selectedId === d.id
                       ? "bg-primary/15 text-primary"
-                      : "text-foreground hover:bg-background/40"
+                      : "text-foreground hover:bg-field"
                   )}
                 >
                   <span className="truncate">{d.title}</span>

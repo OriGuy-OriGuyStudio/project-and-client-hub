@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   CircleDashed,
+  GripVertical,
   LayoutTemplate,
   Loader2,
   Map as MapIcon,
@@ -13,12 +14,29 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -119,6 +137,50 @@ export function ProgressTimeline({
       return next;
     });
 
+  // Multi-select + confirm-modal state.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirm, setConfirm] = useState<
+    { title: string; description?: string; onConfirm: () => void } | null
+  >(null);
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
+  async function performDelete(ids: string[]) {
+    const { error } = await supabase.from("project_stages").delete().in("id", ids);
+    if (error) return toastError("המחיקה נכשלה.");
+    setSelected(new Set());
+    qc.invalidateQueries({ queryKey: ["stages", projectId] });
+    qc.invalidateQueries({ queryKey: ["stage-tasks", projectId] });
+  }
+
+  async function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id || !stages) return;
+    const oldIndex = stages.findIndex((s) => s.id === active.id);
+    const newIndex = stages.findIndex((s) => s.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(stages, oldIndex, newIndex);
+    // Optimistic reorder, then persist each phase's order_index.
+    qc.setQueryData(
+      ["stages", projectId],
+      reordered.map((s, i) => ({ ...s, order_index: i }))
+    );
+    await Promise.all(
+      reordered.map((s, i) =>
+        supabase.from("project_stages").update({ order_index: i }).eq("id", s.id)
+      )
+    );
+    qc.invalidateQueries({ queryKey: ["stages", projectId] });
+  }
+
   useEffect(() => {
     if (!fillRef.current) return;
     const target = Math.min(pct, 100);
@@ -157,25 +219,30 @@ export function ProgressTimeline({
     qc.invalidateQueries({ queryKey: ["stages", projectId] });
   }
 
-  async function deleteStage(stage: ProjectStage) {
-    if (!window.confirm(`למחוק את השלב "${stage.title}"?`)) return;
-    const { error } = await supabase
-      .from("project_stages")
-      .delete()
-      .eq("id", stage.id);
-    if (error) {
-      toastError("מחיקת השלב נכשלה.");
-      return;
-    }
-    qc.invalidateQueries({ queryKey: ["stages", projectId] });
+  function deleteStage(stage: ProjectStage) {
+    setConfirm({
+      title: "מחיקת מקטע",
+      description: `למחוק את "${stage.title}" וכל תת-המשימות שלו?`,
+      onConfirm: () => performDelete([stage.id]),
+    });
+  }
+
+  function bulkDelete() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setConfirm({
+      title: "מחיקת מקטעים",
+      description: `למחוק ${ids.length} מקטעים נבחרים (וכל תת-המשימות שלהם)?`,
+      onConfirm: () => performDelete(ids),
+    });
   }
 
   return (
     <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <MapIcon className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">
+          <h2 className="whitespace-nowrap font-heading text-lg font-semibold text-foreground">
             ציר התקדמות
           </h2>
         </div>
@@ -211,107 +278,205 @@ export function ProgressTimeline({
             />
           </div>
 
-          <ol className="space-y-3">
-            {stages!.map((stage) => {
-              const Icon = statusIcon[stage.status];
-              const done = stage.status === "done";
-              const stageTasks = tasksByStage.get(stage.id) ?? [];
-              const tasksDone = stageTasks.filter((t) => t.is_done).length;
-              const isCollapsed = collapsed.has(stage.id);
-              return (
-                <li
-                  key={stage.id}
-                  className="rounded-xl border border-border bg-background/30 px-4 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleCollapse(stage.id)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-start"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "size-4 shrink-0 text-muted-foreground transition-transform",
-                          isCollapsed && "-rotate-90"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-full",
-                          done
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-brand-purple-base/30 text-muted-foreground"
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            "size-4",
-                            stage.status === "in_progress" && "animate-spin"
-                          )}
-                        />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-heading text-sm font-semibold text-foreground">
-                          {stage.title}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {stage.assignee === "client" ? "באחריות הלקוח" : "באחריות הסטודיו"}
-                          {stage.due_date &&
-                            ` · יעד ${new Date(stage.due_date).toLocaleDateString("he-IL")}`}
-                          {stageTasks.length > 0 &&
-                            ` · ${tasksDone}/${stageTasks.length} משימות`}
-                        </span>
-                      </span>
-                    </button>
+          {isAdmin && selected.size > 0 && (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm">
+              <span className="text-foreground">{selected.size} מקטעים נבחרו</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                  ביטול בחירה
+                </Button>
+                <Button size="sm" variant="destructive" onClick={bulkDelete}>
+                  <Trash2 className="size-4" /> מחק נבחרים
+                </Button>
+              </div>
+            </div>
+          )}
 
-                    <div className="flex shrink-0 items-center gap-2">
-                      {isAdmin ? (
-                        <>
-                          <select
-                            aria-label="סטטוס השלב"
-                            value={stage.status}
-                            onChange={(e) => setStatus(stage, e.target.value as StageStatus)}
-                            className="h-8 rounded-lg border border-input bg-background/40 px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            {STAGE_STATUSES.map((s) => (
-                              <option key={s} value={s}>
-                                {stageStatusHe[s]}
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="size-8 text-destructive"
-                            aria-label="מחיקת מקטע"
-                            onClick={() => deleteStage(stage)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {stageStatusHe[stage.status]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {!isCollapsed && (
-                    <StageTasks
-                      projectId={projectId}
-                      stageId={stage.id}
-                      tasks={stageTasks}
-                      isAdmin={isAdmin}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ol>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+          >
+            <SortableContext
+              items={stages!.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <ol className="space-y-3">
+                {stages!.map((stage) => (
+                  <PhaseItem
+                    key={stage.id}
+                    stage={stage}
+                    isAdmin={isAdmin}
+                    projectId={projectId}
+                    tasks={tasksByStage.get(stage.id) ?? []}
+                    collapsed={collapsed.has(stage.id)}
+                    onToggleCollapse={() => toggleCollapse(stage.id)}
+                    onSetStatus={(st) => setStatus(stage, st)}
+                    onDelete={() => deleteStage(stage)}
+                    selected={selected.has(stage.id)}
+                    onToggleSelect={() => toggleSelect(stage.id)}
+                  />
+                ))}
+              </ol>
+            </SortableContext>
+          </DndContext>
         </>
       )}
+
+      <ConfirmDialog
+        open={!!confirm}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title={confirm?.title ?? ""}
+        description={confirm?.description}
+        onConfirm={() => confirm?.onConfirm()}
+      />
     </Card>
+  );
+}
+
+function PhaseItem({
+  stage,
+  isAdmin,
+  projectId,
+  tasks,
+  collapsed,
+  onToggleCollapse,
+  onSetStatus,
+  onDelete,
+  selected,
+  onToggleSelect,
+}: {
+  stage: ProjectStage;
+  isAdmin: boolean;
+  projectId: string;
+  tasks: StageTask[];
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onSetStatus: (status: StageStatus) => void;
+  onDelete: () => void;
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: stage.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const Icon = statusIcon[stage.status];
+  const done = stage.status === "done";
+  const tasksDone = tasks.filter((t) => t.is_done).length;
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "rounded-xl border border-border bg-field px-4 py-3",
+        isDragging && "relative z-10 opacity-70 shadow-lift",
+        selected && "ring-1 ring-destructive/50"
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {isAdmin && (
+            <>
+              <button
+                {...attributes}
+                {...listeners}
+                type="button"
+                aria-label="גרירה לסידור"
+                className="shrink-0 cursor-grab touch-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+              >
+                <GripVertical className="size-4" />
+              </button>
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={onToggleSelect}
+                aria-label="בחירת מקטע"
+                className="size-4 shrink-0 accent-[var(--primary)]"
+              />
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex min-w-0 flex-1 items-center gap-3 text-start"
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform",
+                collapsed && "-rotate-90"
+              )}
+            />
+            <span
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-full",
+                done
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-brand-purple-base/30 text-muted-foreground"
+              )}
+            >
+              {stage.status === "in_progress" ? (
+                <Loader size={16} />
+              ) : (
+                <Icon className="size-4" />
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-heading text-sm font-semibold text-foreground">
+                {stage.title}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {stage.assignee === "client" ? "באחריות הלקוח" : "באחריות הסטודיו"}
+                {stage.due_date &&
+                  ` · יעד ${new Date(stage.due_date).toLocaleDateString("he-IL")}`}
+                {tasks.length > 0 && ` · ${tasksDone}/${tasks.length} משימות`}
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {isAdmin ? (
+            <>
+              <select
+                aria-label="סטטוס השלב"
+                value={stage.status}
+                onChange={(e) => onSetStatus(e.target.value as StageStatus)}
+                className="h-8 rounded-lg border border-input bg-field px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {STAGE_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {stageStatusHe[s]}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-8 text-destructive"
+                aria-label="מחיקת מקטע"
+                onClick={onDelete}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              {stageStatusHe[stage.status]}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {!collapsed && (
+        <StageTasks
+          projectId={projectId}
+          stageId={stage.id}
+          tasks={tasks}
+          isAdmin={isAdmin}
+        />
+      )}
+    </li>
   );
 }
 
@@ -626,7 +791,7 @@ function AddStageDialog({
                 onChange={(e) =>
                   setForm((f) => ({ ...f, assignee: e.target.value as UserRole }))
                 }
-                className="flex h-10 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-xl border border-input bg-field px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="admin">הסטודיו</option>
                 <option value="client">הלקוח</option>

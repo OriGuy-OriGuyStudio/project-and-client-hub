@@ -90,7 +90,7 @@ function FeedbackRow({ item }: { item: AdminFeedback }) {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as ClientFeedback["status"])}
-            className="h-9 rounded-lg border border-input bg-background/40 px-2 text-sm text-foreground"
+            className="h-9 rounded-lg border border-input bg-field px-2 text-sm text-foreground"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>

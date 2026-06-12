@@ -70,7 +70,7 @@ export default function Resources() {
                     <p className="text-sm text-muted-foreground">{r.description}</p>
                   )}
                   {r.resource_type === "text_template" && r.content && (
-                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-background/40 p-3 text-sm text-muted-foreground">
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-field p-3 text-sm text-muted-foreground">
                       {r.content}
                     </p>
                   )}

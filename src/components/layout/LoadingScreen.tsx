@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader } from "@/components/ui/loader";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
 
 /** Full-screen branded loading state shown during auth / initial data resolution. */
 export function LoadingScreen() {
@@ -19,7 +19,7 @@ export function LoadingScreen() {
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative flex flex-col items-center gap-5"
       >
-        <Loader size={52} />
+        <BrandSpinner size={72} />
 
         <div className="flex flex-col items-center gap-1.5">
           <span className="font-heading text-2xl font-bold tracking-tight text-foreground">
