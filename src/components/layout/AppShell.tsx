@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import gsap from "gsap";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { toast } from "@/hooks/use-toast";
@@ -72,7 +73,9 @@ export function AppShell() {
         <Header ref={headerRef} />
         <main ref={mainRef} className="flex-1 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-5xl">
-            <Outlet />
+            <Suspense fallback={<CenteredLoader />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         <Footer />

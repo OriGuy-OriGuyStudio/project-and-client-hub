@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -15,25 +16,29 @@ import {
   RedirectIfAuthed,
 } from "@/components/auth/guards";
 
+// Public/login screens stay eager — they're the app entry and small.
 import Login from "@/pages/auth/Login";
 import AdminLogin from "@/pages/auth/AdminLogin";
 import PartnerLogin from "@/pages/auth/PartnerLogin";
 import AccessDenied from "@/pages/auth/AccessDenied";
-import ClientDashboard from "@/pages/client/Dashboard";
-import Profile from "@/pages/client/Profile";
-import Partner from "@/pages/client/Partner";
-import AdminDashboard from "@/pages/admin/Dashboard";
-import Clients from "@/pages/admin/Clients";
-import ClientDetail from "@/pages/admin/ClientDetail";
-import Projects from "@/pages/admin/Projects";
-import Partners from "@/pages/admin/Partners";
-import Referrals from "@/pages/admin/Referrals";
-import Feedback from "@/pages/admin/Feedback";
-import Settings from "@/pages/admin/Settings";
-import ProjectDetail from "@/pages/shared/ProjectDetail";
-import PartnerDashboard from "@/pages/partner/PartnerDashboard";
-import NewLead from "@/pages/partner/NewLead";
-import PartnerResources from "@/pages/partner/Resources";
+
+// Everything behind auth is code-split (loaded on demand via the AppShell
+// Suspense boundary), keeping the initial login bundle lean.
+const ClientDashboard = lazy(() => import("@/pages/client/Dashboard"));
+const Profile = lazy(() => import("@/pages/client/Profile"));
+const Partner = lazy(() => import("@/pages/client/Partner"));
+const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
+const Clients = lazy(() => import("@/pages/admin/Clients"));
+const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
+const Projects = lazy(() => import("@/pages/admin/Projects"));
+const Partners = lazy(() => import("@/pages/admin/Partners"));
+const Referrals = lazy(() => import("@/pages/admin/Referrals"));
+const Feedback = lazy(() => import("@/pages/admin/Feedback"));
+const Settings = lazy(() => import("@/pages/admin/Settings"));
+const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
+const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
+const NewLead = lazy(() => import("@/pages/partner/NewLead"));
+const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
