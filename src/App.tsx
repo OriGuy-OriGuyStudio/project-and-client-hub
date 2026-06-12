@@ -5,6 +5,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/toaster";
 import { AIWidget } from "@/components/ai-widget/AIWidget";
 import { AppShell } from "@/components/layout/AppShell";
+import { IntroLoader } from "@/components/layout/IntroLoader";
 import {
   RequireAdmin,
   RequireAuth,
@@ -98,6 +99,8 @@ function App() {
           <Toaster />
           {/* Persistent across navigation — outside the router outlet */}
           <AIWidget />
+          {/* One-time branded number-loader intro, above everything */}
+          <IntroLoader />
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

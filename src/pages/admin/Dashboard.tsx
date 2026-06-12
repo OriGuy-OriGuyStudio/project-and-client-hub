@@ -3,7 +3,8 @@ import { FolderKanban } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CenteredLoader } from "@/components/ui/brand-spinner";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card } from "@/components/ui/card";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,9 +15,10 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className="p-5">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 font-heading text-3xl font-bold text-foreground">
-        {value}
-      </p>
+      <AnimatedNumber
+        value={value}
+        className="mt-1 block font-heading text-3xl font-bold text-foreground"
+      />
     </Card>
   );
 }
@@ -50,11 +52,7 @@ export default function AdminDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
-          ))}
-        </div>
+        <CenteredLoader label="טוען פרויקטים…" />
       ) : projects && projects.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p, i) => (

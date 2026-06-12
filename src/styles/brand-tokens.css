@@ -71,6 +71,15 @@
   --success: #5e8a1e;
   --warning: #b45309;
   --info: #2f7e93;
+
+  /* Elevation — shadows tinted to the brand ink, never pure black.
+     A faint top hairline gives surfaces a physical, lit edge. */
+  --shadow-1: rgba(24, 16, 67, 0.05);
+  --shadow-2: rgba(24, 16, 67, 0.09);
+  --hairline-top: rgba(255, 255, 255, 0.7);
+
+  /* Sweeping highlight for loading shimmers */
+  --shimmer: rgba(24, 16, 67, 0.07);
 }
 
 /* ============================================================
@@ -82,10 +91,10 @@
   --background: #0b0a10;
   --foreground: #f2f2f6;
 
-  --card: #15141b;
+  --card: #161520;
   --card-foreground: #f2f2f6;
 
-  --popover: #15141b;
+  --popover: #1a1924;
   --popover-foreground: #f2f2f6;
 
   --primary: #b4d670; /* signature green on dark */
@@ -114,4 +123,13 @@
   --success: #b4d670;
   --warning: #f59e0b;
   --info: #77becf;
+
+  /* Elevation on dark: deep tinted shadow + a faint warm top hairline so
+     cards read as lifted surfaces, not flat rectangles. */
+  --shadow-1: rgba(0, 0, 0, 0.4);
+  --shadow-2: rgba(0, 0, 0, 0.55);
+  --hairline-top: rgba(255, 255, 255, 0.05);
+
+  /* Sweeping highlight for loading shimmers */
+  --shimmer: rgba(255, 255, 255, 0.07);
 }

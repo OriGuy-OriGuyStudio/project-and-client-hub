@@ -16,7 +16,8 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    font-feature-settings: "kern";
+    font-feature-settings: "kern", "liga", "calt";
+    text-rendering: optimizeLegibility;
     min-height: 100vh;
   }
 
@@ -24,9 +25,17 @@
   h2,
   h3 {
     @apply font-heading;
+    letter-spacing: -0.01em;
+    /* Let headings break into balanced, human-looking lines */
+    text-wrap: balance;
   }
 
-  /* Brand-tinted, thin scrollbars on dark surfaces */
+  /* Comfortable reading measure + rhythm for body paragraphs */
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Quiet, neutral scrollbars — the surface, not a feature */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -35,11 +44,15 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(84, 62, 224, 0.4);
+    background: var(--muted-foreground);
+    opacity: 0.25;
     border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(84, 62, 224, 0.65);
+    background: var(--primary);
+    background-clip: padding-box;
   }
 }
 
@@ -47,6 +60,41 @@
   /* Monospace for filenames / ids / code fragments */
   .font-mono-code {
     font-family: "JetBrains Mono", monospace;
+  }
+
+  /* A faint lit top edge — makes a surface read as a real, raised object
+     rather than a flat fill. Pairs with shadow-soft / shadow-lift. */
+  .surface-elevate {
+    box-shadow:
+      inset 0 1px 0 0 var(--hairline-top),
+      0 1px 2px var(--shadow-1),
+      0 6px 20px -6px var(--shadow-2);
+  }
+
+  /* Loading shimmer — a light sweep crossing the placeholder, far more
+     alive than an opacity pulse. Cascades to every Skeleton. */
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--muted);
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--shimmer) 50%,
+      transparent
+    );
+    animation: shimmer-sweep 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer::after {
+      animation: none;
+    }
   }
 
   /* TipTap rich-text content (no typography plugin) */
@@ -97,4 +145,266 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+@keyframes shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ============================================================
+   Interactive dots grid (adapted from Osmo Supply "Glowing
+   Interactive Dots Grid"). Brand green glow, used as a subtle
+   background layer behind dashboard content.
+   ============================================================ */
+.dots-grid {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dots-grid .dots-container {
+  font-size: 9px;
+  gap: 4em;
+  pointer-events: none;
+  flex-flow: wrap;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  inset: 0;
+}
+
+.dots-grid .dot {
+  will-change: transform, background-color;
+  transform-origin: center;
+  background-color: rgba(130, 200, 165, 0.07);
+  border-radius: 50%;
+  width: 1em;
+  height: 1em;
+  position: relative;
+  transform: translate(0);
+}
+
+/* ============================================================
+   Button 004 (Osmo Supply), brand-themed green. Letters flip
+   on hover via SplitText (see components/ui/fancy-button.tsx).
+   ============================================================ */
+.button-004 {
+  --button-004-color: #1b372e;
+  --button-004-color-background: #b4d670;
+  --button-004-color-focus: #b4d670;
+  --button-004-border-radius: 2.5em;
+  --button-004-padding: 0.85em 1.35em;
+  --button-004-translate-y: 1.25em;
+  --button-004-focus-inset: -0.125em;
+  --button-004-click-scale: 0.955 0.925;
+  --button-004-ease-hover: cubic-bezier(0.675, 0.15, 0.1, 1);
+  --button-004-ease-click: cubic-bezier(0.4, 0, 0.2, 1);
+  --button-004-ease-focus: cubic-bezier(0.32, 0.72, 0, 1);
+
+  color: var(--button-004-color);
+  -webkit-user-select: none;
+  user-select: none;
+  background-color: #0000;
+  outline-style: none;
+  padding: 0;
+  line-height: 1;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-grid;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  transition: scale 0.15s var(--button-004-ease-click);
+}
+
+.button-004::after {
+  content: '';
+  display: block;
+  position: absolute;
+  inset: var(--button-004-focus-inset);
+  border-radius: var(--button-004-border-radius);
+  transition: box-shadow 0.3s var(--button-004-ease-focus);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.button-004:is(:focus-visible)::after {
+  box-shadow: 0 0 0 0.125em var(--button-004-color-focus);
+}
+
+.button-004:active {
+  scale: var(--button-004-click-scale);
+}
+
+.button-004__inner {
+  pointer-events: none;
+  border-radius: var(--button-004-border-radius);
+  z-index: 1;
+  padding: var(--button-004-padding);
+  grid-area: 1 / 1;
+  display: grid;
+}
+
+.button-004__text {
+  perspective: 10em;
+  transform-style: preserve-3d;
+  grid-area: 1 / 1;
+}
+
+.button-004__text .button-004__split-char {
+  --base-delay: 0.05s;
+  --max-extra: 2.9s;
+  --t: calc(var(--index) / max(var(--max-index), 1));
+  --curve: sin(calc(var(--t) * 1.5deg));
+  --delay: calc(var(--base-delay) + (var(--curve) * var(--max-extra)));
+  --rot-t: calc(var(--index) / max(var(--max-index), 1));
+  --rot-curve: sin(calc(var(--rot-t) * 30deg));
+  --rot-sign: clamp(-1, var(--signed-index), 1);
+  --rot-max: 36deg;
+  display: inline-block;
+}
+
+.button-004__text.is--default .button-004__split-char {
+  transition: transform 0.325s var(--button-004-ease-hover), translate 0.425s var(--button-004-ease-hover), rotate 0.45s var(--button-004-ease-hover), opacity 0.15s ease-out;
+}
+
+.button-004__text.is--hover .button-004__split-char {
+  transition: transform 0.35s var(--button-004-ease-hover), translate 0.35s var(--button-004-ease-hover), rotate 0.35s var(--button-004-ease-hover), opacity 0.15s 0.1s ease-out;
+  rotate: 1 0 0 -72deg;
+  transform: rotateZ(calc(var(--rot-sign) * var(--rot-curve) * var(--rot-max) * -1)) scale(0.65);
+  translate: calc(var(--signed-index) * 0.125em) calc(var(--button-004-translate-y) * 1) 0;
+  opacity: 0;
+}
+
+.button-004__bg {
+  background-color: var(--button-004-color-background);
+  border-radius: var(--button-004-border-radius);
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .button-004__text .button-004__split-char {
+    will-change: transform, translate, rotate, opacity;
+  }
+
+  .button-004:is(:hover, :focus-visible) .button-004__text.is--default .button-004__split-char,
+  [data-hover]:is(:hover, :focus-visible) .button-004 .button-004__text.is--default .button-004__split-char {
+    translate: calc(var(--signed-index) * 0.125em) calc(var(--button-004-translate-y) * -1) 0;
+    rotate: 1 0 0 72deg;
+    transform: rotateZ(calc(var(--rot-sign) * var(--rot-curve) * var(--rot-max) * -1)) scale(0.65);
+    opacity: 0;
+    transition: transform 0.35s var(--delay) var(--button-004-ease-hover), translate 0.35s var(--delay) var(--button-004-ease-hover), rotate 0.35s var(--delay) var(--button-004-ease-hover), opacity 0.15s calc(var(--delay) + 0.1s) ease-out;
+  }
+
+  .button-004:is(:hover, :focus-visible) .button-004__text.is--hover .button-004__split-char,
+  [data-hover]:is(:hover, :focus-visible) .button-004 .button-004__text.is--hover .button-004__split-char {
+    translate: 0 0 0;
+    rotate: 1 0 0 0deg;
+    transform: rotateZ(0deg) scale(1);
+    opacity: 1;
+    transition: transform 0.325s calc(var(--delay) + 0.05s) var(--button-004-ease-hover), translate 0.425s calc(var(--delay) + 0.05s) var(--button-004-ease-hover), rotate 0.45s calc(var(--delay) + 0.05s) var(--button-004-ease-hover), opacity 0.15s calc(var(--delay) + 0.075s) ease-out;
+  }
+}
+
+/* ============================================================
+   Intro number loader (adapted from Osmo Supply "Number Loader
+   in 3 Steps"). Brand-themed: dark surface, green progress, Kaha
+   numerals. RTL-anchored to the inline-start (right), digits LTR.
+   ============================================================ */
+.loading-container {
+  z-index: 300;
+  pointer-events: none;
+  background-color: var(--background);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.loading-screen {
+  pointer-events: auto;
+  width: 100%;
+  height: 100%;
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.loading__progress {
+  width: 0.42em;
+  height: 100%;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.loading__progress-inner {
+  transform-origin: bottom;
+  background-color: var(--primary);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0.9;
+}
+
+.loading__numbers {
+  direction: ltr;
+  flex-flow: row;
+  align-items: flex-start;
+  font-size: calc(9vw + 9vh);
+  display: flex;
+  position: absolute;
+  bottom: 0.12em;
+  left: 0.7em;
+  color: var(--foreground);
+}
+
+.loading__number-group {
+  flex-flow: column;
+  height: 1em;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.loading__number-wrap {
+  will-change: transform;
+  flex-flow: column;
+  display: flex;
+  position: relative;
+}
+
+.loading__number {
+  text-transform: uppercase;
+  font-family: "Kaha", "Heebo", sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  position: relative;
+}
+
+.loading__percentage-wrap {
+  flex-flow: column;
+  justify-content: flex-start;
+  margin-top: 0.375em;
+  font-size: 0.3em;
+  display: flex;
+  overflow: hidden;
+}
+
+.loading__percentage {
+  text-transform: uppercase;
+  will-change: transform;
+  font-family: "Kaha", "Heebo", sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  position: relative;
+  color: var(--primary);
 }

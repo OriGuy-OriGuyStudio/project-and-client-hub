@@ -2,7 +2,8 @@ import { FolderOpen } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CenteredLoader } from "@/components/ui/brand-spinner";
+import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -26,11 +27,7 @@ export default function Dashboard() {
       />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
-          ))}
-        </div>
+        <CenteredLoader label="טוען את הפרויקטים שלך…" />
       ) : projects && projects.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((p, i) => (
@@ -44,6 +41,10 @@ export default function Dashboard() {
           description="כשהסטודיו יפתח עבורך פרויקט, הוא יופיע כאן."
         />
       )}
+
+      <div className="mt-6">
+        <StudioContactCta />
+      </div>
     </div>
   );
 }

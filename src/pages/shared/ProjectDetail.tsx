@@ -8,7 +8,7 @@ import { AlertCircle, Sparkles } from "lucide-react";
 import { useProject } from "@/hooks/useProject";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectHero } from "@/components/project/ProjectHero";
 import { BrandGuidelines } from "@/components/brand/BrandGuidelines";
@@ -105,13 +105,7 @@ export default function ProjectDetail() {
   }, [reduced, data]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-20 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
-      </div>
-    );
+    return <CenteredLoader label="טוען את הפרויקט…" />;
   }
 
   if (isError || !data) {

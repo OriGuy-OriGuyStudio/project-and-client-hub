@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { DotsGrid } from "@/components/brand/DotsGrid";
 
 export default function Login() {
   const reduced = usePrefersReducedMotion();
@@ -39,21 +40,14 @@ export default function Login() {
   return (
     <div
       ref={rootRef}
-      className="relative flex h-screen items-center justify-center overflow-hidden px-6"
+      className="relative isolate flex h-screen items-center justify-center overflow-hidden px-6"
     >
       <div className="absolute left-4 top-4 z-20">
         <ThemeToggle />
       </div>
 
-      {/* subtle, theme-neutral ambience */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-50"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, rgba(127,127,150,0.10) 1px, transparent 0)",
-          backgroundSize: "24px 24px",
-        }}
-      />
+      {/* Interactive dots field + warm glow behind the content */}
+      <DotsGrid className="-z-10" />
       <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
 
       <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">

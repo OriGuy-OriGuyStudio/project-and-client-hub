@@ -93,16 +93,18 @@ export default function Profile() {
           משהו לא נוח? חסר לך משהו? כתוב לי ואקרא כל הערה. זה עוזר לי לשפר את
           הפורטל בשבילך.
         </p>
-        <div className="flex items-start gap-2">
+        <div className="space-y-3">
           <Textarea
             value={msg}
             maxLength={2000}
             onChange={(e) => setMsg(e.target.value)}
             placeholder="ההערה שלך…"
           />
-          <Button onClick={sendFeedback} disabled={sending}>
-            <Send className="size-4" /> שליחה
-          </Button>
+          <div className="flex justify-end">
+            <Button onClick={sendFeedback} disabled={sending}>
+              <Send className="size-4" /> שליחה
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

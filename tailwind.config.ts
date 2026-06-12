@@ -86,6 +86,15 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        // Tinted to the brand ink (never pure black), soft falloff.
+        soft: "0 1px 2px var(--shadow-1), 0 6px 20px -6px var(--shadow-2)",
+        lift: "0 2px 6px var(--shadow-1), 0 16px 36px -10px var(--shadow-2)",
+      },
+      transitionTimingFunction: {
+        // Gentle, slightly-overshooting ease — feels hand-tuned, not linear.
+        soft: "cubic-bezier(0.22, 1, 0.36, 1)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

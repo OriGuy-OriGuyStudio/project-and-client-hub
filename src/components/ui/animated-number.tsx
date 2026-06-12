@@ -14,16 +14,22 @@ export function AnimatedNumber({
   const reduced = usePrefersReducedMotion();
   // Start from 0 so there's always a satisfying count-up on first render.
   const [display, setDisplay] = useState(0);
-  const fromRef = useRef(0);
+  // Mirror the live displayed value so each run animates from where we are.
+  // (A ref that we mutate in cleanup is not StrictMode-safe — the double
+  // mount would advance it to the target and skip the animation, leaving 0.)
+  const displayRef = useRef(0);
   const rafRef = useRef<number>();
+
+  useEffect(() => {
+    displayRef.current = display;
+  }, [display]);
 
   useEffect(() => {
     if (reduced) {
       setDisplay(value);
-      fromRef.current = value;
       return;
     }
-    const from = fromRef.current;
+    const from = displayRef.current;
     const to = value;
     if (from === to) return;
     const start = performance.now();
@@ -34,14 +40,11 @@ export function AnimatedNumber({
       setDisplay(Math.round(from + (to - from) * eased));
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
-      } else {
-        fromRef.current = to;
       }
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      fromRef.current = value;
     };
   }, [value, duration, reduced]);
 
