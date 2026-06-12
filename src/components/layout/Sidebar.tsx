@@ -7,18 +7,16 @@ import { useMyEnrollment } from "@/hooks/useMyEnrollment";
 import { useNotifications } from "@/hooks/useNotifications";
 
 /**
- * Right-anchored RTL sidebar. The ref is forwarded so the AppShell's GSAP
- * load timeline can slide it in from the right.
+ * The nav list itself (logo + links + footer). Shared by the desktop sidebar
+ * and the mobile drawer; `onNavigate` lets the drawer close on link click.
  */
-export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin, isPartner } = useAuth();
   const isClient = !isAdmin && !isPartner;
   const { data: enrolled } = useMyEnrollment(isClient);
-
   const { items: notifs } = useNotifications();
 
   let items = isAdmin ? adminNav : isPartner ? partnerNav : clientNav;
-  // The referral program only appears for clients the admin has approved.
   if (isClient && !enrolled) {
     items = items.filter((i) => i.to !== "/partner");
   }
@@ -27,10 +25,7 @@ export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
     types ? notifs.filter((n) => !n.is_read && types.includes(n.type)).length : 0;
 
   return (
-    <aside
-      ref={ref}
-      className="hidden w-64 shrink-0 flex-col border-l border-border bg-sidebar md:flex"
-    >
+    <>
       <div className="flex h-16 items-center gap-2 px-6">
         <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-extrabold text-primary-foreground">
           OG
@@ -46,6 +41,7 @@ export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -71,6 +67,22 @@ export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
           {isAdmin ? "מצב אדמין" : isPartner ? "פורטל שותפים" : "פורטל לקוח"}
         </p>
       </div>
+    </>
+  );
+}
+
+/**
+ * Right-anchored RTL sidebar (desktop only). The ref is forwarded so the
+ * AppShell's GSAP load timeline can slide it in from the right. On mobile it's
+ * hidden — navigation moves into the MobileNav drawer (see the Header).
+ */
+export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
+  return (
+    <aside
+      ref={ref}
+      className="hidden w-64 shrink-0 flex-col border-l border-border bg-sidebar md:flex"
+    >
+      <SidebarContent />
     </aside>
   );
 });

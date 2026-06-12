@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationBell } from "./NotificationBell";
+import { MobileNav } from "./MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 
 function initials(name?: string | null, email?: string | null) {
@@ -19,20 +20,21 @@ export const Header = forwardRef<HTMLElement>((_props, ref) => {
   return (
     <header
       ref={ref}
-      className="relative z-40 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur"
+      className="relative z-40 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background/80 px-4 backdrop-blur sm:px-6"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <MobileNav />
         <Avatar>
           <AvatarImage src={profile?.avatar_url ?? undefined} alt="" />
           <AvatarFallback>
             {initials(profile?.full_name, user?.email)}
           </AvatarFallback>
         </Avatar>
-        <div className="leading-tight">
-          <p className="text-sm font-medium text-foreground">
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-sm font-medium text-foreground">
             {profile?.full_name || "ללא שם"}
           </p>
-          <p className="font-mono-code text-xs text-muted-foreground">
+          <p className="truncate font-mono-code text-xs text-muted-foreground">
             {user?.email}
           </p>
         </div>
