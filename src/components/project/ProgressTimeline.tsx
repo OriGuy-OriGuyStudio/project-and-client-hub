@@ -34,7 +34,13 @@ import { logActivity } from "@/lib/activity";
 import { stageStatusHe } from "@/lib/status";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
-import type { ProjectStage, StageStatus, StageTask, UserRole } from "@/types/database";
+import type {
+  ProjectStage,
+  StageStatus,
+  StageTask,
+  StageTemplate,
+  UserRole,
+} from "@/types/database";
 
 const statusIcon: Record<StageStatus, typeof Check> = {
   not_started: CircleDashed,
@@ -44,89 +50,6 @@ const statusIcon: Record<StageStatus, typeof Check> = {
 };
 
 const STAGE_STATUSES: StageStatus[] = ["not_started", "in_progress", "done", "blocked"];
-
-// Ready-made workflows so a project's roadmap can be seeded in one click.
-// Stages are appended to the end and remain fully editable/deletable afterwards.
-type StageTemplate = {
-  id: string;
-  name: string;
-  stages: { title: string; assignee: UserRole }[];
-};
-
-const STAGE_TEMPLATES: StageTemplate[] = [
-  {
-    id: "corporate",
-    name: "אתר תדמית",
-    stages: [
-      { title: "אפיון ואיסוף חומרים", assignee: "client" },
-      { title: "עיצוב UI/UX", assignee: "admin" },
-      { title: "אישור עיצוב", assignee: "client" },
-      { title: "פיתוח", assignee: "admin" },
-      { title: "הזנת תוכן", assignee: "client" },
-      { title: "בדיקות והגהה", assignee: "admin" },
-      { title: "עלייה לאוויר", assignee: "admin" },
-      { title: "תקופת אחריות", assignee: "admin" },
-    ],
-  },
-  {
-    id: "ecommerce",
-    name: "חנות אונליין",
-    stages: [
-      { title: "אפיון ואיסוף חומרים", assignee: "client" },
-      { title: "עיצוב UI/UX", assignee: "admin" },
-      { title: "אישור עיצוב", assignee: "client" },
-      { title: "פיתוח החנות", assignee: "admin" },
-      { title: "הקמת קטלוג ומוצרים", assignee: "client" },
-      { title: "הגדרת תשלום ומשלוחים", assignee: "admin" },
-      { title: "בדיקות והגהה", assignee: "admin" },
-      { title: "עלייה לאוויר", assignee: "admin" },
-      { title: "תקופת אחריות", assignee: "admin" },
-    ],
-  },
-  {
-    id: "landing",
-    name: "דף נחיתה",
-    stages: [
-      { title: "אפיון ומסרים שיווקיים", assignee: "client" },
-      { title: "עיצוב הדף", assignee: "admin" },
-      { title: "אישור עיצוב", assignee: "client" },
-      { title: "פיתוח", assignee: "admin" },
-      { title: "חיבור טפסים ופיקסלים", assignee: "admin" },
-      { title: "בדיקות", assignee: "admin" },
-      { title: "עלייה לאוויר", assignee: "admin" },
-    ],
-  },
-  {
-    id: "webapp",
-    name: "אפליקציה אינטרנטית",
-    stages: [
-      { title: "אפיון ובניית דרישות", assignee: "client" },
-      { title: "עיצוב UI/UX ו-Wireframes", assignee: "admin" },
-      { title: "אישור עיצוב", assignee: "client" },
-      { title: "הקמת תשתית ובסיס נתונים", assignee: "admin" },
-      { title: "פיתוח Backend / API", assignee: "admin" },
-      { title: "פיתוח Frontend", assignee: "admin" },
-      { title: "אינטגרציות", assignee: "admin" },
-      { title: "בדיקות QA", assignee: "admin" },
-      { title: "עלייה לאוויר", assignee: "admin" },
-      { title: "תחזוקה ואחריות", assignee: "admin" },
-    ],
-  },
-  {
-    id: "redesign",
-    name: "חידוש אתר קיים (Redesign)",
-    stages: [
-      { title: "אבחון האתר הקיים", assignee: "admin" },
-      { title: "אפיון שיפורים נדרשים", assignee: "client" },
-      { title: "עיצוב מחדש", assignee: "admin" },
-      { title: "אישור עיצוב", assignee: "client" },
-      { title: "פיתוח והעברת תוכן", assignee: "admin" },
-      { title: "בדיקות", assignee: "admin" },
-      { title: "עלייה לאוויר", assignee: "admin" },
-      { title: "תקופת אחריות", assignee: "admin" },
-    ],
-  },
-];
 
 export function ProgressTimeline({
   projectId,
@@ -499,6 +422,19 @@ function TemplateDialog({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
 
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ["stage-templates"],
+    enabled: open,
+    queryFn: async (): Promise<StageTemplate[]> => {
+      const { data, error } = await supabase
+        .from("stage_templates")
+        .select("*")
+        .order("order_index", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   async function apply(tpl: StageTemplate) {
     setSaving(tpl.id);
     const rows = tpl.stages.map((s, i) => ({
@@ -533,27 +469,35 @@ function TemplateDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          {STAGE_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.id}
-              type="button"
-              disabled={saving !== null}
-              onClick={() => apply(tpl)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/30 px-4 py-3 text-start transition-colors hover:border-primary/40 disabled:opacity-50"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">{tpl.name}</p>
-                <p className="line-clamp-2 text-xs text-muted-foreground">
-                  {tpl.stages.length} שלבים · {tpl.stages.map((s) => s.title).join(" · ")}
-                </p>
-              </div>
-              {saving === tpl.id ? (
-                <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-              ) : (
-                <Plus className="size-4 shrink-0 text-muted-foreground" />
-              )}
-            </button>
-          ))}
+          {isLoading ? (
+            <Skeleton className="h-20 w-full rounded-xl" />
+          ) : !templates?.length ? (
+            <p className="rounded-xl border border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+              אין תבניות. אפשר להוסיף ולערוך אותן בעמוד ההגדרות.
+            </p>
+          ) : (
+            templates.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                disabled={saving !== null}
+                onClick={() => apply(tpl)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background/30 px-4 py-3 text-start transition-colors hover:border-primary/40 disabled:opacity-50"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{tpl.name}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {tpl.stages.length} שלבים · {tpl.stages.map((s) => s.title).join(" · ")}
+                  </p>
+                </div>
+                {saving === tpl.id ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <Plus className="size-4 shrink-0 text-muted-foreground" />
+                )}
+              </button>
+            ))
+          )}
         </div>
 
         <DialogFooter>

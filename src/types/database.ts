@@ -117,6 +117,27 @@ export type PartnerResource = {
   created_at: string;
 }
 
+export type StudioSettings = {
+  id: boolean;
+  studio_name: string;
+  tagline: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  warranty_email_subject: string | null;
+  warranty_email_body: string | null;
+  updated_at: string;
+}
+
+export type StageTemplateStage = { title: string; assignee: UserRole };
+
+export type StageTemplate = {
+  id: string;
+  name: string;
+  stages: StageTemplateStage[];
+  order_index: number;
+  created_at: string;
+}
+
 export type ClientBrand = {
   id: string;
   client_id: string;
@@ -411,6 +432,8 @@ export interface Database {
       partner_leads: TableShape<PartnerLead>;
       referral_tracking: TableShape<ReferralTracking>;
       partner_resources: TableShape<PartnerResource>;
+      studio_settings: TableShape<StudioSettings>;
+      stage_templates: TableShape<StageTemplate>;
     };
     Views: Record<string, never>;
     Functions: {
