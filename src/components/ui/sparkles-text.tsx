@@ -62,8 +62,8 @@ export function SparklesText({
   }, [colors.first, colors.second, sparklesCount, reduced]);
 
   return (
-    <div
-      className={cn("font-bold", className)}
+    <span
+      className={cn("relative inline-block", className)}
       {...props}
       style={
         {
@@ -72,13 +72,11 @@ export function SparklesText({
         } as CSSProperties
       }
     >
-      <span className="relative inline-block">
-        {sparkles.map((sparkle) => (
-          <SparkleSvg key={sparkle.id} {...sparkle} />
-        ))}
-        <strong>{text}</strong>
-      </span>
-    </div>
+      {sparkles.map((sparkle) => (
+        <SparkleSvg key={sparkle.id} {...sparkle} />
+      ))}
+      <strong className="font-[inherit]">{text}</strong>
+    </span>
   );
 }
 

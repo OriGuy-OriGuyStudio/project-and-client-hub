@@ -4,6 +4,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { WavePath } from "@/components/ui/wave-path";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card } from "@/components/ui/card";
 import { useProjects } from "@/hooks/useProjects";
@@ -41,15 +43,17 @@ export default function AdminDashboard() {
   return (
     <div>
       <PageHeader
-        title={`היי ${firstName} 👋`}
+        title={<SparklesText text={`היי ${firstName} 👋`} />}
         subtitle="הנה מה שקורה בסטודיו עכשיו. כל הפרויקטים, במקום אחד."
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="פרויקטים פעילים" value={active} />
         <StatCard label="בהמתנה" value={onHold} />
         <StatCard label="הושלמו" value={completed} />
       </div>
+
+      <WavePath className="my-8" />
 
       {isLoading ? (
         <CenteredLoader label="טוען פרויקטים…" />

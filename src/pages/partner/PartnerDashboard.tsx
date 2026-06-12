@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
 import { useAuth } from "@/hooks/useAuth";
 import { toast, toastError } from "@/hooks/use-toast";
@@ -60,7 +62,7 @@ export default function PartnerDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`שלום${firstName ? `, ${firstName}` : ""} 👋`}
+        title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הלידים שהגשת והעמלות שלך, במבט אחד."
         actions={
           <Button asChild>
@@ -149,6 +151,7 @@ export default function PartnerDashboard() {
         </>
       )}
 
+      <WavePath className="my-4" />
       <StudioContactCta />
     </div>
   );

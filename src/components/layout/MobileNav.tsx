@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,27 +37,31 @@ export function MobileNav() {
         <Menu className="size-5" />
       </Button>
 
-      {open && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          <aside className="absolute inset-y-0 right-0 flex w-72 max-w-[80vw] flex-col border-l border-border bg-sidebar shadow-2xl animate-in slide-in-from-right duration-300">
-            <div className="flex justify-end p-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="סגירה"
-                onClick={() => setOpen(false)}
-              >
-                <X className="size-5" />
-              </Button>
-            </div>
-            <SidebarContent onNavigate={() => setOpen(false)} />
-          </aside>
-        </div>
-      )}
+      {open &&
+        createPortal(
+          // Portaled to <body> so the Header's backdrop-filter (which makes it a
+          // containing block for fixed descendants) doesn't trap this drawer.
+          <div className="fixed inset-0 z-[60] md:hidden">
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setOpen(false)}
+            />
+            <aside className="absolute inset-y-0 right-0 flex w-72 max-w-[80vw] flex-col border-l border-border bg-sidebar shadow-2xl animate-in slide-in-from-right duration-300">
+              <div className="flex justify-end p-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="סגירה"
+                  onClick={() => setOpen(false)}
+                >
+                  <X className="size-5" />
+                </Button>
+              </div>
+              <SidebarContent onNavigate={() => setOpen(false)} />
+            </aside>
+          </div>,
+          document.body
+        )}
     </>
   );
 }

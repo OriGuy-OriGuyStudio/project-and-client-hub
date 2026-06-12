@@ -4,6 +4,8 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
+import { SparklesText } from "@/components/ui/sparkles-text";
+import { WavePath } from "@/components/ui/wave-path";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -22,7 +24,7 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        title={`שלום${firstName ? `, ${firstName}` : ""} 👋`}
+        title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הפרויקטים שלך במבט אחד"
       />
 
@@ -42,9 +44,9 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="mt-6">
-        <StudioContactCta />
-      </div>
+      <WavePath className="my-10" />
+
+      <StudioContactCta />
     </div>
   );
 }
