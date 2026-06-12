@@ -30,7 +30,13 @@ npx supabase gen types typescript --linked > src/types/database.ts
 1. **Google OAuth**: Authentication → Providers → Google → enable, paste Client ID/Secret,
    add the redirect URL Supabase shows to the Google Cloud OAuth consent screen.
 2. **Auth session timeout**: Authentication → Sessions → set inactivity timeout to 24h.
-3. **Edge Function secrets** (for the deferred warranty cron): `RESEND_API_KEY`, `CRON_SECRET`.
+3. **Warranty-reminder Edge Function** (`functions/warranty-reminder`, deployed; cron in
+   migration `…0020_warranty_cron.sql`, runs daily 06:00 UTC). To activate sending, set two
+   Edge Function secrets (Dashboard → Edge Functions → Manage secrets):
+   - `RESEND_API_KEY` — from Resend, after verifying the `origuystudio.com` sending domain.
+   - `CRON_SECRET` — must equal the Vault secret `warranty_cron_secret` (the cron sends it as
+     the bearer; read it with `select decrypted_secret from vault.decrypted_secrets where
+     name='warranty_cron_secret'`). Until both are set the function fails closed / no-ops.
 4. Copy Project URL + anon key into `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
 ## Security model (why it's safe)
