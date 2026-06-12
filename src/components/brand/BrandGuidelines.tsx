@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { BrandColor, ClientBrand } from "@/types/database";
 
 /**
- * "זהות המותג" — read-only for clients, the source of brand truth on the
+ * "זהות המותג" - read-only for clients, the source of brand truth on the
  * project page. Collapsible; defaults open when there's content to show.
  */
 export function BrandGuidelines({

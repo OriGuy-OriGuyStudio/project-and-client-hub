@@ -26,7 +26,7 @@ export type NotifyPayload = { type: string; title: string; body?: string };
 type NotifyCtx = { requestNotify: (p: NotifyPayload) => void };
 
 // No-op default so sections that call the hook in the client view (no provider)
-// don't break — only the admin tree wraps children in a real provider.
+// don't break - only the admin tree wraps children in a real provider.
 const Ctx = createContext<NotifyCtx>({ requestNotify: () => {} });
 
 export function useNotifyClient() {
@@ -64,7 +64,7 @@ export function NotifyClientProvider({
   );
 }
 
-/** Manual entry point — "let the client know there's an update". Admin only. */
+/** Manual entry point - "let the client know there's an update". Admin only. */
 export function NotifyClientButton({ className }: { className?: string }) {
   const { requestNotify } = useNotifyClient();
   return (
@@ -114,7 +114,7 @@ function NotifyDialog({
   useEffect(() => {
     if (!payload) return;
     const greeting = contact.clientName ? `היי ${contact.clientName}, ` : "היי, ";
-    const lead = payload.body ? `${payload.title} — ${payload.body}` : payload.title;
+    const lead = payload.body ? `${payload.title} - ${payload.body}` : payload.title;
     setMessage(`${greeting}${lead}.\nאפשר לראות את הפרטים בפורטל: ${portalUrl}`);
     setShowInApp(true);
     setInserted(false);

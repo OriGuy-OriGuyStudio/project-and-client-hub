@@ -338,7 +338,7 @@ export function FileManager({
         <EmptyState
           icon={FolderOpen}
           title={current === ROOT ? "אין עדיין קבצים" : "התיקייה ריקה"}
-          description="העלה קבצים — תמונות, PDF, Word או ZIP עד 50MB. אפשר לסדר אותם בתיקיות."
+          description="העלה קבצים - תמונות, PDF, Word או ZIP עד 50MB. אפשר לסדר אותם בתיקיות."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

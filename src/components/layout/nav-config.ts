@@ -19,6 +19,8 @@ export interface NavItem {
   end?: boolean;
   /** Notification types whose unread count should badge this item. */
   badgeTypes?: string[];
+  /** data-tour hook for the onboarding tour. */
+  tourId?: string;
 }
 
 export const adminNav: NavItem[] = [
@@ -49,6 +51,6 @@ export const partnerNav: NavItem[] = [
 
 export const clientNav: NavItem[] = [
   { to: "/", label: "לוח בקרה", icon: LayoutDashboard, end: true },
-  { to: "/partner", label: "תוכנית שותפים", icon: Gift },
-  { to: "/profile", label: "פרופיל", icon: UserCircle },
+  { to: "/partner", label: "תוכנית שותפים", icon: Gift, tourId: "partner" },
+  { to: "/profile", label: "פרופיל", icon: UserCircle, tourId: "profile" },
 ];

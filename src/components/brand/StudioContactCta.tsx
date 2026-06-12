@@ -20,7 +20,7 @@ export function StudioContactCta() {
           צריך משהו? אני כאן.
         </h3>
         <p className="text-sm text-muted-foreground">
-          שאלה, עדכון או רעיון — שלחו לי הודעה ונדבר.
+          שאלה, עדכון או רעיון - שלחו לי הודעה ונדבר.
         </p>
       </div>
       <FancyButton

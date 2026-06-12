@@ -29,7 +29,7 @@ export function useAdminReferrals() {
       return {
         referrals: (refs ?? []).map((r) => ({
           ...r,
-          referrer_name: nameById.get(r.referrer_id) ?? "—",
+          referrer_name: nameById.get(r.referrer_id) ?? "-",
         })),
         rewards: rewards ?? [],
       };

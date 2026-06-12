@@ -1,10 +1,10 @@
 import { supabase } from "./supabase";
 
-/** Studio admin email — mirrors the server-side whitelist row. Env-locked. */
+/** Studio admin email - mirrors the server-side whitelist row. Env-locked. */
 export const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 /**
- * Start the Google OAuth flow. Google is the ONLY supported provider —
+ * Start the Google OAuth flow. Google is the ONLY supported provider -
  * no magic links, no email/password.
  */
 export async function signInWithGoogle() {

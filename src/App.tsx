@@ -64,7 +64,7 @@ function App() {
                 {/* Shared (admin + client) */}
                 <Route path="/projects/:id" element={<ProjectDetail />} />
 
-                {/* Client-only — dashboard lives at the root slug */}
+                {/* Client-only - dashboard lives at the root slug */}
                 <Route element={<RequireClient />}>
                   <Route index element={<ClientDashboard />} />
                   <Route path="/profile" element={<Profile />} />
@@ -97,7 +97,7 @@ function App() {
           </Routes>
 
           <Toaster />
-          {/* Persistent across navigation — outside the router outlet */}
+          {/* Persistent across navigation - outside the router outlet */}
           <AIWidget />
           {/* One-time branded number-loader intro, above everything */}
           <IntroLoader />

@@ -63,7 +63,7 @@ export function InternalChat({
     };
   }, [projectId, qc]);
 
-  // Keep the chat pinned to the latest message by scrolling the list itself —
+  // Keep the chat pinned to the latest message by scrolling the list itself -
   // NOT scrollIntoView, which would scroll the whole project page down on open.
   useEffect(() => {
     const el = listRef.current;

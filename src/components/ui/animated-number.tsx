@@ -15,7 +15,7 @@ export function AnimatedNumber({
   // Start from 0 so there's always a satisfying count-up on first render.
   const [display, setDisplay] = useState(0);
   // Mirror the live displayed value so each run animates from where we are.
-  // (A ref that we mutate in cleanup is not StrictMode-safe — the double
+  // (A ref that we mutate in cleanup is not StrictMode-safe - the double
   // mount would advance it to the target and skip the animation, leaving 0.)
   const displayRef = useRef(0);
   const rafRef = useRef<number>();

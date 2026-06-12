@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Dialog,
   DialogContent,
@@ -68,7 +69,7 @@ const statusIcon: Record<StageStatus, typeof Check> = {
   blocked: Octagon,
 };
 
-// "blocked" intentionally omitted from the picker — confusing for clients.
+// "blocked" intentionally omitted from the picker - confusing for clients.
 const STAGE_STATUSES: StageStatus[] = ["not_started", "in_progress", "done"];
 
 export function ProgressTimeline({
@@ -269,7 +270,7 @@ export function ProgressTimeline({
         />
       ) : (
         <>
-          {/* Connector track — fills right→left in RTL */}
+          {/* Connector track - fills right→left in RTL */}
           <div className="relative mb-6 h-1.5">
             <div className="absolute inset-0 rounded-full bg-brand-purple-light/40" />
             <div
@@ -439,18 +440,12 @@ function PhaseItem({
         <div className="flex shrink-0 items-center gap-2">
           {isAdmin ? (
             <>
-              <select
-                aria-label="סטטוס השלב"
+              <SelectMenu
+                ariaLabel="סטטוס השלב"
                 value={stage.status}
-                onChange={(e) => onSetStatus(e.target.value as StageStatus)}
-                className="h-8 rounded-lg border border-input bg-field px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {STAGE_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {stageStatusHe[s]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => onSetStatus(v as StageStatus)}
+                options={STAGE_STATUSES.map((s) => ({ value: s, label: stageStatusHe[s] }))}
+              />
               <Button
                 size="icon"
                 variant="ghost"

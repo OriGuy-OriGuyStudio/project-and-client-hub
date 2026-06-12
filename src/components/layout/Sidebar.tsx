@@ -40,6 +40,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             to={item.to}
             end={item.end}
             onClick={onNavigate}
+            data-tour={item.tourId}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -72,7 +73,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 /**
  * Right-anchored RTL sidebar (desktop only). The ref is forwarded so the
  * AppShell's GSAP load timeline can slide it in from the right. On mobile it's
- * hidden — navigation moves into the MobileNav drawer (see the Header).
+ * hidden - navigation moves into the MobileNav drawer (see the Header).
  */
 export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
   return (

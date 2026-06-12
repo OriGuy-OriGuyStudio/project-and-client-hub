@@ -96,7 +96,7 @@ export default function PartnerDashboard() {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <code className="flex-1 rounded-xl border border-border bg-field px-3 py-2 font-mono-code text-sm text-foreground">
-                {refLink || "—"}
+                {refLink || "-"}
               </code>
               <Button variant="secondary" onClick={copyLink} disabled={!refLink}>
                 {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
@@ -133,7 +133,7 @@ export default function PartnerDashboard() {
                     <div className="min-w-0">
                       <p className="truncate font-medium text-foreground">{l.lead_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {l.project_type ? projectTypeHe[l.project_type] : "—"} ·{" "}
+                        {l.project_type ? projectTypeHe[l.project_type] : "-"} ·{" "}
                         {new Date(l.created_at).toLocaleDateString("he-IL")}
                         {l.commission_amount
                           ? ` · עמלה ₪${l.commission_amount.toLocaleString("he-IL")}`

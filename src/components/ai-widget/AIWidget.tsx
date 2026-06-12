@@ -8,7 +8,7 @@ const AI_CHAT_URL = import.meta.env.VITE_AI_CHAT_URL;
 
 /**
  * Persistent floating AI assistant. Mounted once at the app root, OUTSIDE the
- * router outlet, so it survives navigation. The panel is a standalone iframe —
+ * router outlet, so it survives navigation. The panel is a standalone iframe -
  * no portal data is passed into it. RTL: anchored bottom-left.
  */
 export function AIWidget() {

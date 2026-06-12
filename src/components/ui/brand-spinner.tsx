@@ -2,7 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
- * Branded loading indicator — a green arc orbiting the studio mark.
+ * Branded loading indicator - a green arc orbiting the studio mark.
  * The "big loading icon" for data fetches and full-screen waits.
  */
 export function BrandSpinner({
@@ -53,7 +53,7 @@ export function BrandSpinner({
   );
 }
 
-/** Centered in-page loader for data fetches — keeps the view from sitting empty. */
+/** Centered in-page loader for data fetches - keeps the view from sitting empty. */
 export function CenteredLoader({ label = "טוען…" }: { label?: string }) {
   return (
     <div className="flex min-h-[40vh] w-full items-center justify-center">

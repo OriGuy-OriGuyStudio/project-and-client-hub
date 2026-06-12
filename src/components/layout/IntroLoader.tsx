@@ -4,7 +4,7 @@ import { NumberLoader } from "./NumberLoader";
 /**
  * Plays the number-loader intro on every full page load (app entry), above
  * everything. It's mounted app-level outside the router, so client-side
- * navigation never replays it — only a real reload / fresh load does.
+ * navigation never replays it - only a real reload / fresh load does.
  */
 export function IntroLoader() {
   const [show, setShow] = useState(true);

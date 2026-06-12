@@ -17,7 +17,7 @@ export function NumberLoader({ onDone }: { onDone: () => void }) {
     const el = root.current;
     if (!el) return;
 
-    // No scope — there is a single loader instance, so global selectors resolve
+    // No scope - there is a single loader instance, so global selectors resolve
     // every descendant target. The root itself (.loading-container) is animated
     // via the captured element, not a selector.
     const ctx = gsap.context(() => {
@@ -68,7 +68,7 @@ export function NumberLoader({ onDone }: { onDone: () => void }) {
       tl.to(".loading__number-group.is--third .loading__number-wrap", { yPercent: -90 }, "<");
       tl.to(".loading__number-group.is--first .loading__number-wrap", { yPercent: 0 }, "<");
 
-      // Exit — slide the whole curtain up, then hand control back to the app.
+      // Exit - slide the whole curtain up, then hand control back to the app.
       tl.to(el, { yPercent: -100, duration: 0.9, ease: "expo.inOut" }, "+=0.35");
       tl.call(() => onDone());
     });

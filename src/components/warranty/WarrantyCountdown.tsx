@@ -53,7 +53,7 @@ export function WarrantyCountdown({ project }: { project: Project }) {
           <ShieldX className="size-5 text-muted-foreground" />
         )}
         <h2 className="font-heading text-lg font-semibold text-foreground">
-          תמיכה ואחריות — Studio Pro
+          תמיכה ואחריות - Studio Pro
         </h2>
       </div>
 

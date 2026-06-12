@@ -22,7 +22,7 @@ export function useNotifications() {
     },
   });
 
-  // Live updates — new notifications appear without a refresh.
+  // Live updates - new notifications appear without a refresh.
   // Unique channel name per subscription: this hook runs in more than one
   // component (bell + sidebar), and a shared channel name would collide
   // ("cannot add postgres_changes callbacks after subscribe()").

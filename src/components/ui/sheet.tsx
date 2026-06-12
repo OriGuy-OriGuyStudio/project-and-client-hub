@@ -23,7 +23,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 /**
- * Side panel. Defaults to the inline-start edge (left in RTL — the side
+ * Side panel. Defaults to the inline-start edge (left in RTL - the side
  * opposite the right-anchored sidebar).
  */
 const SheetContent = React.forwardRef<

@@ -53,7 +53,7 @@ export default function Settings() {
     <div className="space-y-6">
       <PageHeader
         title="הגדרות"
-        subtitle="פרטי הסטודיו, תבניות העבודה וחומרי השותפים — במקום אחד."
+        subtitle="פרטי הסטודיו, תבניות העבודה וחומרי השותפים - במקום אחד."
       />
       <StudioDetailsSection />
       <StageTemplatesSection />
@@ -173,13 +173,13 @@ function StudioDetailsSection() {
         </div>
       </div>
 
-      {/* Env-locked identifiers — read only */}
+      {/* Env-locked identifiers - read only */}
       <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
         <ShieldAlert className="mt-0.5 size-4 shrink-0" />
         <div className="space-y-0.5">
           <p>מזהים נעולים (מוגדרים בסביבת המערכת, לא לעריכה כאן):</p>
-          <p dir="ltr" className="font-mono-code">אדמין: {ADMIN_EMAIL || "—"}</p>
-          <p dir="ltr" className="font-mono-code">WhatsApp: {WHATSAPP || "—"}</p>
+          <p dir="ltr" className="font-mono-code">אדמין: {ADMIN_EMAIL || "-"}</p>
+          <p dir="ltr" className="font-mono-code">WhatsApp: {WHATSAPP || "-"}</p>
         </div>
       </div>
 

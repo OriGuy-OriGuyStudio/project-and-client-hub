@@ -99,7 +99,7 @@ export async function deleteProjectFile(file: FileRow): Promise<void> {
  * Bundle files into a ZIP and trigger a download.
  * - `keepStructure`: place each file under its folder_path subdirectory
  *   (used for "download all"). Otherwise files go at the zip root
- *   (used for a single-folder download — the zip IS the folder).
+ *   (used for a single-folder download - the zip IS the folder).
  */
 export async function downloadFilesAsZip(
   files: FileRow[],

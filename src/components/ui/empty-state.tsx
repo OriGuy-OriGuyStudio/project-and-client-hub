@@ -10,7 +10,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-/** Hebrew-first empty state — explains what to do next, with a subtle float. */
+/** Hebrew-first empty state - explains what to do next, with a subtle float. */
 export function EmptyState({
   icon: Icon,
   title,

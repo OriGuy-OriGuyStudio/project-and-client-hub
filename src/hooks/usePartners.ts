@@ -16,7 +16,7 @@ export function rateLabel(
   max: number | null | undefined
 ): string {
   if (min != null && max != null && min !== max) return `${min}%–${max}%`;
-  return rate != null ? `${rate}%` : "—";
+  return rate != null ? `${rate}%` : "-";
 }
 
 export interface PartnersData {

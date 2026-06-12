@@ -35,7 +35,7 @@ export function useAllPartnerLeads() {
 
       return (leads ?? []).map((l) => ({
         ...l,
-        partner_name: nameById.get(l.partner_id)?.name ?? "—",
+        partner_name: nameById.get(l.partner_id)?.name ?? "-",
         partner_email: nameById.get(l.partner_id)?.email ?? "",
         partner_commission_rate: rateById.get(l.partner_id)?.commission_rate ?? null,
         partner_rate_min: rateById.get(l.partner_id)?.commission_rate_min ?? null,

@@ -19,7 +19,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-/** Bucket holding all project files. Private — access via signed URLs only. */
+/** Bucket holding all project files. Private - access via signed URLs only. */
 export const PROJECT_FILES_BUCKET = "project-files";
 
 /** Signed URL lifetime, in seconds (1 hour, per security spec). */

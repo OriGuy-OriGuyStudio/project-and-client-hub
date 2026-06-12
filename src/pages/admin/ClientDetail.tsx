@@ -119,9 +119,9 @@ export default function ClientDetail() {
         <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
         <dl className="grid gap-3 sm:grid-cols-2">
           <Field label="אימייל" value={profile.email} mono />
-          <Field label="טלפון" value={phone || "—"} mono />
-          <Field label="מין" value={note?.gender ? genderHe[note.gender] : "—"} />
-          <Field label="תפקיד בחברה" value={note?.role_in_company || "—"} />
+          <Field label="טלפון" value={phone || "-"} mono />
+          <Field label="מין" value={note?.gender ? genderHe[note.gender] : "-"} />
+          <Field label="תפקיד בחברה" value={note?.role_in_company || "-"} />
         </dl>
         {note?.content && (
           <div>

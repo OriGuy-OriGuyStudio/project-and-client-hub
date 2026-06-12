@@ -158,7 +158,7 @@ export function PaymentsSection({
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {p.amount != null ? `₪${p.amount.toLocaleString("he-IL")}` : "—"}
+                    {p.amount != null ? `₪${p.amount.toLocaleString("he-IL")}` : "-"}
                     {p.due_date
                       ? ` · עד ${new Date(p.due_date).toLocaleDateString("he-IL")}`
                       : ""}

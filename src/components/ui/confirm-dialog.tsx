@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-/** A branded confirmation modal — replaces window.confirm across the app. */
+/** A branded confirmation modal - replaces window.confirm across the app. */
 export function ConfirmDialog({
   open,
   onOpenChange,

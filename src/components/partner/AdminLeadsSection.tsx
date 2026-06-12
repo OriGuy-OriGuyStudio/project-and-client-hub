@@ -37,7 +37,7 @@ const STATUSES: PartnerLeadStatus[] = [
 ];
 
 function ils(n: number | null | undefined) {
-  return n == null ? "—" : `₪${n.toLocaleString("he-IL")}`;
+  return n == null ? "-" : `₪${n.toLocaleString("he-IL")}`;
 }
 
 export function AdminLeadsSection() {
@@ -75,7 +75,7 @@ export function AdminLeadsSection() {
                   <span className="text-muted-foreground"> · {l.partner_name}</span>
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {l.project_type ? projectTypeHe[l.project_type] : "—"}
+                  {l.project_type ? projectTypeHe[l.project_type] : "-"}
                   {l.lead_phone ? ` · ${l.lead_phone}` : ""}
                   {l.commission_amount ? ` · עמלה ${ils(l.commission_amount)}` : ""}
                   {l.payment_confirmed_at ? " · שולם" : ""}
@@ -240,7 +240,7 @@ function ManageLeadDialog({
               <p className="text-sm text-foreground">
                 עמלה לתשלום:{" "}
                 <span className="font-semibold text-primary">
-                  {commissionPreview != null ? ils(commissionPreview) : "—"}
+                  {commissionPreview != null ? ils(commissionPreview) : "-"}
                 </span>
               </p>
 

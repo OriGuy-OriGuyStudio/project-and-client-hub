@@ -35,7 +35,7 @@ export function useAllFeedback() {
       );
       return (fb ?? []).map((f) => ({
         ...f,
-        client_name: nameById.get(f.client_id) ?? "—",
+        client_name: nameById.get(f.client_id) ?? "-",
       }));
     },
   });
