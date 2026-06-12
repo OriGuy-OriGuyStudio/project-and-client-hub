@@ -5,6 +5,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DotsGrid } from "@/components/brand/DotsGrid";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 export default function Login() {
   const reduced = usePrefersReducedMotion();
@@ -58,9 +59,10 @@ export default function Login() {
             className="h-16 w-16"
           />
           <div className="space-y-1">
-            <p className="font-heading text-lg font-black text-foreground">
-              Studio Ori Guy
-            </p>
+            <SparklesText
+              text="Studio Ori Guy"
+              className="font-heading text-lg font-black text-foreground"
+            />
             <p className="text-sm text-muted-foreground">פורטל לקוחות</p>
           </div>
         </div>

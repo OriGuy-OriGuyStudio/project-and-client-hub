@@ -5,6 +5,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DotsGrid } from "@/components/brand/DotsGrid";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 /** Owner-facing entry. Same Google OAuth, copy directed at the admin (Ori). */
 export default function AdminLogin() {
@@ -58,9 +59,10 @@ export default function AdminLogin() {
             className="h-16 w-16"
           />
           <div className="space-y-1">
-            <p className="font-heading text-lg font-black text-foreground">
-              Studio Ori Guy
-            </p>
+            <SparklesText
+              text="Studio Ori Guy"
+              className="font-heading text-lg font-black text-foreground"
+            />
             <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <ShieldCheck className="size-4 text-primary" />
               פאנל ניהול

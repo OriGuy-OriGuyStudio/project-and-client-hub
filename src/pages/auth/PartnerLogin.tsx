@@ -5,6 +5,7 @@ import { signInWithGoogle } from "@/lib/auth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DotsGrid } from "@/components/brand/DotsGrid";
+import { SparklesText } from "@/components/ui/sparkles-text";
 
 /** Partner-facing entry. Same Google OAuth, copy directed at the שת"פ. */
 export default function PartnerLogin() {
@@ -54,7 +55,10 @@ export default function PartnerLogin() {
         <div data-anim="mark" className="flex flex-col items-center gap-4">
           <img src="/brand/logo-mark.svg" alt="Studio Ori Guy" className="h-16 w-16" />
           <div className="space-y-1">
-            <p className="font-heading text-lg font-black text-foreground">Studio Ori Guy</p>
+            <SparklesText
+              text="Studio Ori Guy"
+              className="font-heading text-lg font-black text-foreground"
+            />
             <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <Handshake className="size-4 text-primary" />
               פורטל שותפים
