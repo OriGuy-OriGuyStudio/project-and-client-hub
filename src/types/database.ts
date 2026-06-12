@@ -128,7 +128,11 @@ export type StudioSettings = {
   updated_at: string;
 }
 
-export type StageTemplateStage = { title: string; assignee: UserRole };
+export type StageTemplateStage = {
+  title: string;
+  assignee: UserRole;
+  tasks?: string[];
+};
 
 export type StageTemplate = {
   id: string;

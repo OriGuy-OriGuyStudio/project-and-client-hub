@@ -261,14 +261,41 @@ function TemplateEditor({ template }: { template: StageTemplate }) {
     setStages((s) => s.filter((_, idx) => idx !== i));
   }
   function addStage() {
-    setStages((s) => [...s, { title: "", assignee: "admin" }]);
+    setStages((s) => [...s, { title: "", assignee: "admin", tasks: [] }]);
+  }
+  function updateTask(si: number, ti: number, val: string) {
+    setStages((s) =>
+      s.map((st, idx) =>
+        idx === si
+          ? { ...st, tasks: (st.tasks ?? []).map((t, j) => (j === ti ? val : t)) }
+          : st
+      )
+    );
+  }
+  function addTask(si: number) {
+    setStages((s) =>
+      s.map((st, idx) => (idx === si ? { ...st, tasks: [...(st.tasks ?? []), ""] } : st))
+    );
+  }
+  function removeTask(si: number, ti: number) {
+    setStages((s) =>
+      s.map((st, idx) =>
+        idx === si ? { ...st, tasks: (st.tasks ?? []).filter((_, j) => j !== ti) } : st
+      )
+    );
   }
 
   async function save() {
     const cleanName = clampText(name.trim(), 120);
     if (!cleanName) return toastError("תן שם לתבנית.");
     const cleanStages = stages
-      .map((s) => ({ title: clampText(s.title.trim(), 200), assignee: s.assignee }))
+      .map((s) => ({
+        title: clampText(s.title.trim(), 200),
+        assignee: s.assignee,
+        tasks: (s.tasks ?? [])
+          .map((t) => clampText(t.trim(), 200))
+          .filter(Boolean),
+      }))
       .filter((s) => s.title);
     if (!cleanStages.length) return toastError("תבנית צריכה לפחות שלב אחד.");
     setSaving(true);
@@ -309,37 +336,70 @@ function TemplateEditor({ template }: { template: StageTemplate }) {
         </Button>
       </div>
 
-      <ul className="space-y-2">
+      <div className="space-y-3">
         {stages.map((s, i) => (
-          <li key={i} className="flex items-center gap-2">
-            <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
-            <Input
-              value={s.title}
-              maxLength={200}
-              placeholder="שם השלב"
-              onChange={(e) => updateStage(i, { title: e.target.value })}
-              className="h-9"
-            />
-            <select
-              value={s.assignee}
-              onChange={(e) => updateStage(i, { assignee: e.target.value as UserRole })}
-              className="h-9 shrink-0 rounded-lg border border-input bg-background/40 px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div key={i} className="rounded-lg border border-border/70 bg-card/40 p-3">
+            <div className="flex items-center gap-2">
+              <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
+              <Input
+                value={s.title}
+                maxLength={200}
+                placeholder="שם המקטע (פאזה)"
+                onChange={(e) => updateStage(i, { title: e.target.value })}
+                className="h-9 font-medium"
+              />
+              <select
+                value={s.assignee}
+                onChange={(e) => updateStage(i, { assignee: e.target.value as UserRole })}
+                className="h-9 shrink-0 rounded-lg border border-input bg-background/40 px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="admin">הסטודיו</option>
+                <option value="client">הלקוח</option>
+              </select>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-9 shrink-0 text-destructive"
+                aria-label="הסרת מקטע"
+                onClick={() => removeStage(i)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+
+            <ul className="mt-2 space-y-1.5 ps-6">
+              {(s.tasks ?? []).map((t, ti) => (
+                <li key={ti} className="flex items-center gap-2">
+                  <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                  <Input
+                    value={t}
+                    maxLength={200}
+                    placeholder="תת-משימה"
+                    onChange={(e) => updateTask(i, ti, e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8 shrink-0 text-destructive"
+                    aria-label="הסרת תת-משימה"
+                    onClick={() => removeTask(i, ti)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => addTask(i)}
+              className="mt-2 ms-6 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              <option value="admin">הסטודיו</option>
-              <option value="client">הלקוח</option>
-            </select>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-9 shrink-0 text-destructive"
-              aria-label="הסרת שלב"
-              onClick={() => removeStage(i)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </li>
+              <Plus className="size-3.5" /> הוסף תת-משימה
+            </button>
+          </div>
         ))}
-      </ul>
+      </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <button

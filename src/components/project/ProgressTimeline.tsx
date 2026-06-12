@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import gsap from "gsap";
 import {
   Check,
+  ChevronDown,
   CircleDashed,
   LayoutTemplate,
   Loader2,
@@ -109,6 +110,15 @@ export function ProgressTimeline({
   const pct = total > 1 ? (doneCount / (total - 1)) * 100 : doneCount > 0 ? 100 : 0;
   const nextOrder = (stages?.reduce((m, s) => Math.max(m, s.order_index), -1) ?? -1) + 1;
 
+  // Collapsed phases (by stage id).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   useEffect(() => {
     if (!fillRef.current) return;
     const target = Math.min(pct, 100);
@@ -207,16 +217,27 @@ export function ProgressTimeline({
               const done = stage.status === "done";
               const stageTasks = tasksByStage.get(stage.id) ?? [];
               const tasksDone = stageTasks.filter((t) => t.is_done).length;
+              const isCollapsed = collapsed.has(stage.id);
               return (
                 <li
                   key={stage.id}
                   className="rounded-xl border border-border bg-background/30 px-4 py-3"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleCollapse(stage.id)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-start"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          isCollapsed && "-rotate-90"
+                        )}
+                      />
                       <span
                         className={cn(
-                          "flex size-8 items-center justify-center rounded-full",
+                          "flex size-8 shrink-0 items-center justify-center rounded-full",
                           done
                             ? "bg-primary text-primary-foreground"
                             : "bg-brand-purple-base/30 text-muted-foreground"
@@ -229,21 +250,21 @@ export function ProgressTimeline({
                           )}
                         />
                       </span>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
+                      <span className="min-w-0">
+                        <span className="block truncate font-heading text-sm font-semibold text-foreground">
                           {stage.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
                           {stage.assignee === "client" ? "באחריות הלקוח" : "באחריות הסטודיו"}
                           {stage.due_date &&
                             ` · יעד ${new Date(stage.due_date).toLocaleDateString("he-IL")}`}
                           {stageTasks.length > 0 &&
-                            ` · משימות ${tasksDone}/${stageTasks.length}`}
-                        </p>
-                      </div>
-                    </div>
+                            ` · ${tasksDone}/${stageTasks.length} משימות`}
+                        </span>
+                      </span>
+                    </button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       {isAdmin ? (
                         <>
                           <select
@@ -262,7 +283,7 @@ export function ProgressTimeline({
                             size="icon"
                             variant="ghost"
                             className="size-8 text-destructive"
-                            aria-label="מחיקת שלב"
+                            aria-label="מחיקת מקטע"
                             onClick={() => deleteStage(stage)}
                           >
                             <Trash2 className="size-4" />
@@ -276,12 +297,14 @@ export function ProgressTimeline({
                     </div>
                   </div>
 
-                  <StageTasks
-                    projectId={projectId}
-                    stageId={stage.id}
-                    tasks={stageTasks}
-                    isAdmin={isAdmin}
-                  />
+                  {!isCollapsed && (
+                    <StageTasks
+                      projectId={projectId}
+                      stageId={stage.id}
+                      tasks={stageTasks}
+                      isAdmin={isAdmin}
+                    />
+                  )}
                 </li>
               );
             })}
@@ -444,11 +467,34 @@ function TemplateDialog({
       status: "not_started" as StageStatus,
       order_index: nextOrder + i,
     }));
-    const { error } = await supabase.from("project_stages").insert(rows);
+    // Insert the phases and get their ids back (in order), then seed each
+    // phase's sub-tasks from the template.
+    const { data: inserted, error } = await supabase
+      .from("project_stages")
+      .insert(rows)
+      .select("id");
+    if (error || !inserted) {
+      setSaving(null);
+      return toastError("החלת הטמפלט נכשלה.");
+    }
+
+    const taskRows: { stage_id: string; title: string; order_index: number }[] = [];
+    tpl.stages.forEach((s, i) => {
+      const stageId = inserted[i]?.id;
+      if (!stageId) return;
+      (s.tasks ?? []).forEach((t, ti) => {
+        const title = t.trim();
+        if (title) taskRows.push({ stage_id: stageId, title, order_index: ti });
+      });
+    });
+    if (taskRows.length) {
+      await supabase.from("stage_tasks").insert(taskRows);
+    }
+
     setSaving(null);
-    if (error) return toastError("החלת הטמפלט נכשלה.");
-    toast({ title: `נוספו ${rows.length} שלבים`, variant: "success" });
+    toast({ title: `נוספו ${rows.length} מקטעים`, variant: "success" });
     qc.invalidateQueries({ queryKey: ["stages", projectId] });
+    qc.invalidateQueries({ queryKey: ["stage-tasks", projectId] });
     setOpen(false);
   }
 
