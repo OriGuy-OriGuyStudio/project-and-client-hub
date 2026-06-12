@@ -1,19 +1,22 @@
 // Warranty-expiry reminder — runs daily (via pg_cron + pg_net) and emails each
 // client 7 days before their project's 30-day warranty ends, exactly once.
 //
-// Auth: pg_cron sends `Authorization: Bearer <CRON_SECRET>` (verify_jwt is off,
-// since the caller is not a user). The function compares it to the CRON_SECRET
-// env. If RESEND_API_KEY is missing it no-ops gracefully (so the schedule can
-// run harmlessly before the key is wired up).
+// Sends through the **Gmail API** as the studio's own Google account
+// (origuy@origuystudio.com), so mail comes from the real address (great
+// deliverability, no third-party, and every reminder lands in Gmail "Sent").
+// A Bcc to the studio gives an inbox copy too.
 //
-// On a successful send it flips projects.warranty_email_sent = true and drops an
-// in-app notification for the client; failures leave the row unsent to retry.
+// Auth: pg_cron sends `Authorization: Bearer <CRON_SECRET>` (verify_jwt off,
+// since the caller is not a user). If the Gmail OAuth secrets aren't set yet the
+// function no-ops gracefully. On a successful send it flips
+// projects.warranty_email_sent = true and drops an in-app notification.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const WINDOW_DAYS = 7;
-const FROM = "Studio Ori Guy <noreply@origuystudio.com>";
-const FALLBACK_CC = "origuy@origuystudio.com";
+const FROM_NAME = "Studio Ori Guy";
+const FROM_EMAIL = "origuy@origuystudio.com";
+const STUDIO_BCC = "origuy@origuystudio.com"; // inbox copy for Ori
 
 type Candidate = {
   id: string;
@@ -31,10 +34,22 @@ function json(body: unknown, status = 200) {
 }
 
 function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const encoder = new TextEncoder();
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+/** base64 of a UTF-8 string (for the Hebrew subject + HTML body). */
+function b64utf8(s: string): string {
+  return bytesToBase64(encoder.encode(s));
+}
+/** base64url of an all-ASCII string (the assembled MIME message). */
+function b64urlAscii(s: string): string {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 /** Wrap the admin's plain-text template in a minimal RTL HTML email. */
@@ -54,22 +69,76 @@ function buildHtml(bodyText: string, project: string, endHe: string) {
   </body></html>`;
 }
 
+/** Exchange the long-lived refresh token for a short-lived access token. */
+async function getAccessToken(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string
+): Promise<string> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!res.ok) throw new Error(`oauth token ${res.status}: ${await res.text()}`);
+  const j = await res.json();
+  return j.access_token as string;
+}
+
+/** Send one HTML email via the Gmail API as the authorized account. */
+async function sendGmail(
+  accessToken: string,
+  to: string,
+  subject: string,
+  html: string
+): Promise<Response> {
+  const mime = [
+    `From: ${FROM_NAME} <${FROM_EMAIL}>`,
+    `To: ${to}`,
+    `Bcc: ${STUDIO_BCC}`,
+    `Subject: =?UTF-8?B?${b64utf8(subject)}?=`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    `Content-Transfer-Encoding: base64`,
+    ``,
+    b64utf8(html),
+  ].join("\r\n");
+
+  return await fetch(
+    "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ raw: b64urlAscii(mime) }),
+    }
+  );
+}
+
 Deno.serve(async (req) => {
   // --- Auth: shared secret from pg_cron --------------------------------------
   const cronSecret = Deno.env.get("CRON_SECRET");
-  const auth = req.headers.get("Authorization") ?? "";
-  const token = auth.replace(/^Bearer\s+/i, "");
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   if (!cronSecret || token !== cronSecret) {
     return json({ error: "unauthorized" }, 401);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
 
-  // --- Graceful no-op until the email provider is wired up -------------------
-  if (!resendKey) {
-    return json({ skipped: "no RESEND_API_KEY", sent: 0 });
+  // --- Graceful no-op until the Gmail OAuth secrets are wired up --------------
+  if (!clientId || !clientSecret || !refreshToken) {
+    return json({ skipped: "no Gmail credentials", sent: 0 });
   }
 
   const supabase = createClient(supabaseUrl, serviceKey);
@@ -82,9 +151,7 @@ Deno.serve(async (req) => {
 
   const { data: projects, error: qErr } = await supabase
     .from("projects")
-    .select(
-      "id, title, client_id, warranty_end_date, profiles(email, full_name)"
-    )
+    .select("id, title, client_id, warranty_end_date, profiles(email, full_name)")
     .eq("warranty_email_sent", false)
     .neq("status", "cancelled")
     .not("warranty_end_date", "is", null)
@@ -107,13 +174,20 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await supabase
     .from("studio_settings")
-    .select("warranty_email_subject, warranty_email_body, contact_email")
+    .select("warranty_email_subject, warranty_email_body")
     .maybeSingle();
-
   const subject =
     settings?.warranty_email_subject || "האחריות על האתר שלך מתקרבת לסיום";
-  const bodyText = settings?.warranty_email_body || "תקופת האחריות על האתר שלך מתקרבת לסיום.";
-  const cc = settings?.contact_email || FALLBACK_CC;
+  const bodyText =
+    settings?.warranty_email_body || "תקופת האחריות על האתר שלך מתקרבת לסיום.";
+
+  let accessToken: string;
+  try {
+    accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
+  } catch (e) {
+    console.error("token error", String(e));
+    return json({ error: "gmail auth failed" }, 500);
+  }
 
   let sent = 0;
   let failed = 0;
@@ -128,23 +202,14 @@ Deno.serve(async (req) => {
     const projectName = brandName.get(p.client_id) || p.title;
 
     try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: FROM,
-          to: [to],
-          cc: cc ? [cc] : undefined,
-          subject,
-          html: buildHtml(bodyText, projectName, endHe),
-        }),
-      });
-
+      const res = await sendGmail(
+        accessToken,
+        to,
+        subject,
+        buildHtml(bodyText, projectName, endHe)
+      );
       if (!res.ok) {
-        console.error("resend failed", p.id, res.status, await res.text());
+        console.error("gmail send failed", p.id, res.status, await res.text());
         failed++;
         continue;
       }

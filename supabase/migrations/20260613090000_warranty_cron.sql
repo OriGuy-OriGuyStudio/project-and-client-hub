@@ -9,9 +9,10 @@
 -- Auth: the function checks `Authorization: Bearer <CRON_SECRET>`. We generate a
 -- random secret and keep it in Vault (NO literal in this file). The cron command
 -- reads it from Vault; the function reads the SAME value from its `CRON_SECRET`
--- env secret (set manually in the Supabase dashboard, alongside RESEND_API_KEY).
--- Until those env secrets are set the function fails closed (401 / no-op) and
--- nothing is sent — harmless.
+-- env secret (set manually in the Supabase dashboard, alongside the Gmail OAuth
+-- secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GMAIL_REFRESH_TOKEN — the
+-- function sends via the Gmail API as origuy@origuystudio.com). Until those env
+-- secrets are set the function fails closed (401 / no-op) — harmless.
 -- ============================================================
 
 create extension if not exists pg_cron;

@@ -31,12 +31,21 @@ npx supabase gen types typescript --linked > src/types/database.ts
    add the redirect URL Supabase shows to the Google Cloud OAuth consent screen.
 2. **Auth session timeout**: Authentication → Sessions → set inactivity timeout to 24h.
 3. **Warranty-reminder Edge Function** (`functions/warranty-reminder`, deployed; cron in
-   migration `…0020_warranty_cron.sql`, runs daily 06:00 UTC). To activate sending, set two
-   Edge Function secrets (Dashboard → Edge Functions → Manage secrets):
-   - `RESEND_API_KEY` — from Resend, after verifying the `origuystudio.com` sending domain.
+   migration `…0020_warranty_cron.sql`, runs daily 06:00 UTC). It sends via the **Gmail API**
+   as `origuy@origuystudio.com`. To activate, set these Edge Function secrets (Dashboard →
+   Edge Functions → Manage secrets):
+   - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — an OAuth 2.0 client in the studio's Google
+     Cloud project (the one already used for login works; set the OAuth consent screen
+     **User type = Internal** so the `gmail.send` scope needs no Google verification and the
+     refresh token doesn't expire).
+   - `GMAIL_REFRESH_TOKEN` — a refresh token for `origuy@origuystudio.com` with scope
+     `https://www.googleapis.com/auth/gmail.send`. Easiest: OAuth Playground
+     (developers.google.com/oauthplayground) → gear → "use your own credentials" (add the
+     Playground redirect URI to the OAuth client) → authorize that scope as Ori → exchange →
+     copy the refresh token.
    - `CRON_SECRET` — must equal the Vault secret `warranty_cron_secret` (the cron sends it as
      the bearer; read it with `select decrypted_secret from vault.decrypted_secrets where
-     name='warranty_cron_secret'`). Until both are set the function fails closed / no-ops.
+     name='warranty_cron_secret'`). Until these are set the function fails closed / no-ops.
 4. Copy Project URL + anon key into `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
 ## Security model (why it's safe)
