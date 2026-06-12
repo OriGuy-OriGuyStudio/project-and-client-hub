@@ -78,6 +78,7 @@ export const Sidebar = forwardRef<HTMLElement>((_props, ref) => {
   return (
     <aside
       ref={ref}
+      data-tour="nav"
       className="hidden w-64 shrink-0 flex-col border-l border-border bg-sidebar md:flex"
     >
       <SidebarContent />

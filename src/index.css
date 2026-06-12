@@ -35,6 +35,15 @@
     text-wrap: pretty;
   }
 
+  /* Native <select> dropdowns: keep the option list on-theme (was white). */
+  select {
+    color-scheme: light dark;
+  }
+  select option {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
   /* Quiet, neutral scrollbars — the surface, not a feature */
   ::-webkit-scrollbar {
     width: 10px;
@@ -151,6 +160,60 @@
   100% {
     transform: translateX(100%);
   }
+}
+
+/* ============================================================
+   driver.js onboarding tour — brand/dark theming, RTL
+   ============================================================ */
+.driver-popover {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 16px 36px -10px var(--shadow-2);
+  direction: rtl;
+}
+.driver-popover-title {
+  font-family: "Kaha", "Heebo", sans-serif;
+  color: var(--foreground);
+  font-size: 1rem;
+}
+.driver-popover-description {
+  color: var(--muted-foreground);
+  line-height: 1.6;
+}
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+}
+.driver-popover-footer button {
+  text-shadow: none;
+  border-radius: 0.6rem;
+  font-weight: 500;
+}
+.driver-popover-next-btn {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border: none !important;
+}
+.driver-popover-prev-btn {
+  background-color: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+  border: none !important;
+}
+.driver-popover-close-btn {
+  color: var(--muted-foreground);
+}
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--popover);
+}
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--popover);
+}
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--popover);
+}
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--popover);
 }
 
 /* ============================================================

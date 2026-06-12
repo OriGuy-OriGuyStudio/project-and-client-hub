@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationBell } from "./NotificationBell";
 import { MobileNav } from "./MobileNav";
+import { HelpCenter } from "@/components/help/HelpCenter";
 import { useAuth } from "@/hooks/useAuth";
 
 function initials(name?: string | null, email?: string | null) {
@@ -41,6 +42,7 @@ export const Header = forwardRef<HTMLElement>((_props, ref) => {
       </div>
 
       <div className="flex items-center gap-1">
+        <HelpCenter />
         <ThemeToggle />
         <NotificationBell />
         <Button

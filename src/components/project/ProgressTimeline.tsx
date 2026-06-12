@@ -68,7 +68,8 @@ const statusIcon: Record<StageStatus, typeof Check> = {
   blocked: Octagon,
 };
 
-const STAGE_STATUSES: StageStatus[] = ["not_started", "in_progress", "done", "blocked"];
+// "blocked" intentionally omitted from the picker — confusing for clients.
+const STAGE_STATUSES: StageStatus[] = ["not_started", "in_progress", "done"];
 
 export function ProgressTimeline({
   projectId,

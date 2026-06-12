@@ -32,6 +32,7 @@ export function MobileNav() {
         size="icon"
         className="md:hidden"
         aria-label="תפריט"
+        data-tour="nav"
         onClick={() => setOpen(true)}
       >
         <Menu className="size-5" />
