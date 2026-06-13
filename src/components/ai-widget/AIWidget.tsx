@@ -20,7 +20,7 @@ export function AIWidget() {
   const reduced = usePrefersReducedMotion();
   const { pathname } = useLocation();
 
-  if (!AI_CHAT_URL || HIDE_ON.includes(pathname)) return null;
+  if (!AI_CHAT_URL || HIDE_ON.includes(pathname) || pathname.startsWith("/ref/")) return null;
 
   return (
     <div className="fixed bottom-5 left-5 z-[9999] flex flex-col items-start gap-3">

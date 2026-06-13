@@ -470,6 +470,26 @@ export interface Database {
       redeem_reward: { Args: { p_reward_id: string }; Returns: string };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
+      resolve_referral: {
+        Args: { p_code: string };
+        Returns: { valid: boolean; partner_name?: string | null };
+      };
+      track_referral_click: {
+        Args: { p_code: string; p_ua: string };
+        Returns: string | null;
+      };
+      submit_referral_lead: {
+        Args: {
+          p_code: string;
+          p_name: string;
+          p_phone: string;
+          p_email: string | null;
+          p_type: string | null;
+          p_message: string | null;
+          p_click_id: string | null;
+        };
+        Returns: { ok: boolean; attributed?: boolean; error?: string };
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

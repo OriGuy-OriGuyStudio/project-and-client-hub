@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -37,6 +37,7 @@ const Referrals = lazy(() => import("@/pages/admin/Referrals"));
 const Feedback = lazy(() => import("@/pages/admin/Feedback"));
 const Settings = lazy(() => import("@/pages/admin/Settings"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
+const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
 const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
@@ -98,6 +99,16 @@ function App() {
                 </Route>
               </Route>
             </Route>
+
+            {/* Public partner-referral landing (no auth) */}
+            <Route
+              path="/ref/:code"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <RefLanding />
+                </Suspense>
+              }
+            />
 
             {/* Unknown paths: send home (guards resolve role from there) */}
             <Route path="*" element={<Navigate to="/" replace />} />
