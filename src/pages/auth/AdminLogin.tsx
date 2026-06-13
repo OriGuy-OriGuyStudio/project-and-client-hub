@@ -65,18 +65,18 @@ export default function AdminLogin() {
             </p>
             <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <ShieldCheck className="size-4 text-primary" />
-              פאנל ניהול
+              Orion · ניהול הסטודיו
             </p>
           </div>
         </div>
 
         <div data-anim="item" className="space-y-4">
           <h1 className="font-heading text-3xl font-black leading-snug text-foreground lg:text-4xl">
-            הניהול שלך, במקום אחד
+            כל הסטודיו שלך, על מסך אחד
           </h1>
           <p className="mx-auto max-w-sm text-base leading-relaxed text-muted-foreground">
-            היי אורי. מכאן אתה מנהל את הלקוחות, הפרויקטים, התשלומים וכל מה שקורה
-            בסטודיו. תיכנס ונמשיך לעבוד.
+            היי אורי. הלקוחות, הפרויקטים, התשלומים וההפניות, הכול כאן. תיכנס ובוא
+            נמשיך לעבוד.
           </p>
         </div>
 

@@ -63,17 +63,18 @@ export default function Login() {
             <p className="font-heading text-lg font-black text-foreground">
               Studio Ori Guy
             </p>
-            <p className="text-sm text-muted-foreground">פורטל לקוחות</p>
+            <p className="text-sm text-muted-foreground">Orion · הפורטל שלך</p>
           </div>
         </div>
 
         <div data-anim="item" className="space-y-4">
           <h1 className="font-heading text-3xl font-black leading-snug text-foreground lg:text-4xl">
-            ברוך הבא לפורטל שלך
+            ברוך הבא ל-Orion
           </h1>
           <p className="mx-auto max-w-sm text-base leading-relaxed text-muted-foreground">
-            שמח שאתה כאן. מכאן אתה עוקב אחרי הפרויקט בכל רגע, רואה איפה הדברים
-            עומדים ומאשר מה שצריך. הכול במקום אחד, בלי לרדוף אחרי מיילים.
+            כאן אתה רואה בדיוק איפה הפרויקט שלך עומד, מאשר מה שצריך, ומדבר איתי
+            ישירות. הכול פתוח לפניך בכל רגע, בלי לחפש מיילים ישנים ובלי לשאול מה
+            קורה.
           </p>
         </div>
 

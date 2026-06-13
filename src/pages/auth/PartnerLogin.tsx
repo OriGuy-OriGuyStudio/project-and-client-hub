@@ -59,7 +59,7 @@ export default function PartnerLogin() {
             <p className="font-heading text-lg font-black text-foreground">Studio Ori Guy</p>
             <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <Handshake className="size-4 text-primary" />
-              פורטל שותפים
+              Orion · פורטל השותפים
             </p>
           </div>
         </div>
@@ -69,8 +69,9 @@ export default function PartnerLogin() {
             מפנים, סוגרים, מרוויחים
           </h1>
           <p className="mx-auto max-w-sm text-base leading-relaxed text-muted-foreground">
-            כאן אתה מגיש לידים לסטודיו, עוקב אחרי הסטטוס שלהם ורואה את העמלות שלך.
-            יש לך גם לינק הפניה אישי שמביא אותם ישר אליי.
+            כאן אתה מגיש לידים, עוקב אחרי כל אחד מהם עד הסגירה, ורואה כמה הרווחת.
+            יש לך גם לינק הפניה אישי שמביא אותם ישר אליי. אתה מפנה, אני סוגר,
+            ושנינו מרוויחים.
           </p>
         </div>
 
@@ -99,7 +100,7 @@ export default function PartnerLogin() {
           data-anim="item"
           className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground"
         >
-          הכניסה מיועדת לשותפים של הסטודיו. אם עוד לא הגדרנו לך גישה, דבר איתי.
+          הכניסה מיועדת לשותפים של הסטודיו. אם עוד לא הגדרתי לך גישה, דבר איתי.
         </p>
       </div>
 
