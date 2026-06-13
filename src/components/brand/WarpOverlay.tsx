@@ -53,17 +53,18 @@ export function WarpOverlay() {
 
     const ctx = gsap.context(() => {
       if (textRef.current) {
+        // Transform/opacity only (no blur — animating filter caused a snap at the
+        // end). force3D keeps it on the GPU for a smooth settle.
         gsap.fromTo(
           textRef.current,
-          { opacity: 0, y: 34, scale: 0.92, filter: "blur(10px)" },
+          { opacity: 0, y: 20, scale: 0.96, force3D: true },
           {
             opacity: 1,
             y: 0,
             scale: 1,
-            filter: "blur(0px)",
-            duration: 1.6,
+            duration: 1.5,
             delay: TEXT_DELAY,
-            ease: "power3.out",
+            ease: "power2.out",
           }
         );
       }
@@ -73,7 +74,10 @@ export function WarpOverlay() {
       () => root?.classList.remove("warp-shake"),
       SHAKE_MS
     );
-    const tLand = window.setTimeout(() => setLanding(true), LAND_START);
+    const tLand = window.setTimeout(() => {
+      setLanding(true);
+      root?.classList.add("warp-shake"); // re-entry turbulence on the landing
+    }, LAND_START);
     const tEnd = window.setTimeout(() => {
       setActive(false);
       setEntered(false);
