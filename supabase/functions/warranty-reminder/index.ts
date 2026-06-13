@@ -17,6 +17,15 @@ const WINDOW_DAYS = 7;
 const FROM_NAME = "Studio Ori Guy";
 const FROM_EMAIL = "origuy@origuystudio.com";
 const STUDIO_BCC = "origuy@origuystudio.com"; // inbox copy for Ori
+const PORTAL_URL = "https://orion.origuystudio.com"; // "Orion" client portal
+
+type Contact = {
+  studioName: string;
+  email: string;
+  phoneText: string; // as displayed
+  phoneTel: string; // +972…
+  whatsapp: string; // https://wa.me/972…
+};
 
 type Candidate = {
   id: string;
@@ -52,20 +61,55 @@ function b64urlAscii(s: string): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** Wrap the admin's plain-text template in a minimal RTL HTML email. */
-function buildHtml(bodyText: string, project: string, endHe: string) {
+/**
+ * Branded RTL HTML email. Every text block carries inline `dir="rtl"` +
+ * `text-align:right` because Gmail strips `dir` off <html>/<body>. Header is the
+ * "Orion" wordmark (no image — email-safe), with a project/date card, a portal
+ * CTA, and a contact footer.
+ */
+function buildHtml(
+  bodyText: string,
+  project: string,
+  endHe: string,
+  c: Contact
+) {
   const paragraphs = escapeHtml(bodyText)
     .split("\n")
-    .map((line) => (line.trim() ? `<p style="margin:0 0 8px">${line}</p>` : "<br>"))
+    .map((line) => (line.trim() ? `<p style="margin:0 0 10px">${line}</p>` : "<br>"))
     .join("");
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;padding:24px">
-    <div style="max-width:520px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:16px;padding:28px;font-family:Arial,Helvetica,sans-serif;color:#e8e8ea;line-height:1.6">
-      <div style="font-size:15px">${paragraphs}</div>
-      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #2a2a33;font-size:13px;color:#a7a7ad">
-        פרויקט: <strong style="color:#e8e8ea">${escapeHtml(project)}</strong><br>
-        תום האחריות: <strong style="color:#B4D670">${escapeHtml(endHe)}</strong>
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
+    <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
+
+      <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
+        <span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:.5px">Orion</span>
+        <span style="font-size:13px;color:#B4D670"> · ${escapeHtml(c.studioName)}</span>
       </div>
+
+      <div dir="rtl" style="padding:28px;text-align:right;color:#e8e8ea;font-size:15px;line-height:1.7">
+        ${paragraphs}
+
+        <div dir="rtl" style="margin-top:20px;padding:14px 16px;background:rgba(180,214,112,.08);border:1px solid rgba(180,214,112,.2);border-radius:12px;text-align:right">
+          <div style="font-size:12px;color:#a7a7ad">פרויקט</div>
+          <div style="font-size:16px;font-weight:700;color:#ffffff;margin-bottom:8px">${escapeHtml(project)}</div>
+          <div style="font-size:12px;color:#a7a7ad">תום האחריות</div>
+          <div style="font-size:16px;font-weight:700;color:#B4D670">${escapeHtml(endHe)}</div>
+        </div>
+
+        <div style="text-align:center;margin:26px 0 6px">
+          <a href="${PORTAL_URL}" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:700;font-size:15px;padding:13px 30px;border-radius:999px">כניסה לפורטל</a>
+        </div>
+      </div>
+
+      <div dir="rtl" style="padding:20px 28px;border-top:1px solid #2a2a33;text-align:right;color:#a7a7ad;font-size:13px;line-height:1.9">
+        <div style="font-weight:700;color:#e8e8ea;margin-bottom:4px">${escapeHtml(c.studioName)}</div>
+        <div>אימייל: <a href="mailto:${c.email}" style="color:#B4D670;text-decoration:none">${escapeHtml(c.email)}</a></div>
+        <div>טלפון: <a href="tel:${c.phoneTel}" style="color:#B4D670;text-decoration:none">${escapeHtml(c.phoneText)}</a></div>
+        <div>וואטסאפ: <a href="${c.whatsapp}" style="color:#B4D670;text-decoration:none">שליחת הודעה</a></div>
+      </div>
+
     </div>
+  </div>
   </body></html>`;
 }
 
@@ -174,12 +218,23 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await supabase
     .from("studio_settings")
-    .select("warranty_email_subject, warranty_email_body")
+    .select("studio_name, contact_email, contact_phone, warranty_email_subject, warranty_email_body")
     .maybeSingle();
   const subject =
     settings?.warranty_email_subject || "האחריות על האתר שלך מתקרבת לסיום";
   const bodyText =
     settings?.warranty_email_body || "תקופת האחריות על האתר שלך מתקרבת לסיום.";
+
+  // Contact block for the footer (from Settings, with sensible fallbacks).
+  const rawPhone = (settings?.contact_phone || "0547520899").replace(/\D/g, "");
+  const intlPhone = rawPhone.replace(/^0/, "972");
+  const contact: Contact = {
+    studioName: settings?.studio_name || "סטודיו אורי גיא",
+    email: settings?.contact_email || FROM_EMAIL,
+    phoneText: settings?.contact_phone || "054-752-0899",
+    phoneTel: "+" + intlPhone,
+    whatsapp: "https://wa.me/" + intlPhone,
+  };
 
   let accessToken: string;
   try {
@@ -207,7 +262,7 @@ Deno.serve(async (req) => {
         accessToken,
         to,
         subject,
-        buildHtml(bodyText, projectName, endHe)
+        buildHtml(bodyText, projectName, endHe, contact)
       );
       if (!res.ok) {
         const t = await res.text();
