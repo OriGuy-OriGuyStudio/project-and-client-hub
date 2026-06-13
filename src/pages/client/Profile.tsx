@@ -13,12 +13,14 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyFeedback, feedbackStatusHe } from "@/hooks/useClientFeedback";
+import { useCuriousBadge } from "@/hooks/useCuriousBadge";
 import { clampText } from "@/lib/sanitize";
 
 export default function Profile() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const { data: feedback, isLoading } = useMyFeedback();
+  const { data: isCurious } = useCuriousBadge();
   const [savingProfile, setSavingProfile] = useState(false);
   const [name, setName] = useState(profile?.full_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
@@ -74,6 +76,14 @@ export default function Profile() {
           </div>
         </div>
         <p className="font-mono-code text-xs text-muted-foreground">{user?.email}</p>
+        {isCurious && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">תגים:</span>
+            <Badge variant="success" title="גילית את הסוד הנסתר בפורטל">
+              🔭 סקרן
+            </Badge>
+          </div>
+        )}
         <div className="flex justify-end">
           <Button onClick={saveProfile} disabled={savingProfile}>
             {savingProfile ? "שומר…" : "שמירה"}

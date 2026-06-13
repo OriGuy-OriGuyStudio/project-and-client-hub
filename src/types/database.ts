@@ -404,6 +404,19 @@ type TableShape<Row> = {
   Relationships: [];
 };
 
+export type EasterEggClaim = {
+  client_id: string;
+  claimed_at: string;
+};
+
+export type EasterEggClaimResult = {
+  granted: boolean;
+  coins?: number;
+  enrolled?: boolean;
+  already?: boolean;
+  reason?: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -438,9 +451,11 @@ export interface Database {
       partner_resources: TableShape<PartnerResource>;
       studio_settings: TableShape<StudioSettings>;
       stage_templates: TableShape<StageTemplate>;
+      easter_egg_claims: TableShape<EasterEggClaim>;
     };
     Views: Record<string, never>;
     Functions: {
+      claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
       get_my_role: { Args: Record<string, never>; Returns: string };
       ensure_my_profile: { Args: Record<string, never>; Returns: string | null };
       is_admin: { Args: Record<string, never>; Returns: boolean };

@@ -29,3 +29,10 @@ dist-ssr
 # Supabase local
 supabase/.branches
 supabase/.temp
+
+# Installed skill packs (local tooling, not app code)
+.agents/
+
+# Installed marketing skill packs (local tooling, not app code)
+.claude/skills/
+skills-lock.json
