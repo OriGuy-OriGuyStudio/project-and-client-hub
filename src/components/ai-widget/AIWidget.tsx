@@ -66,10 +66,10 @@ export function AIWidget() {
           whileHover={reduced ? undefined : { scale: 1.05 }}
           whileTap={reduced ? undefined : { scale: 0.95 }}
           onClick={() => setOpen(true)}
-          className="flex size-14 items-center justify-center rounded-full bg-gradient-to-tr from-brand-cyan-dark to-brand-green-base text-[var(--bg-dark-purple-dark)] shadow-xl shadow-brand-cyan-base/20"
+          className="flex size-12 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lift transition-colors duration-300 ease-soft hover:bg-primary hover:text-primary-foreground"
           aria-label="פתיחת עוזר ה-AI"
         >
-          <Bot className="size-6" />
+          <Bot className="size-5" />
         </motion.button>
       )}
     </div>

@@ -26,6 +26,21 @@ import {
   NotifyClientProvider,
   NotifyClientButton,
 } from "@/components/project/NotifyClient";
+import { SectionNav, type NavSection } from "@/components/layout/SectionNav";
+
+const PROJECT_SECTIONS: NavSection[] = [
+  { id: "sec-brand", label: "מותג" },
+  { id: "sec-roadmap", label: "שלבים" },
+  { id: "sec-approvals", label: "אישורים" },
+  { id: "sec-checklist", label: "צ׳קליסט" },
+  { id: "sec-tasks", label: "משימות" },
+  { id: "sec-files", label: "קבצים" },
+  { id: "sec-docs", label: "מסמכים" },
+  { id: "sec-payments", label: "תשלומים" },
+  { id: "sec-warranty", label: "אחריות" },
+  { id: "sec-chat", label: "צ׳אט" },
+  { id: "sec-activity", label: "פעילות" },
+];
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -132,23 +147,25 @@ export default function ProjectDetail() {
         )}
       </div>
 
+      <SectionNav sections={PROJECT_SECTIONS} />
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
-          <div data-reveal>
+          <div id="sec-brand" data-reveal className="scroll-mt-20">
             <BrandGuidelines brand={brand} colors={colors} />
           </div>
-          <div data-reveal>
+          <div id="sec-roadmap" data-reveal className="scroll-mt-20">
             <ProgressTimeline projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal>
+          <div id="sec-approvals" data-reveal className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("approval")} />
             <ApprovalsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal>
+          <div id="sec-checklist" data-reveal className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("checklist")} />
             <ChecklistSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal>
+          <div id="sec-tasks" data-reveal className="scroll-mt-20">
             <TasksSection
               projectId={project.id}
               isAdmin={isAdmin}
@@ -156,7 +173,7 @@ export default function ProjectDetail() {
               adminId={actorId}
             />
           </div>
-          <div data-reveal>
+          <div id="sec-files" data-reveal className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("file")} />
             <FileManager
               projectId={project.id}
@@ -165,19 +182,19 @@ export default function ProjectDetail() {
               zipName={brand?.business_name || project.title}
             />
           </div>
-          <div data-reveal>
+          <div id="sec-docs" data-reveal className="scroll-mt-20">
             <DocsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal>
+          <div id="sec-payments" data-reveal className="scroll-mt-20">
             <PaymentsSection projectId={project.id} isAdmin={isAdmin} />
           </div>
         </div>
 
         <div className="min-w-0 space-y-6">
-          <div data-reveal>
+          <div id="sec-warranty" data-reveal className="scroll-mt-20">
             <WarrantyCountdown project={project} />
           </div>
-          <div data-reveal>
+          <div id="sec-chat" data-reveal className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("message")} />
             <InternalChat
               projectId={project.id}
@@ -186,7 +203,7 @@ export default function ProjectDetail() {
               isAdmin={isAdmin}
             />
           </div>
-          <div data-reveal>
+          <div id="sec-activity" data-reveal className="scroll-mt-20">
             <ActivityFeed projectId={project.id} />
           </div>
         </div>

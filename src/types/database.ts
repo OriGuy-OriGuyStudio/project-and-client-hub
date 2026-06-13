@@ -60,6 +60,10 @@ export type AllowedEmail = {
   commission_notes: string | null;
   invited_by: string | null;
   invited_at: string;
+  invite_sent_at: string | null;
+  invite_send_count: number;
+  invite_last_status: "sent" | "failed" | null;
+  invite_last_error: string | null;
 }
 
 export type PartnerProfile = {
@@ -125,6 +129,9 @@ export type StudioSettings = {
   contact_phone: string | null;
   warranty_email_subject: string | null;
   warranty_email_body: string | null;
+  welcome_email_subject: string | null;
+  welcome_email_body: string | null;
+  portal_url: string | null;
   updated_at: string;
 }
 

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -166,11 +167,21 @@ export function PaymentsSection({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {p.payment_link && p.status !== "paid" && (
-                    <Button variant="secondary" size="sm" asChild>
-                      <a href={p.payment_link} target="_blank" rel="noreferrer noopener">
-                        תשלום <ExternalLink className="size-3.5" />
-                      </a>
-                    </Button>
+                    <>
+                      <Button variant="secondary" size="sm" asChild>
+                        <a href={p.payment_link} target="_blank" rel="noreferrer noopener">
+                          תשלום <ExternalLink className="size-3.5" />
+                        </a>
+                      </Button>
+                      <CopyButton
+                        content={p.payment_link}
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 hover:text-foreground"
+                        toastMessage="לינק התשלום הועתק"
+                        title="העתקת לינק תשלום"
+                      />
+                    </>
                   )}
                   <Badge variant={p.status === "paid" ? "success" : "warning"}>
                     {paymentStatusHe[p.status]}

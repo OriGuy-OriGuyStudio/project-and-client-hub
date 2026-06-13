@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Clock, Handshake, Percent, Plus, UserPlus } from "lucide-react";
+import { Clock, Eye, Handshake, Mail, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,13 +25,42 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
-import { usePartners, rateLabel } from "@/hooks/usePartners";
+import { usePartners, rateLabel, type ActivePartner } from "@/hooks/usePartners";
 import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
+import { sendInvite } from "@/lib/invite";
+import type { AllowedEmail } from "@/types/database";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Normalized edit/delete target for both active partners and pending invites. */
+type PartnerTarget = {
+  kind: "active" | "pending";
+  id: string | null;
+  email: string;
+  full_name: string | null;
+  commission_rate: number | null;
+  commission_rate_min: number | null;
+  commission_rate_max: number | null;
+  commission_notes: string | null;
+};
+
+function toTarget(p: ActivePartner | AllowedEmail, kind: "active" | "pending"): PartnerTarget {
+  return {
+    kind,
+    id: "id" in p ? (p as ActivePartner).id : null,
+    email: p.email,
+    full_name: p.full_name,
+    commission_rate: p.commission_rate,
+    commission_rate_min: p.commission_rate_min,
+    commission_rate_max: p.commission_rate_max,
+    commission_notes: p.commission_notes,
+  };
+}
+
 export default function Partners() {
   const { data, isLoading, isError } = usePartners();
+  const [editTarget, setEditTarget] = useState<PartnerTarget | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PartnerTarget | null>(null);
 
   return (
     <div>
@@ -69,16 +100,54 @@ export default function Partners() {
                     </span>
                     <div>
                       <p className="font-medium text-foreground">{p.full_name || "ללא שם"}</p>
-                      <p className="font-mono-code text-xs text-muted-foreground">
-                        {p.email}
-                        {p.referral_code ? ` · ref/${p.referral_code}` : ""}
+                      <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+                        <span className="truncate">{p.email}</span>
+                        <CopyButton
+                          content={p.email}
+                          variant="ghost"
+                          size="icon"
+                          className="size-5 shrink-0 hover:text-foreground"
+                          toastMessage="האימייל הועתק"
+                          title="העתקת אימייל"
+                        />
+                        {p.referral_code && (
+                          <>
+                            <span>· ref/{p.referral_code}</span>
+                            <CopyButton
+                              content={`studioriguy.com/ref/${p.referral_code}`}
+                              variant="ghost"
+                              size="icon"
+                              className="size-5 shrink-0 hover:text-foreground"
+                              toastMessage="לינק ההפניה הועתק"
+                              title="העתקת לינק הפניה"
+                            />
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="success">
-                    <Percent className="size-3" />
-                    {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Badge variant="success">
+                      {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
+                    </Badge>
+                    <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
+                      <Link to={`/admin/partners/${p.id}`}>
+                        <Eye className="size-4" />
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => setEditTarget(toTarget(p, "active"))}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="מחיקה"
+                      className="text-destructive"
+                      onClick={() => setDeleteTarget(toTarget(p, "active"))}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </section>
@@ -90,21 +159,12 @@ export default function Partners() {
                 ממתינים לכניסה ראשונה ({data!.pending.length})
               </h2>
               {data!.pending.map((p) => (
-                <Card key={p.email} className="flex items-center justify-between gap-3 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                      <Clock className="size-5" />
-                    </span>
-                    <div>
-                      <p className="font-medium text-foreground">{p.full_name || "ללא שם"}</p>
-                      <p className="font-mono-code text-xs text-muted-foreground">{p.email}</p>
-                    </div>
-                  </div>
-                  <Badge variant="warning">
-                    <Percent className="size-3" />
-                    {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
-                  </Badge>
-                </Card>
+                <PendingPartnerRow
+                  key={p.email}
+                  p={p}
+                  onEdit={() => setEditTarget(toTarget(p, "pending"))}
+                  onDelete={() => setDeleteTarget(toTarget(p, "pending"))}
+                />
               ))}
             </section>
           )}
@@ -114,7 +174,297 @@ export default function Partners() {
       <div className="mt-8">
         <AdminLeadsSection />
       </div>
+
+      <EditPartnerDialog target={editTarget} onClose={() => setEditTarget(null)} />
+      <DeletePartnerDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </div>
+  );
+}
+
+/** A whitelisted partner who hasn't signed in yet — shows invite status + resend. */
+function PendingPartnerRow({
+  p,
+  onEdit,
+  onDelete,
+}: {
+  p: AllowedEmail;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const qc = useQueryClient();
+  const [resending, setResending] = useState(false);
+
+  async function resend() {
+    setResending(true);
+    const r = await sendInvite(p.email);
+    setResending(false);
+    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
+    else toastError("שליחת ההזמנה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["partners"] });
+  }
+
+  return (
+    <Card className="flex items-center justify-between gap-3 p-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <Clock className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-medium text-foreground">{p.full_name || "ללא שם"}</p>
+          <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+            <span className="truncate">{p.email}</span>
+            <CopyButton
+              content={p.email}
+              variant="ghost"
+              size="icon"
+              className="size-5 shrink-0 hover:text-foreground"
+              toastMessage="האימייל הועתק"
+              title="העתקת אימייל"
+            />
+          </p>
+          <p className="mt-0.5 text-[11px]">
+            {p.invite_sent_at ? (
+              <span className="text-brand-green-base">
+                ✓ הזמנה נשלחה · {new Date(p.invite_sent_at).toLocaleDateString("he-IL")}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">טרם נשלחה הזמנה</span>
+            )}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Badge variant="warning">
+          {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
+        </Badge>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={p.invite_sent_at ? "שלח הזמנה שוב" : "שלח הזמנה"}
+          title={p.invite_sent_at ? "שלח הזמנה שוב" : "שלח הזמנה"}
+          disabled={resending}
+          onClick={resend}
+        >
+          <Mail className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="עריכה" onClick={onEdit}>
+          <Pencil className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="מחיקה" className="text-destructive" onClick={onDelete}>
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+/** Edit a partner — commission (fixed/range) + notes + name; pending edits the whitelist row. */
+function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [seeded, setSeeded] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    full_name: "",
+    mode: "fixed" as "fixed" | "range",
+    commission_rate: "5",
+    commission_min: "5",
+    commission_max: "7.5",
+    commission_notes: "",
+  });
+
+  if (target) {
+    const key = `${target.kind}:${target.email}`;
+    if (key !== seeded) {
+      const isRange =
+        target.commission_rate_min != null &&
+        target.commission_rate_max != null &&
+        target.commission_rate_min !== target.commission_rate_max;
+      setForm({
+        full_name: target.full_name ?? "",
+        mode: isRange ? "range" : "fixed",
+        commission_rate: String(target.commission_rate ?? 5),
+        commission_min: String(target.commission_rate_min ?? target.commission_rate ?? 5),
+        commission_max: String(target.commission_rate_max ?? target.commission_rate ?? 7.5),
+        commission_notes: target.commission_notes ?? "",
+      });
+      setSeeded(key);
+    }
+  }
+
+  function update(k: keyof typeof form, v: string) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function save() {
+    if (!target) return;
+    let rate: number, min: number, max: number;
+    if (form.mode === "fixed") {
+      rate = Number(form.commission_rate);
+      if (Number.isNaN(rate) || rate < 0 || rate > 100) return toastError("אחוז עמלה לא תקין.");
+      min = rate;
+      max = rate;
+    } else {
+      min = Number(form.commission_min);
+      max = Number(form.commission_max);
+      if ([min, max].some((n) => Number.isNaN(n) || n < 0 || n > 100) || min > max)
+        return toastError("טווח אחוזים לא תקין.");
+      rate = min;
+    }
+
+    setSaving(true);
+    const fullName = clampText(form.full_name.trim(), 120) || null;
+    const notes = clampText(form.commission_notes.trim(), 500) || null;
+    try {
+      if (target.kind === "active") {
+        const { error: pErr } = await supabase
+          .from("profiles")
+          .update({ full_name: fullName })
+          .eq("id", target.id!);
+        if (pErr) throw pErr;
+        const { error: ppErr } = await supabase
+          .from("partner_profiles")
+          .update({
+            commission_rate: rate,
+            commission_rate_min: min,
+            commission_rate_max: max,
+            commission_notes: notes,
+          })
+          .eq("id", target.id!);
+        if (ppErr) throw ppErr;
+      } else {
+        const { error } = await supabase
+          .from("allowed_emails")
+          .update({
+            full_name: fullName,
+            commission_rate: rate,
+            commission_rate_min: min,
+            commission_rate_max: max,
+            commission_notes: notes,
+          })
+          .ilike("email", target.email);
+        if (error) throw error;
+      }
+      toast({ title: "פרטי השותף עודכנו", variant: "success" });
+      qc.invalidateQueries({ queryKey: ["partners"] });
+      qc.invalidateQueries({ queryKey: ["partner-detail", target.id] });
+      setSeeded(null);
+      onClose();
+    } catch {
+      toastError("שמירת השינויים נכשלה.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!target} onOpenChange={(o) => !o && (setSeeded(null), onClose())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>עריכת שותף</DialogTitle>
+          <DialogDescription>{target?.email}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ep-name">שם מלא</Label>
+            <Input id="ep-name" value={form.full_name} maxLength={120}
+              onChange={(e) => update("full_name", e.target.value)} placeholder="שם השותף" />
+          </div>
+          <div className="space-y-2">
+            <Label>אחוז עמלה</Label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => update("mode", "fixed")}
+                className={cn("flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  form.mode === "fixed" ? "border-primary/50 bg-primary/15 text-primary" : "border-border text-muted-foreground")}>
+                אחוז קבוע
+              </button>
+              <button type="button" onClick={() => update("mode", "range")}
+                className={cn("flex-1 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                  form.mode === "range" ? "border-primary/50 bg-primary/15 text-primary" : "border-border text-muted-foreground")}>
+                טווח
+              </button>
+            </div>
+            {form.mode === "fixed" ? (
+              <Input dir="ltr" type="number" step="0.5" min="0" max="100"
+                value={form.commission_rate}
+                onChange={(e) => update("commission_rate", e.target.value)} placeholder="%" />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input dir="ltr" type="number" step="0.5" min="0" max="100"
+                  value={form.commission_min}
+                  onChange={(e) => update("commission_min", e.target.value)} placeholder="מ-%" />
+                <span className="text-muted-foreground">–</span>
+                <Input dir="ltr" type="number" step="0.5" min="0" max="100"
+                  value={form.commission_max}
+                  onChange={(e) => update("commission_max", e.target.value)} placeholder="עד-%" />
+              </div>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ep-notes">הערה פרטית</Label>
+            <Textarea id="ep-notes" value={form.commission_notes} maxLength={500}
+              onChange={(e) => update("commission_notes", e.target.value)} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={save} disabled={saving}>{saving ? "שומר…" : "שמירה"}</Button>
+          <Button variant="ghost" onClick={() => (setSeeded(null), onClose())}>ביטול</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Delete a partner — active removes the profile (cascades leads), pending removes the invite. */
+function DeletePartnerDialog({ target, onClose }: { target: PartnerTarget | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  async function confirmDelete() {
+    if (!target) return;
+    setBusy(true);
+    try {
+      if (target.kind === "active") {
+        const { error } = await supabase.from("profiles").delete().eq("id", target.id!);
+        if (error) throw error;
+      }
+      await supabase.from("allowed_emails").delete().ilike("email", target.email);
+      toast({ title: "השותף הוסר", variant: "success" });
+      qc.invalidateQueries({ queryKey: ["partners"] });
+      onClose();
+    } catch {
+      toastError("המחיקה נכשלה.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>מחיקת שותף</DialogTitle>
+          <DialogDescription>
+            {target?.kind === "active"
+              ? "פעולה זו תמחק את השותף ואת כל הלידים והעסקאות שלו. אי אפשר לבטל."
+              : "פעולה זו תסיר את ההזמנה. השותף לא יוכל להתחבר עד שתוסיף אותו שוב."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-foreground">
+          {target?.full_name || target?.email}
+        </p>
+
+        <DialogFooter>
+          <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
+            <Trash2 className="size-4" />
+            {busy ? "מוחק…" : "מחיקה"}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>ביטול</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -182,7 +532,18 @@ function AddPartnerDialog() {
       toastError(error.code === "23505" ? "המשתמש כבר קיים." : "הוספת השותף נכשלה.");
       return;
     }
-    toast({ title: "השותף נוסף", variant: "success" });
+
+    // Auto-send the "ברוכים הבאים ל-Orion" invitation (non-blocking).
+    const invite = await sendInvite(email);
+    if (invite.ok) {
+      toast({ title: "השותף נוסף וההזמנה נשלחה למייל ✓", variant: "success" });
+    } else {
+      toast({
+        title: "השותף נוסף — שליחת ההזמנה נכשלה",
+        description: "אפשר לשלוח שוב מרשימת הממתינים.",
+        variant: "destructive",
+      });
+    }
     qc.invalidateQueries({ queryKey: ["partners"] });
     reset();
     setOpen(false);

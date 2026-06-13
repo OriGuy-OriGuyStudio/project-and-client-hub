@@ -4,6 +4,7 @@ import { MessageSquareHeart, Send, UserCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,7 +76,19 @@ export default function Profile() {
             <Input id="p-phone" dir="ltr" value={phone} maxLength={40} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
-        <p className="font-mono-code text-xs text-muted-foreground">{user?.email}</p>
+        {user?.email && (
+          <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+            <span className="truncate">{user.email}</span>
+            <CopyButton
+              content={user.email}
+              variant="ghost"
+              size="icon"
+              className="size-5 shrink-0 hover:text-foreground"
+              toastMessage="האימייל הועתק"
+              title="העתקת אימייל"
+            />
+          </p>
+        )}
         {isCurious && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">תגים:</span>

@@ -20,6 +20,11 @@ export interface ClientDetailData {
   credits: number;
   enrolled: boolean;
   curious: boolean;
+  invite: {
+    invite_sent_at: string | null;
+    invite_send_count: number;
+    invite_last_status: "sent" | "failed" | null;
+  } | null;
 }
 
 /** Everything the admin needs to see about one client on their detail page. */
@@ -53,6 +58,17 @@ export function useClientDetail(clientId: string | undefined) {
         supabase.from("easter_egg_claims").select("client_id").eq("client_id", id).maybeSingle(),
       ]);
 
+      // Welcome-invite status lives on the whitelist row (keyed by email).
+      let invite: ClientDetailData["invite"] = null;
+      if (profile?.email) {
+        const { data: ae } = await supabase
+          .from("allowed_emails")
+          .select("invite_sent_at, invite_send_count, invite_last_status")
+          .ilike("email", profile.email)
+          .maybeSingle();
+        invite = ae ?? null;
+      }
+
       return {
         profile: profile ?? null,
         brand: brand ?? null,
@@ -64,6 +80,7 @@ export function useClientDetail(clientId: string | undefined) {
         credits: credits ?? 0,
         enrolled: !!enrollment,
         curious: !!curious,
+        invite,
       };
     },
   });

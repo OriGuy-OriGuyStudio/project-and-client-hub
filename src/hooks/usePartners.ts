@@ -6,7 +6,9 @@ export interface ActivePartner extends Profile {
   commission_rate: number | null;
   commission_rate_min: number | null;
   commission_rate_max: number | null;
+  commission_notes: string | null;
   referral_code: string | null;
+  is_active: boolean;
 }
 
 /** "5%" for a fixed rate, "5%–7.5%" for a range. */
@@ -43,7 +45,9 @@ export function usePartners() {
         commission_rate: ppById.get(p.id)?.commission_rate ?? null,
         commission_rate_min: ppById.get(p.id)?.commission_rate_min ?? null,
         commission_rate_max: ppById.get(p.id)?.commission_rate_max ?? null,
+        commission_notes: ppById.get(p.id)?.commission_notes ?? null,
         referral_code: ppById.get(p.id)?.referral_code ?? null,
+        is_active: ppById.get(p.id)?.is_active ?? true,
       }));
 
       const activeEmails = new Set(active.map((p) => p.email.toLowerCase()));

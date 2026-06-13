@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Copy, Check, MousePointerClick, Users, Briefcase, Wallet, Plus } from "lucide-react";
+import { Check, MousePointerClick, Users, Briefcase, Wallet, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,7 +13,7 @@ import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
 import { useAuth } from "@/hooks/useAuth";
-import { toast, toastError } from "@/hooks/use-toast";
+import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
 
 const REFERRAL_BASE = "studioriguy.com/ref/";
@@ -32,7 +33,6 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
 export default function PartnerDashboard() {
   const { profile } = useAuth();
   const { data, isLoading, isError } = usePartner();
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isError) toastError("טעינת הנתונים נכשלה.");
@@ -47,17 +47,6 @@ export default function PartnerDashboard() {
     .reduce((sum, l) => sum + (l.commission_amount ?? 0), 0);
 
   const refLink = data?.profile ? `${REFERRAL_BASE}${data.profile.referral_code}` : "";
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(`https://${refLink}`);
-      setCopied(true);
-      toast({ title: "הלינק הועתק", variant: "success" });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toastError("ההעתקה נכשלה.");
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -98,10 +87,13 @@ export default function PartnerDashboard() {
               <code className="flex-1 rounded-xl border border-border bg-field px-3 py-2 font-mono-code text-sm text-foreground">
                 {refLink || "-"}
               </code>
-              <Button variant="secondary" onClick={copyLink} disabled={!refLink}>
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-                {copied ? "הועתק" : "העתקת לינק"}
-              </Button>
+              <CopyButton
+                content={refLink ? `https://${refLink}` : ""}
+                label="העתקת לינק"
+                toastMessage="הלינק הועתק"
+                disabled={!refLink}
+              />
+
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
               {data?.clicks ?? 0} כניסות דרך הלינק · {data?.conversions ?? 0} הפכו לליד

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Building2,
@@ -19,8 +21,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectCard } from "@/components/project/ProjectCard";
 import { ColorSwatch } from "@/components/brand/ColorSwatch";
+import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
-import { useClientDetail } from "@/hooks/useClientDetail";
+import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
+import { sendInvite } from "@/lib/invite";
+import { SectionNav, type NavSection } from "@/components/layout/SectionNav";
+import { toast, toastError } from "@/hooks/use-toast";
+
+const CLIENT_SECTIONS: NavSection[] = [
+  { id: "cd-details", label: "פרטים" },
+  { id: "cd-brand", label: "מותג" },
+  { id: "cd-projects", label: "פרויקטים" },
+  { id: "cd-calls", label: "שיחות" },
+];
 
 const genderHe: Record<string, string> = { male: "זכר", female: "נקבה", other: "אחר" };
 
@@ -57,7 +70,7 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, invite } = data;
   const hasBrand =
     !!brand?.logo_url ||
     !!brand?.business_name ||
@@ -101,6 +114,15 @@ export default function ClientDetail() {
                 </a>
               </Button>
             )}
+            {phone && (
+              <CopyButton
+                content={phone}
+                variant="secondary"
+                size="icon"
+                toastMessage="הטלפון הועתק"
+                title="העתקת טלפון"
+              />
+            )}
             <Button variant="secondary" size="icon" asChild aria-label="מייל">
               <a
                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(profile.email)}`}
@@ -110,6 +132,13 @@ export default function ClientDetail() {
                 <Mail className="size-4" />
               </a>
             </Button>
+            <CopyButton
+              content={profile.email}
+              variant="secondary"
+              size="icon"
+              toastMessage="האימייל הועתק"
+              title="העתקת אימייל"
+            />
           </div>
         }
       />
@@ -131,15 +160,18 @@ export default function ClientDetail() {
         </Card>
       </div>
 
+      <SectionNav sections={CLIENT_SECTIONS} />
+
       {/* Contact + CRM */}
-      <Card className="space-y-3 p-5">
+      <Card id="cd-details" className="scroll-mt-20 space-y-3 p-5">
         <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
         <dl className="grid gap-3 sm:grid-cols-2">
-          <Field label="אימייל" value={profile.email} mono />
-          <Field label="טלפון" value={phone || "-"} mono />
+          <Field label="אימייל" value={profile.email} mono copyable />
+          <Field label="טלפון" value={phone || "-"} mono copyable />
           <Field label="מין" value={note?.gender ? genderHe[note.gender] : "-"} />
           <Field label="תפקיד בחברה" value={note?.role_in_company || "-"} />
         </dl>
+        <InviteStatus email={profile.email} invite={invite} clientId={id} />
         {note?.content && (
           <div>
             <p className="text-sm font-medium text-foreground">מידע אישי</p>
@@ -149,7 +181,7 @@ export default function ClientDetail() {
       </Card>
 
       {/* Brand identity */}
-      <Card className="space-y-4 p-5">
+      <Card id="cd-brand" className="scroll-mt-20 space-y-4 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
             <Palette className="size-5 text-brand-cyan-base" />
@@ -197,7 +229,7 @@ export default function ClientDetail() {
       </Card>
 
       {/* Projects */}
-      <div>
+      <div id="cd-projects" className="scroll-mt-20">
         <h2 className="mb-3 font-heading text-lg font-bold text-foreground">הפרויקטים שלו</h2>
         {projects.length === 0 ? (
           <EmptyState icon={FolderKanban} title="אין עדיין פרויקטים" />
@@ -215,7 +247,7 @@ export default function ClientDetail() {
       </div>
 
       {/* Call log */}
-      <Card className="space-y-3 p-5">
+      <Card id="cd-calls" className="scroll-mt-20 space-y-3 p-5">
         <h2 className="font-heading text-lg font-semibold text-foreground">סיכומי שיחות</h2>
         {calls.length === 0 ? (
           <p className="text-sm text-muted-foreground">אין עדיין סיכומי שיחות. אפשר להוסיף דרך עריכת הלקוח.</p>
@@ -236,12 +268,80 @@ export default function ClientDetail() {
   );
 }
 
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InviteStatus({
+  email,
+  invite,
+  clientId,
+}: {
+  email: string;
+  invite: ClientDetailData["invite"];
+  clientId: string | undefined;
+}) {
+  const qc = useQueryClient();
+  const [sending, setSending] = useState(false);
+
+  async function resend() {
+    setSending(true);
+    const r = await sendInvite(email);
+    setSending(false);
+    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
+    else toastError("שליחת ההזמנה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["client-detail", clientId] });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-field px-3 py-2">
+      <div className="text-sm">
+        <span className="text-muted-foreground">הזמנת כניסה ל-Orion: </span>
+        {invite?.invite_sent_at ? (
+          <span className="font-medium text-brand-green-base">
+            ✓ נשלחה ב-{new Date(invite.invite_sent_at).toLocaleDateString("he-IL")}
+            {invite.invite_send_count > 1 ? ` · ${invite.invite_send_count} שליחות` : ""}
+          </span>
+        ) : (
+          <span className="text-foreground">טרם נשלחה</span>
+        )}
+      </div>
+      <Button variant="secondary" size="sm" disabled={sending} onClick={resend}>
+        <Mail className="size-4" />
+        {invite?.invite_sent_at ? "שלח שוב" : "שלח הזמנה"}
+      </Button>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  mono,
+  copyable,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  copyable?: boolean;
+}) {
+  const canCopy = copyable && value && value !== "-";
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={mono ? "font-mono-code text-sm text-foreground" : "text-sm text-foreground"}>
-        {value}
+      <dd
+        className={
+          "flex items-center gap-1 " +
+          (mono ? "font-mono-code text-sm text-foreground" : "text-sm text-foreground")
+        }
+      >
+        <span className="min-w-0 truncate">{value}</span>
+        {canCopy && (
+          <CopyButton
+            content={value}
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+            toastMessage={`${label} הועתק`}
+            title={`העתקת ${label}`}
+          />
+        )}
       </dd>
     </div>
   );

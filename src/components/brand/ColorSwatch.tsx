@@ -1,4 +1,5 @@
 import type { BrandColor, BrandColorRole } from "@/types/database";
+import { CopyButton } from "@/components/ui/copy-button";
 
 const roleHe: Record<BrandColorRole, string> = {
   primary: "צבע ראשי",
@@ -21,9 +22,19 @@ export function ColorSwatch({ color }: { color: BrandColor }) {
       {label && (
         <span className="text-xs font-medium text-foreground">{label}</span>
       )}
-      <span className="font-mono-code text-[11px] uppercase text-muted-foreground">
-        {color.hex_value}
-      </span>
+      <div className="flex items-center gap-1">
+        <span className="font-mono-code text-[11px] uppercase text-muted-foreground">
+          {color.hex_value}
+        </span>
+        <CopyButton
+          content={color.hex_value}
+          variant="ghost"
+          size="icon"
+          className="size-6 text-muted-foreground hover:text-foreground"
+          toastMessage={`הקוד ${color.hex_value.toUpperCase()} הועתק`}
+          title="העתקת קוד הצבע"
+        />
+      </div>
     </div>
   );
 }

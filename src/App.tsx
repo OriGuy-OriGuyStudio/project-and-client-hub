@@ -32,6 +32,7 @@ const Clients = lazy(() => import("@/pages/admin/Clients"));
 const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
 const Projects = lazy(() => import("@/pages/admin/Projects"));
 const Partners = lazy(() => import("@/pages/admin/Partners"));
+const PartnerDetail = lazy(() => import("@/pages/admin/PartnerDetail"));
 const Referrals = lazy(() => import("@/pages/admin/Referrals"));
 const Feedback = lazy(() => import("@/pages/admin/Feedback"));
 const Settings = lazy(() => import("@/pages/admin/Settings"));
@@ -90,6 +91,7 @@ function App() {
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/projects" element={<Projects />} />
                   <Route path="/admin/partners" element={<Partners />} />
+                  <Route path="/admin/partners/:id" element={<PartnerDetail />} />
                   <Route path="/admin/referrals" element={<Referrals />} />
                   <Route path="/admin/feedback" element={<Feedback />} />
                   <Route path="/admin/settings" element={<Settings />} />

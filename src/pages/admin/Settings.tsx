@@ -9,6 +9,8 @@ import {
   ShieldAlert,
   Trash2,
   MailWarning,
+  MailPlus,
+  Send,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -22,7 +24,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
+import { sendTestEmail } from "@/lib/invite";
+import { SectionNav, type NavSection } from "@/components/layout/SectionNav";
 import { clampText } from "@/lib/sanitize";
+
+const SETTINGS_SECTIONS: NavSection[] = [
+  { id: "set-studio", label: "פרטי הסטודיו" },
+  { id: "set-templates", label: "תבניות שלבים" },
+  { id: "set-resources", label: "חומרי שותפים" },
+  { id: "set-welcome", label: "מייל ברוכים הבאים" },
+  { id: "set-warranty", label: "מייל אחריות" },
+];
 import type {
   PartnerResource,
   StageTemplate,
@@ -55,10 +67,12 @@ export default function Settings() {
         title="הגדרות"
         subtitle="פרטי הסטודיו, תבניות העבודה וחומרי השותפים - במקום אחד."
       />
-      <StudioDetailsSection />
-      <StageTemplatesSection />
-      <PartnerResourcesSection />
-      <WarrantyEmailSection />
+      <SectionNav sections={SETTINGS_SECTIONS} />
+      <div id="set-studio" className="scroll-mt-20"><StudioDetailsSection /></div>
+      <div id="set-templates" className="scroll-mt-20"><StageTemplatesSection /></div>
+      <div id="set-resources" className="scroll-mt-20"><PartnerResourcesSection /></div>
+      <div id="set-welcome" className="scroll-mt-20"><WelcomeEmailSection /></div>
+      <div id="set-warranty" className="scroll-mt-20"><WarrantyEmailSection /></div>
     </div>
   );
 }
@@ -606,6 +620,119 @@ function ResourceEditor({ resource }: { resource: PartnerResource }) {
   );
 }
 
+/* -------------------------- Email templates ------------------------------- */
+
+/** Sends a preview of the template to the admin's own inbox. */
+function TestEmailButton({ template }: { template: "welcome" | "warranty" }) {
+  const [testing, setTesting] = useState(false);
+  async function send() {
+    setTesting(true);
+    const r = await sendTestEmail(template);
+    setTesting(false);
+    if (r.ok) toast({ title: `נשלח מייל בדיקה ל-${r.to ?? "תיבה שלך"} ✓`, variant: "success" });
+    else toastError("שליחת מייל הבדיקה נכשלה.");
+  }
+  return (
+    <Button variant="secondary" onClick={send} disabled={testing}>
+      <Send className="size-4" />
+      {testing ? "שולח…" : "שלח מייל בדיקה אליי"}
+    </Button>
+  );
+}
+
+function WelcomeEmailSection() {
+  const qc = useQueryClient();
+  const { data: settings, isLoading } = useStudioSettings();
+  const [saving, setSaving] = useState(false);
+  const [seeded, setSeeded] = useState(false);
+  const [form, setForm] = useState({ subject: "", body: "", portal: "" });
+
+  if (settings && !seeded) {
+    setForm({
+      subject: settings.welcome_email_subject ?? "",
+      body: settings.welcome_email_body ?? "",
+      portal: settings.portal_url ?? "",
+    });
+    setSeeded(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase
+      .from("studio_settings")
+      .update({
+        welcome_email_subject: clampText(form.subject.trim(), 200) || null,
+        welcome_email_body: clampText(form.body.trim(), 4000) || null,
+        portal_url: clampText(form.portal.trim(), 300) || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", true);
+    setSaving(false);
+    if (error) return toastError("שמירת התבנית נכשלה.");
+    toast({ title: "מייל הברוכים הבאים נשמר", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["studio-settings"] });
+  }
+
+  if (isLoading) return <Skeleton className="h-56 w-full rounded-2xl" />;
+
+  return (
+    <Card className="p-5">
+      <SectionHeader
+        icon={MailPlus}
+        title="מייל ברוכים הבאים (Orion)"
+        hint="נשלח אוטומטית ללקוח/שותף חדש עם קישור כניסה. כפתור 'כניסה ל-Orion' מתווסף אוטומטית."
+      />
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="wl-subj">נושא המייל</Label>
+          <Input
+            id="wl-subj"
+            value={form.subject}
+            maxLength={200}
+            onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="wl-body">גוף המייל</Label>
+          <Textarea
+            id="wl-body"
+            value={form.body}
+            maxLength={4000}
+            rows={7}
+            onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+          />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            טוקנים אישיים: <code className="font-mono-code text-foreground">{"{שם}"}</code> מוחלף בשם.
+            לניסוח לפי מין כתוב <code className="font-mono-code text-foreground">זכר|נקבה</code> (למשל{" "}
+            <code className="font-mono-code text-foreground">שמח|שמחה</code>).
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="wl-portal">כתובת הפורטל (לקישור הכניסה)</Label>
+          <Input
+            id="wl-portal"
+            dir="ltr"
+            value={form.portal}
+            maxLength={300}
+            placeholder="https://orion.origuystudio.com"
+            onChange={(e) => setForm((f) => ({ ...f, portal: e.target.value }))}
+          />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            לקוחות מקבלים קישור ל-<code className="font-mono-code text-foreground">/login</code> ושותפים
+            ל-<code className="font-mono-code text-foreground">/partner-portal/login</code>.
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-between gap-2">
+        <TestEmailButton template="welcome" />
+        <Button onClick={save} disabled={saving}>
+          {saving ? "שומר…" : "שמירה"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 /* -------------------------- Warranty email -------------------------------- */
 
 function WarrantyEmailSection() {
@@ -674,7 +801,8 @@ function WarrantyEmailSection() {
           </p>
         </div>
       </div>
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap justify-between gap-2">
+        <TestEmailButton template="warranty" />
         <Button onClick={save} disabled={saving}>
           {saving ? "שומר…" : "שמירה"}
         </Button>

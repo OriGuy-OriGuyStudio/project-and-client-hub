@@ -42,7 +42,7 @@ export default function Login() {
   return (
     <div
       ref={rootRef}
-      className="relative isolate flex h-screen items-center justify-center overflow-hidden px-6"
+      className="relative isolate flex min-h-screen flex-col overflow-hidden px-6"
     >
       <div className="absolute left-4 top-4 z-20">
         <ThemeToggle />
@@ -52,7 +52,7 @@ export default function Login() {
       <DotsGrid className="-z-10" />
       <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/10 blur-[120px]" />
 
-      <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 py-6 text-center sm:gap-8 sm:py-12">
         <div data-anim="mark" className="flex flex-col items-center gap-4">
           <img
             src="/brand/logo-mark.svg"
@@ -112,9 +112,10 @@ export default function Login() {
         </p>
       </div>
 
-      <DiscoButton className="absolute bottom-16 left-1/2 z-20 -translate-x-1/2 sm:bottom-20" />
-
-      <Footer className="absolute inset-x-0 bottom-0 z-20 justify-center border-t-0 bg-transparent text-[11px] sm:justify-between" />
+      <div className="relative z-20 mt-4 flex flex-col items-center gap-3 sm:mt-6 sm:gap-4">
+        <DiscoButton />
+        <Footer className="w-full justify-center border-t-0 bg-transparent text-[11px] sm:justify-between" />
+      </div>
     </div>
   );
 }

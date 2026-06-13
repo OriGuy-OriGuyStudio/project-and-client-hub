@@ -608,3 +608,52 @@
   animation: warp-shake 0.32s infinite;
   will-change: transform;
 }
+
+/* Heavier takeoff/re-entry rumble — bigger amplitude than .warp-shake. */
+@keyframes warp-shake-strong {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  10% { transform: translate3d(-5px, 3px, 0) rotate(-0.5deg); }
+  20% { transform: translate3d(6px, -4px, 0) rotate(0.5deg); }
+  30% { transform: translate3d(-7px, 4px, 0) rotate(-0.4deg); }
+  40% { transform: translate3d(7px, 3px, 0) rotate(0.5deg); }
+  50% { transform: translate3d(-5px, -5px, 0) rotate(-0.5deg); }
+  60% { transform: translate3d(6px, 5px, 0) rotate(0.4deg); }
+  70% { transform: translate3d(-7px, -3px, 0) rotate(-0.5deg); }
+  80% { transform: translate3d(7px, -4px, 0) rotate(0.5deg); }
+  90% { transform: translate3d(-3px, 5px, 0) rotate(-0.3deg); }
+}
+.warp-shake-strong {
+  animation: warp-shake-strong 0.26s infinite;
+  will-change: transform;
+}
+
+/* Slow spin of the equirectangular earth texture wrapped on the globe sphere. */
+@keyframes earthRotate {
+  0% { background-position: 0 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Weightless drift for the warp line — as if floating in zero-g. Applied to an
+   inner wrapper so it doesn't fight the GSAP entrance transform on the parent.
+   More pronounced: a clear bob + sway + gentle breathing scale. */
+@keyframes warp-float {
+  0%   { transform: translateY(0) translateX(0) rotate(-1.2deg) scale(1); }
+  25%  { transform: translateY(-22px) translateX(8px) rotate(0.8deg) scale(1.025); }
+  50%  { transform: translateY(-6px) translateX(-8px) rotate(1.2deg) scale(1); }
+  75%  { transform: translateY(-26px) translateX(6px) rotate(-0.6deg) scale(1.03); }
+  100% { transform: translateY(0) translateX(0) rotate(-1.2deg) scale(1); }
+}
+.warp-float {
+  animation: warp-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Brief ring pulse on a card the user just navigated to via the section nav. */
+@keyframes section-flash {
+  0% { box-shadow: 0 0 0 0 rgba(180, 214, 112, 0); }
+  15% { box-shadow: 0 0 0 3px rgba(180, 214, 112, 0.6); }
+  100% { box-shadow: 0 0 0 0 rgba(180, 214, 112, 0); }
+}
+.section-flash {
+  animation: section-flash 1.5s ease-out;
+}

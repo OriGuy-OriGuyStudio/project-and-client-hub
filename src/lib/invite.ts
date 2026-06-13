@@ -1,0 +1,45 @@
+import { supabase } from "@/lib/supabase";
+
+export interface InviteResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Trigger the branded "ברוכים הבאים ל-Orion" invitation email for a whitelisted
+ * client/partner (the `send-invite` Edge Function sends it via Gmail and stamps
+ * `allowed_emails.invite_sent_at`). The caller must be a signed-in admin — the
+ * function re-checks the role. Never throws: returns `{ ok, error }` so callers
+ * can toast either outcome without blocking the create flow.
+ */
+export async function sendInvite(email: string): Promise<InviteResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-invite", {
+      body: { email },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Send a preview of an email template to the signed-in admin's own inbox, so they
+ * can check how it looks. `to` (the admin's email) is returned on success.
+ */
+export async function sendTestEmail(
+  template: "welcome" | "warranty"
+): Promise<InviteResult & { to?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-test-email", {
+      body: { template },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };
+    return { ok: true, to: data?.to };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

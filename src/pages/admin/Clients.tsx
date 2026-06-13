@@ -17,6 +17,8 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
+import { sendInvite } from "@/lib/invite";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +58,7 @@ type ClientItem = {
   business_name: string | null;
   phone: string | null;
   enrolled: boolean; // approved into the referral program
+  inviteSentAt: string | null; // last welcome-email send (pending invitees)
 };
 
 export default function Clients() {
@@ -104,6 +107,7 @@ export default function Clients() {
                     business_name: c.business_name,
                     phone: c.phone,
                     enrolled: c.enrolled,
+                    inviteSentAt: null,
                   }}
                   icon={Building2}
                   iconClass="bg-primary/15 text-primary"
@@ -137,6 +141,7 @@ export default function Clients() {
                     business_name: c.business_name,
                     phone: null,
                     enrolled: false,
+                    inviteSentAt: c.invite_sent_at,
                   }}
                   icon={Clock}
                   iconClass="bg-muted text-muted-foreground"
@@ -177,6 +182,18 @@ function ClientRow({
   onEdit: (i: ClientItem) => void;
   onDelete: (i: ClientItem) => void;
 }) {
+  const qc = useQueryClient();
+  const [resending, setResending] = useState(false);
+
+  async function resendInvite() {
+    setResending(true);
+    const r = await sendInvite(item.email);
+    setResending(false);
+    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
+    else toastError("שליחת ההזמנה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["clients"] });
+  }
+
   return (
     <Card className="flex items-center justify-between gap-3 p-4">
       <div className="flex min-w-0 items-center gap-3">
@@ -187,13 +204,44 @@ function ClientRow({
           <p className="truncate font-medium text-foreground">
             {item.business_name || item.full_name || "ללא שם"}
           </p>
-          <p className="truncate font-mono-code text-xs text-muted-foreground">
-            {item.email}
+          <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+            <span className="truncate">{item.email}</span>
+            <CopyButton
+              content={item.email}
+              variant="ghost"
+              size="icon"
+              className="size-5 shrink-0 hover:text-foreground"
+              toastMessage="האימייל הועתק"
+              title="העתקת אימייל"
+            />
           </p>
+          {item.kind === "pending" && (
+            <p className="mt-0.5 text-[11px]">
+              {item.inviteSentAt ? (
+                <span className="text-brand-green-base">
+                  ✓ הזמנה נשלחה · {new Date(item.inviteSentAt).toLocaleDateString("he-IL")}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">טרם נשלחה הזמנה</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {badge}
+        {item.kind === "pending" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
+            title={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
+            disabled={resending}
+            onClick={resendInvite}
+          >
+            <Mail className="size-4" />
+          </Button>
+        )}
         {item.kind === "active" && item.id && (
           <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
             <Link to={`/admin/clients/${item.id}`}>
@@ -651,7 +699,18 @@ function AddClientDialog() {
       );
       return;
     }
-    toast({ title: "הלקוח נוסף", variant: "success" });
+
+    // Auto-send the "ברוכים הבאים ל-Orion" invitation (non-blocking).
+    const invite = await sendInvite(email);
+    if (invite.ok) {
+      toast({ title: "הלקוח נוסף וההזמנה נשלחה למייל ✓", variant: "success" });
+    } else {
+      toast({
+        title: "הלקוח נוסף — שליחת ההזמנה נכשלה",
+        description: "אפשר לשלוח שוב מרשימת הממתינים.",
+        variant: "destructive",
+      });
+    }
     qc.invalidateQueries({ queryKey: ["clients"] });
     setForm({ full_name: "", email: "", business_name: "" });
     setOpen(false);

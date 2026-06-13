@@ -5,7 +5,8 @@ export function Copyright({ className }: { className?: string }) {
   const year = new Date().getFullYear();
   return (
     <span className={cn(className)}>
-      © {year} סטודיו אורי גיא · כל הזכויות שמורות
+      © {year} סטודיו אורי גיא
+      <span className="hidden sm:inline"> · כל הזכויות שמורות</span>
     </span>
   );
 }
