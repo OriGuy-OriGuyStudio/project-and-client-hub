@@ -29,26 +29,36 @@ export function SectionNav({
   useEffect(() => {
     const onScroll = () => {
       if (Date.now() < lockUntil.current) return; // a click is driving the highlight
-      // At the very bottom of the page the last sections can't reach the top, so
-      // pin the active chip to the last section once we've bottomed out.
+      const line = NAV_OFFSET + 12;
       const atBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      if (atBottom) {
-        setActive(sections[sections.length - 1]?.id ?? "");
-        return;
-      }
-      // Otherwise: the section whose top is nearest the nav line from above.
-      // Picking by position — not array order — stays correct across columns.
-      const line = NAV_OFFSET + 12;
       let current = sections[0]?.id ?? "";
-      let bestTop = -Infinity;
-      for (const s of sections) {
-        const el = document.getElementById(s.id);
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top <= line && top > bestTop) {
-          bestTop = top;
-          current = s.id;
+
+      if (atBottom) {
+        // Bottom sections can't reach the line, so pick the one whose top is
+        // CLOSEST to the line (the one you're actually looking at) — not the last.
+        let best = Infinity;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (!el) continue;
+          const dist = Math.abs(el.getBoundingClientRect().top - line);
+          if (dist < best) {
+            best = dist;
+            current = s.id;
+          }
+        }
+      } else {
+        // The section whose top is nearest the line from above. By position — not
+        // array order — so it stays correct across the parallel columns.
+        let bestTop = -Infinity;
+        for (const s of sections) {
+          const el = document.getElementById(s.id);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (top <= line && top > bestTop) {
+            bestTop = top;
+            current = s.id;
+          }
         }
       }
       setActive(current);

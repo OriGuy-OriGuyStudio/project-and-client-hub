@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WarrantyBadge } from "@/components/warranty/WarrantyCountdown";
 import { MeshBanner } from "@/components/ui/mesh-banner";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toastError } from "@/hooks/use-toast";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
@@ -69,11 +70,17 @@ export function ProjectHero({
       {/* Banner — an animated mesh gradient drawn from the client's brand palette. */}
       <MeshBanner colors={meshColors(colors)} className="h-[clamp(120px,22vh,200px)] w-full" />
 
-      <div className="px-5 pb-5">
+      {/* Sits above the banner's WebGL canvas (positioned), so the logo isn't clipped. */}
+      <div className="relative z-10 px-5 pb-5">
         {/* Logo circle straddles the banner edge (half in, half out); the name sits
             on the card beside its lower half. */}
         <div className="flex items-end gap-4">
-          <span className="-mt-14 flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card shadow-lift">
+          <span
+            className={cn(
+              "-mt-14 flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 bg-card shadow-lift",
+              brand?.logo_url ? "border-white" : "border-card"
+            )}
+          >
             {brand?.logo_url ? (
               <img src={brand.logo_url} alt="" className="size-full object-cover" />
             ) : (
