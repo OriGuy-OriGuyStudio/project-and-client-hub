@@ -15,6 +15,10 @@ export function Footer({ className }: { className?: string }) {
       )}
     >
       <Copyright />
+      <span className="order-last w-full text-center sm:order-none sm:w-auto">
+        <span className="font-semibold text-foreground/80">Orion</span>{" "}
+        <span className="text-muted-foreground/70">by Studio Ori Guy</span>
+      </span>
       <span className="flex items-center gap-1.5">
         <span className="hidden sm:inline">שעון ישראל</span>
         <LiveClock className="text-foreground/80" />

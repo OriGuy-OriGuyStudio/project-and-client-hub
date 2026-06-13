@@ -113,6 +113,23 @@ function buildHtml(
   </body></html>`;
 }
 
+/**
+ * Apply per-client tokens to the template:
+ *  - `{שם}` / `{name}` → the client's first name (dropped if unknown).
+ *  - `זכר|נקבה` (any `word|word`) → the gender-correct side: left = male/
+ *    default, right = female. Picked from the gender on the client's CRM note.
+ */
+function personalize(
+  body: string,
+  firstName: string,
+  gender: string | null
+): string {
+  const named = body.replace(/ ?\{(?:שם|name)\}/g, firstName ? ` ${firstName}` : "");
+  return named.replace(/([^\s|]+)\|([^\s|]+)/g, (_m, male, female) =>
+    gender === "female" ? female : male
+  );
+}
+
 /** Exchange the long-lived refresh token for a short-lived access token. */
 async function getAccessToken(
   clientId: string,
@@ -216,6 +233,15 @@ Deno.serve(async (req) => {
     (brands ?? []).map((b) => [b.client_id, b.business_name as string | null])
   );
 
+  // Per-client gender (from the admin CRM note) for gendered Hebrew phrasing.
+  const { data: notes } = await supabase
+    .from("admin_client_notes")
+    .select("client_id, gender")
+    .in("client_id", clientIds);
+  const genderMap = new Map(
+    (notes ?? []).map((n) => [n.client_id, n.gender as string | null])
+  );
+
   const { data: settings } = await supabase
     .from("studio_settings")
     .select("studio_name, contact_email, contact_phone, warranty_email_subject, warranty_email_body")
@@ -256,13 +282,15 @@ Deno.serve(async (req) => {
     }
     const endHe = new Date(p.warranty_end_date).toLocaleDateString("he-IL");
     const projectName = brandName.get(p.client_id) || p.title;
+    const firstName = (p.profiles?.full_name || "").trim().split(/\s+/)[0] || "";
+    const personalBody = personalize(bodyText, firstName, genderMap.get(p.client_id) ?? null);
 
     try {
       const res = await sendGmail(
         accessToken,
         to,
         subject,
-        buildHtml(bodyText, projectName, endHe, contact)
+        buildHtml(personalBody, projectName, endHe, contact)
       );
       if (!res.ok) {
         const t = await res.text();

@@ -667,6 +667,11 @@ function WarrantyEmailSection() {
             rows={6}
             onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
           />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            טוקנים אישיים: <code className="font-mono-code text-foreground">{"{שם}"}</code> מוחלף בשם הלקוח.
+            לניסוח לפי מין כתוב <code className="font-mono-code text-foreground">זכר|נקבה</code> (למשל{" "}
+            <code className="font-mono-code text-foreground">תרצה|תרצי</code>) - המערכת תבחר לפי המין שהוגדר בכרטיס הלקוח.
+          </p>
         </div>
       </div>
       <div className="mt-4 flex justify-end">
