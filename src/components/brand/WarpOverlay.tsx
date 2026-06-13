@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import gsap from "gsap";
 import { Starfield } from "@/components/ui/starfield-1";
 import { Button } from "@/components/ui/button";
 import { onWarp } from "@/lib/warp";
@@ -8,27 +9,31 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
-const SHAKE_LEAD = 1000; // rumble before the jump
-const WARP_MS = 5000; // time among the stars
-const FADE_MS = 1000; // landing fade-out
+const FADE_IN = 1600; // stars fade/approach in
+const SHAKE_MS = 2500; // takeoff rumble, then a smooth cruise
+const TEXT_DELAY = 1.9; // seconds, GSAP text entrance
+const LAND_START = 8400; // begin landing fade
+const FADE_OUT = 1600;
+const END = 10000; // total ~10s
 
 type RewardInfo = { coins: number; enrolled: boolean };
 
 /**
- * The "warp" easter egg. Clicking the Orion footer wordmark first rattles the
- * whole app like a cockpit, then SUDDENLY drops a calm white hyperspace
- * starfield over everything, then fades out ("lands") back to normal. A client
- * who discovers it earns 5 credits + the curious badge (once) — shown in a popup
- * they confirm, which sets off fireworks. Skipped for reduced-motion users.
+ * The "warp" easter egg. Clicking the Orion footer wordmark rumbles the app like
+ * a cockpit on takeoff, then a calm white starfield FADES in (as if approaching
+ * the stars) for ~10s with a GSAP line, then fades back out ("lands"). A client
+ * who discovers it earns 5 credits + the curious badge (once) — a popup they
+ * confirm, which sets off fireworks. Skipped for reduced-motion users.
  */
 export function WarpOverlay() {
   const reduced = usePrefersReducedMotion();
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [active, setActive] = useState(false);
-  const [stars, setStars] = useState(false);
+  const [entered, setEntered] = useState(false);
   const [landing, setLanding] = useState(false);
   const [reward, setReward] = useState<RewardInfo | null>(null);
+  const textRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return onWarp(() => {
@@ -44,20 +49,42 @@ export function WarpOverlay() {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const tStars = window.setTimeout(() => setStars(true), SHAKE_LEAD);
-    const tLand = window.setTimeout(() => {
-      setLanding(true);
-      root?.classList.remove("warp-shake"); // calm the cockpit for the landing
-    }, SHAKE_LEAD + WARP_MS);
+    const raf = requestAnimationFrame(() => setEntered(true)); // trigger fade-in
+
+    const ctx = gsap.context(() => {
+      if (textRef.current) {
+        gsap.fromTo(
+          textRef.current,
+          { opacity: 0, y: 34, scale: 0.92, filter: "blur(10px)" },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            filter: "blur(0px)",
+            duration: 1.6,
+            delay: TEXT_DELAY,
+            ease: "power3.out",
+          }
+        );
+      }
+    });
+
+    const tShakeOff = window.setTimeout(
+      () => root?.classList.remove("warp-shake"),
+      SHAKE_MS
+    );
+    const tLand = window.setTimeout(() => setLanding(true), LAND_START);
     const tEnd = window.setTimeout(() => {
       setActive(false);
-      setStars(false);
+      setEntered(false);
       setLanding(false);
       void claimReward();
-    }, SHAKE_LEAD + WARP_MS + FADE_MS);
+    }, END);
 
     return () => {
-      window.clearTimeout(tStars);
+      cancelAnimationFrame(raf);
+      ctx.revert();
+      window.clearTimeout(tShakeOff);
       window.clearTimeout(tLand);
       window.clearTimeout(tEnd);
       root?.classList.remove("warp-shake");
@@ -82,21 +109,32 @@ export function WarpOverlay() {
 
   return (
     <>
-      {stars && (
+      {active && (
         <div
           aria-hidden
-          className="fixed inset-0 z-[10001] transition-opacity ease-out"
-          style={{ transitionDuration: `${FADE_MS}ms`, opacity: landing ? 0 : 1 }}
+          className="fixed inset-0 z-[10001] flex items-center justify-center"
+          style={{
+            opacity: entered && !landing ? 1 : 0,
+            transitionProperty: "opacity",
+            transitionTimingFunction: "ease",
+            transitionDuration: `${landing ? FADE_OUT : FADE_IN}ms`,
+          }}
         >
           <Starfield
-            starColor="rgba(255,255,255,0.92)"
-            bgColor="rgba(7,7,11,1)"
-            hyperspace
-            speed={1.4}
-            warpFactor={14}
-            opacity={0.16}
-            quantity={620}
+            starColor="rgba(255,255,255,0.95)"
+            bgColor="rgba(6,6,10,1)"
+            speed={2.4}
+            quantity={560}
           />
+          <div
+            ref={textRef}
+            className="pointer-events-none relative z-10 max-w-3xl px-6 text-center font-heading text-3xl font-black leading-tight text-white sm:text-5xl"
+            style={{ opacity: 0, textShadow: "0 0 30px rgba(180,214,112,0.45)" }}
+          >
+            שברתם את המחסום,
+            <br />
+            גם השמים הם לא הגבול
+          </div>
         </div>
       )}
 

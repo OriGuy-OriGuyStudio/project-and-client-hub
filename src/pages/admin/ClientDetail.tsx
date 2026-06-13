@@ -57,7 +57,7 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious } = data;
   const hasBrand =
     !!brand?.logo_url ||
     !!brand?.business_name ||
@@ -74,7 +74,16 @@ export default function ClientDetail() {
       </Button>
 
       <PageHeader
-        title={brand?.business_name || profile.full_name || "לקוח"}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {brand?.business_name || profile.full_name || "לקוח"}
+            {curious && (
+              <Badge variant="success" title="גילה את ה-Easter Egg והרוויח 5 מטבעות">
+                🔭 סקרן
+              </Badge>
+            )}
+          </span>
+        }
         subtitle={profile.full_name || undefined}
         actions={
           <div className="flex items-center gap-1">

@@ -19,6 +19,7 @@ export interface ClientDetailData {
   referralCount: number;
   credits: number;
   enrolled: boolean;
+  curious: boolean;
 }
 
 /** Everything the admin needs to see about one client on their detail page. */
@@ -38,6 +39,7 @@ export function useClientDetail(clientId: string | undefined) {
         { count: referralCount },
         { data: credits },
         { data: enrollment },
+        { data: curious },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
@@ -48,6 +50,7 @@ export function useClientDetail(clientId: string | undefined) {
         supabase.from("referrals").select("*", { count: "exact", head: true }).eq("referrer_id", id),
         supabase.rpc("get_client_credits", { p_client_id: id }),
         supabase.from("partner_enrollments").select("client_id").eq("client_id", id).maybeSingle(),
+        supabase.from("easter_egg_claims").select("client_id").eq("client_id", id).maybeSingle(),
       ]);
 
       return {
@@ -60,6 +63,7 @@ export function useClientDetail(clientId: string | undefined) {
         referralCount: referralCount ?? 0,
         credits: credits ?? 0,
         enrolled: !!enrollment,
+        curious: !!curious,
       };
     },
   });
