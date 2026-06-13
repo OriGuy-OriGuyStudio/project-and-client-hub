@@ -186,11 +186,12 @@ Deno.serve(async (req) => {
     accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
   } catch (e) {
     console.error("token error", String(e));
-    return json({ error: "gmail auth failed" }, 500);
+    return json({ error: "gmail auth failed", detail: String(e) }, 500);
   }
 
   let sent = 0;
   let failed = 0;
+  const errors: string[] = [];
 
   for (const p of projects) {
     const to = p.profiles?.email;
@@ -209,7 +210,9 @@ Deno.serve(async (req) => {
         buildHtml(bodyText, projectName, endHe)
       );
       if (!res.ok) {
-        console.error("gmail send failed", p.id, res.status, await res.text());
+        const t = await res.text();
+        console.error("gmail send failed", p.id, res.status, t);
+        errors.push(`${res.status}: ${t}`);
         failed++;
         continue;
       }
@@ -234,9 +237,10 @@ Deno.serve(async (req) => {
       sent++;
     } catch (e) {
       console.error("send error", p.id, String(e));
+      errors.push(String(e));
       failed++;
     }
   }
 
-  return json({ processed: projects.length, sent, failed });
+  return json({ processed: projects.length, sent, failed, errors });
 });
