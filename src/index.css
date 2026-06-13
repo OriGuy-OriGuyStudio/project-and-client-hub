@@ -648,12 +648,16 @@
   will-change: transform;
 }
 
-/* Brief ring pulse on a card the user just navigated to via the section nav. */
+/* Ring pulse on the card the user just navigated to via the section nav. Rounded
+   to match the cards, and it holds before fading so it's clearly visible after the
+   smooth-scroll settles. */
 @keyframes section-flash {
   0% { box-shadow: 0 0 0 0 rgba(180, 214, 112, 0); }
-  15% { box-shadow: 0 0 0 3px rgba(180, 214, 112, 0.6); }
+  12% { box-shadow: 0 0 0 3px rgba(180, 214, 112, 0.7); }
+  70% { box-shadow: 0 0 0 3px rgba(180, 214, 112, 0.55); }
   100% { box-shadow: 0 0 0 0 rgba(180, 214, 112, 0); }
 }
 .section-flash {
-  animation: section-flash 1.5s ease-out;
+  animation: section-flash 2.6s ease-out;
+  border-radius: 1rem;
 }

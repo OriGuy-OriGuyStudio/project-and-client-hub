@@ -139,7 +139,7 @@ export default function ProjectDetail() {
   const content = (
     <div ref={containerRef} className="space-y-6">
       <div data-reveal>
-        <ProjectHero project={project} brand={brand} isAdmin={isAdmin} />
+        <ProjectHero project={project} brand={brand} colors={colors} isAdmin={isAdmin} />
         {isAdmin && (
           <div className="mt-3 flex justify-end">
             <NotifyClientButton />

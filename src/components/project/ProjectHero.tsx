@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WarrantyBadge } from "@/components/warranty/WarrantyCountdown";
+import { MeshBanner } from "@/components/ui/mesh-banner";
 import { supabase } from "@/lib/supabase";
 import { toastError } from "@/hooks/use-toast";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
-import type { ClientBrand, Project } from "@/types/database";
+import type { BrandColor, ClientBrand, Project } from "@/types/database";
 
 const links = [
   { key: "figma_url" as const, label: "עיצוב Figma", icon: Figma },
@@ -16,13 +17,23 @@ const links = [
   { key: "live_url" as const, label: "אתר Live", icon: Globe },
 ];
 
+// Brand-themed mesh (dark base → brand cyan/greens) when the client has no palette.
+const DEFAULT_MESH = ["#16151c", "#1d9e75", "#77becf", "#B4D670", "#91be37"];
+
+function meshColors(colors: BrandColor[]): string[] {
+  const hex = colors.map((c) => c.hex_value).filter(Boolean);
+  return hex.length >= 2 ? hex : DEFAULT_MESH;
+}
+
 export function ProjectHero({
   project,
   brand,
+  colors = [],
   isAdmin,
 }: {
   project: Project;
   brand: ClientBrand | null;
+  colors?: BrandColor[];
   isAdmin: boolean;
 }) {
   const qc = useQueryClient();
@@ -54,25 +65,32 @@ export function ProjectHero({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <span className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-brand-purple-base/30">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      {/* Banner — an animated mesh gradient drawn from the client's brand palette. */}
+      <MeshBanner colors={meshColors(colors)} className="h-[clamp(120px,22vh,200px)] w-full" />
+
+      <div className="px-5 pb-5">
+        {/* Logo circle straddles the banner edge (half in, half out); the name sits
+            on the card beside its lower half. */}
+        <div className="flex items-end gap-4">
+          <span className="-mt-14 flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-card bg-card shadow-lift">
             {brand?.logo_url ? (
               <img src={brand.logo_url} alt="" className="size-full object-cover" />
             ) : (
-              <Building2 className="size-6 text-brand-cyan-base" />
+              <Building2 className="size-9 text-brand-cyan-base" />
             )}
           </span>
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-foreground">
+
+          <div className="min-w-0 pb-0.5">
+            <h1 className="truncate font-heading text-xl font-bold text-foreground sm:text-2xl">
               {brand?.business_name || project.title}
             </h1>
-            <p className="text-sm text-muted-foreground">{project.title}</p>
+            <p className="truncate text-sm text-muted-foreground">{project.title}</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Status row — on the card, below the name. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <WarrantyBadge project={project} />
           <Badge variant={projectStatusVariant[project.status]}>
             {projectStatusHe[project.status]}
@@ -81,64 +99,66 @@ export function ProjectHero({
             עודכן: {new Date(project.updated_at).toLocaleDateString("he-IL")}
           </span>
         </div>
-      </div>
 
-      {/* Quick links */}
-      {editing ? (
-        <div className="space-y-2 rounded-xl border border-border bg-card p-4">
-          {links.map((l) => (
-            <div key={l.key} className="flex items-center gap-2">
-              <l.icon className="size-4 shrink-0 text-muted-foreground" />
-              <Input
-                dir="ltr"
-                placeholder={l.label}
-                value={draft[l.key]}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, [l.key]: e.target.value }))
-                }
-              />
+        {/* Quick links */}
+        <div className="mt-4">
+          {editing ? (
+            <div className="space-y-2 rounded-xl border border-border bg-background/40 p-4">
+              {links.map((l) => (
+                <div key={l.key} className="flex items-center gap-2">
+                  <l.icon className="size-4 shrink-0 text-muted-foreground" />
+                  <Input
+                    dir="ltr"
+                    placeholder={l.label}
+                    value={draft[l.key]}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, [l.key]: e.target.value }))
+                    }
+                  />
+                </div>
+              ))}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                  ביטול
+                </Button>
+                <Button size="sm" onClick={save} disabled={saving}>
+                  {saving ? "שומר…" : "שמירה"}
+                </Button>
+              </div>
             </div>
-          ))}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-              ביטול
-            </Button>
-            <Button size="sm" onClick={save} disabled={saving}>
-              {saving ? "שומר…" : "שמירה"}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          {links.map((l) => {
-            const url = project[l.key];
-            if (!url) return null;
-            return (
-              <a
-                key={l.key}
-                href={url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40"
-              >
-                <l.icon className="size-4 text-brand-cyan-base" />
-                {l.label}
-                <ExternalLink className="size-3 text-muted-foreground" />
-              </a>
-            );
-          })}
-          {isAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditing(true)}
-              className="text-muted-foreground"
-            >
-              <Pencil className="size-4" /> עריכת קישורים
-            </Button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {links.map((l) => {
+                const url = project[l.key];
+                if (!url) return null;
+                return (
+                  <a
+                    key={l.key}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40"
+                  >
+                    <l.icon className="size-4 text-brand-cyan-base" />
+                    {l.label}
+                    <ExternalLink className="size-3 text-muted-foreground" />
+                  </a>
+                );
+              })}
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditing(true)}
+                  className="text-muted-foreground"
+                >
+                  <Pencil className="size-4" /> עריכת קישורים
+                </Button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

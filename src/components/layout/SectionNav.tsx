@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface NavSection {
@@ -23,13 +23,33 @@ export function SectionNav({
   className?: string;
 }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
+  // While a click-scroll is in flight, the click's choice wins over scroll-spy.
+  const lockUntil = useRef(0);
 
   useEffect(() => {
     const onScroll = () => {
+      if (Date.now() < lockUntil.current) return; // a click is driving the highlight
+      // At the very bottom of the page the last sections can't reach the top, so
+      // pin the active chip to the last section once we've bottomed out.
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      if (atBottom) {
+        setActive(sections[sections.length - 1]?.id ?? "");
+        return;
+      }
+      // Otherwise: the section whose top is nearest the nav line from above.
+      // Picking by position — not array order — stays correct across columns.
+      const line = NAV_OFFSET + 12;
       let current = sections[0]?.id ?? "";
+      let bestTop = -Infinity;
       for (const s of sections) {
         const el = document.getElementById(s.id);
-        if (el && el.getBoundingClientRect().top - NAV_OFFSET - 8 <= 0) current = s.id;
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top <= line && top > bestTop) {
+          bestTop = top;
+          current = s.id;
+        }
       }
       setActive(current);
     };
@@ -43,11 +63,15 @@ export function SectionNav({
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-    setActive(id);
-    el.classList.remove("section-flash");
-    void el.offsetWidth; // restart the animation if re-triggered
-    el.classList.add("section-flash");
-    window.setTimeout(() => el.classList.remove("section-flash"), 1600);
+    setActive(id); // highlight immediately…
+    lockUntil.current = Date.now() + 900; // …and keep it through the smooth-scroll
+    // Flash AFTER the smooth-scroll has settled, so it's still visible on arrival.
+    window.setTimeout(() => {
+      el.classList.remove("section-flash");
+      void el.offsetWidth; // restart the animation if re-triggered
+      el.classList.add("section-flash");
+      window.setTimeout(() => el.classList.remove("section-flash"), 2700);
+    }, 450);
   }
 
   return (

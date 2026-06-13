@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const AI_CHAT_URL = import.meta.env.VITE_AI_CHAT_URL;
+
+// Public/auth screens have no signed-in client — keep the assistant out of them.
+const HIDE_ON = ["/login", "/admin/login", "/partner-portal/login", "/access-denied"];
 
 /**
  * Persistent floating AI assistant. Mounted once at the app root, OUTSIDE the
@@ -14,8 +18,9 @@ const AI_CHAT_URL = import.meta.env.VITE_AI_CHAT_URL;
 export function AIWidget() {
   const [open, setOpen] = useState(false);
   const reduced = usePrefersReducedMotion();
+  const { pathname } = useLocation();
 
-  if (!AI_CHAT_URL) return null;
+  if (!AI_CHAT_URL || HIDE_ON.includes(pathname)) return null;
 
   return (
     <div className="fixed bottom-5 left-5 z-[9999] flex flex-col items-start gap-3">

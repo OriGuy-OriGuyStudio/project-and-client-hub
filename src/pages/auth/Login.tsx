@@ -114,7 +114,7 @@ export default function Login() {
 
       <div className="relative z-20 mt-4 flex flex-col items-center gap-3 sm:mt-6 sm:gap-4">
         <DiscoButton />
-        <Footer className="w-full justify-center border-t-0 bg-transparent text-[11px] sm:justify-between" />
+        <Footer className="w-full justify-center border-t-0 bg-transparent pl-4 text-[11px] sm:justify-between sm:pl-6" />
       </div>
     </div>
   );
