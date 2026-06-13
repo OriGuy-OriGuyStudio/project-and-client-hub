@@ -13,16 +13,21 @@ export const POST_LOGIN_FLAG = "sog-postlogin";
  */
 export function PostLoginLoader() {
   const { status } = useAuth();
-  const [show, setShow] = useState(false);
+  // Show the number/bar loader from the very first paint after a login (the flag
+  // is set in signInWithGoogle), so it covers the auth-resolution spinner — the
+  // user sees ONLY the numbers+bar on first entry, not spinner-then-numbers.
+  const [show, setShow] = useState(
+    () => sessionStorage.getItem(POST_LOGIN_FLAG) === "1"
+  );
 
+  // Consume the flag once so a later plain refresh won't replay it.
   useEffect(() => {
-    if (status === "authenticated" && sessionStorage.getItem(POST_LOGIN_FLAG) === "1") {
-      sessionStorage.removeItem(POST_LOGIN_FLAG);
-      setShow(true);
-    } else if (status === "unauthenticated" || status === "denied") {
-      // Login didn't complete — clear the flag so it can't fire later.
-      sessionStorage.removeItem(POST_LOGIN_FLAG);
-    }
+    sessionStorage.removeItem(POST_LOGIN_FLAG);
+  }, []);
+
+  // If the login didn't actually complete, drop the curtain.
+  useEffect(() => {
+    if (status === "unauthenticated" || status === "denied") setShow(false);
   }, [status]);
 
   // Lock scroll while the curtain is up.

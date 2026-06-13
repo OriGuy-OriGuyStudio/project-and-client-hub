@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { WarpOverlay } from "@/components/brand/WarpOverlay";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -80,6 +81,7 @@ export function AppShell() {
         </main>
         <Footer />
       </div>
+      <WarpOverlay />
     </div>
   );
 }

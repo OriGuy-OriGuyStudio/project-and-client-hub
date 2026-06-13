@@ -1,5 +1,7 @@
+import { Rocket } from "lucide-react";
 import { Copyright } from "@/components/ui/copyright";
 import { LiveClock } from "@/components/ui/live-clock";
+import { requestWarp } from "@/lib/warp";
 import { cn } from "@/lib/utils";
 
 /** App-wide footer: copyright (auto year) on one side, live Israel clock on
@@ -15,10 +17,21 @@ export function Footer({ className }: { className?: string }) {
       )}
     >
       <Copyright />
-      <span className="order-last w-full text-center sm:order-none sm:w-auto">
-        <span className="font-semibold text-foreground/80">Orion</span>{" "}
-        <span className="text-muted-foreground/70">by Studio Ori Guy</span>
-      </span>
+      <button
+        type="button"
+        onClick={() => requestWarp()}
+        title="לחצו להמראה 🚀"
+        aria-label="Orion by Studio Ori Guy"
+        className="group order-last inline-flex w-full cursor-pointer items-center justify-center gap-1.5 text-center transition-colors hover:text-primary sm:order-none sm:w-auto"
+      >
+        <Rocket className="size-3 -translate-y-px opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100 group-hover:text-primary" />
+        <span>
+          <span className="font-semibold text-foreground/80 transition-colors group-hover:text-primary">
+            Orion
+          </span>{" "}
+          <span className="text-muted-foreground/70">by Studio Ori Guy</span>
+        </span>
+      </button>
       <span className="flex items-center gap-1.5">
         <span className="hidden sm:inline">שעון ישראל</span>
         <LiveClock className="text-foreground/80" />

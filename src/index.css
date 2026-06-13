@@ -590,3 +590,21 @@
   box-shadow: 0 10px 30px rgba(180, 214, 112, 0.28);
   opacity: 0.55;
 }
+
+/* "Warp" easter egg — rattle the whole app like a cockpit during hyperspace. */
+@keyframes warp-shake {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  10% { transform: translate3d(-2px, 1px, 0) rotate(-0.25deg); }
+  20% { transform: translate3d(2px, -2px, 0) rotate(0.25deg); }
+  30% { transform: translate3d(-3px, 2px, 0) rotate(-0.15deg); }
+  40% { transform: translate3d(3px, 1px, 0) rotate(0.2deg); }
+  50% { transform: translate3d(-2px, -2px, 0) rotate(-0.2deg); }
+  60% { transform: translate3d(2px, 2px, 0) rotate(0.15deg); }
+  70% { transform: translate3d(-3px, -1px, 0) rotate(-0.25deg); }
+  80% { transform: translate3d(3px, -2px, 0) rotate(0.2deg); }
+  90% { transform: translate3d(-1px, 2px, 0) rotate(-0.1deg); }
+}
+.warp-shake {
+  animation: warp-shake 0.32s infinite;
+  will-change: transform;
+}
