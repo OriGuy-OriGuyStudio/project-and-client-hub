@@ -23,12 +23,15 @@ export function SectionNav({
   className?: string;
 }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
-  // While a click-scroll is in flight, the click's choice wins over scroll-spy.
-  const lockUntil = useRef(0);
+  // After a click we PIN the highlight to the clicked chip and stop the scroll-spy
+  // from overriding it, until the user scrolls on their own (wheel/touch/keys).
+  // This is reliable even when the smooth-scroll is long or the target sits at the
+  // bottom and can't reach the top line.
+  const pinned = useRef(false);
 
   useEffect(() => {
     const onScroll = () => {
-      if (Date.now() < lockUntil.current) return; // a click is driving the highlight
+      if (pinned.current) return; // a click selection is being honoured
       const line = NAV_OFFSET + 12;
       const atBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
@@ -36,7 +39,7 @@ export function SectionNav({
 
       if (atBottom) {
         // Bottom sections can't reach the line, so pick the one whose top is
-        // CLOSEST to the line (the one you're actually looking at) — not the last.
+        // closest to the line (the one you're actually looking at).
         let best = Infinity;
         for (const s of sections) {
           const el = document.getElementById(s.id);
@@ -48,8 +51,8 @@ export function SectionNav({
           }
         }
       } else {
-        // The section whose top is nearest the line from above. By position — not
-        // array order — so it stays correct across the parallel columns.
+        // The section whose top is nearest the line from above — by position, not
+        // array order, so it stays correct across the parallel columns.
         let bestTop = -Infinity;
         for (const s of sections) {
           const el = document.getElementById(s.id);
@@ -63,9 +66,31 @@ export function SectionNav({
       }
       setActive(current);
     };
+
+    // The user taking over scrolling releases the pin so the spy resumes.
+    const release = () => {
+      pinned.current = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"].includes(
+          e.key
+        )
+      )
+        release();
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchmove", release, { passive: true });
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchmove", release);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [sections]);
 
   function go(id: string) {
@@ -74,7 +99,7 @@ export function SectionNav({
     const y = el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
     setActive(id); // highlight immediately…
-    lockUntil.current = Date.now() + 900; // …and keep it through the smooth-scroll
+    pinned.current = true; // …and hold it until the user scrolls themselves
     // Flash AFTER the smooth-scroll has settled, so it's still visible on arrival.
     window.setTimeout(() => {
       el.classList.remove("section-flash");
