@@ -25,15 +25,8 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
 import { sendInvite } from "@/lib/invite";
-import { SectionNav, type NavSection } from "@/components/layout/SectionNav";
+import { SectionNav } from "@/components/layout/SectionNav";
 import { toast, toastError } from "@/hooks/use-toast";
-
-const CLIENT_SECTIONS: NavSection[] = [
-  { id: "cd-details", label: "פרטים" },
-  { id: "cd-brand", label: "מותג" },
-  { id: "cd-projects", label: "פרויקטים" },
-  { id: "cd-calls", label: "שיחות" },
-];
 
 const genderHe: Record<string, string> = { male: "זכר", female: "נקבה", other: "אחר" };
 
@@ -160,10 +153,10 @@ export default function ClientDetail() {
         </Card>
       </div>
 
-      <SectionNav sections={CLIENT_SECTIONS} />
+      <SectionNav />
 
       {/* Contact + CRM */}
-      <Card id="cd-details" className="scroll-mt-20 space-y-3 p-5">
+      <Card id="cd-details" data-section className="scroll-mt-20 space-y-3 p-5">
         <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
         <dl className="grid gap-3 sm:grid-cols-2">
           <Field label="אימייל" value={profile.email} mono copyable />
@@ -181,7 +174,7 @@ export default function ClientDetail() {
       </Card>
 
       {/* Brand identity */}
-      <Card id="cd-brand" className="scroll-mt-20 space-y-4 p-5">
+      <Card id="cd-brand" data-section className="scroll-mt-20 space-y-4 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
             <Palette className="size-5 text-brand-cyan-base" />
@@ -229,7 +222,7 @@ export default function ClientDetail() {
       </Card>
 
       {/* Projects */}
-      <div id="cd-projects" className="scroll-mt-20">
+      <div id="cd-projects" data-section className="scroll-mt-20">
         <h2 className="mb-3 font-heading text-lg font-bold text-foreground">הפרויקטים שלו</h2>
         {projects.length === 0 ? (
           <EmptyState icon={FolderKanban} title="אין עדיין פרויקטים" />
@@ -247,7 +240,7 @@ export default function ClientDetail() {
       </div>
 
       {/* Call log */}
-      <Card id="cd-calls" className="scroll-mt-20 space-y-3 p-5">
+      <Card id="cd-calls" data-section className="scroll-mt-20 space-y-3 p-5">
         <h2 className="font-heading text-lg font-semibold text-foreground">סיכומי שיחות</h2>
         {calls.length === 0 ? (
           <p className="text-sm text-muted-foreground">אין עדיין סיכומי שיחות. אפשר להוסיף דרך עריכת הלקוח.</p>

@@ -1,45 +1,76 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export interface NavSection {
+interface FoundSection {
   id: string;
   label: string;
 }
 
 const NAV_OFFSET = 64; // clearance so the jumped-to heading clears the sticky bar
 
+/** Read a section's chip label: an explicit `data-section` value wins, else the
+ *  text of the section's own heading (so the chip always matches the section). */
+function labelFor(el: HTMLElement, index: number): string {
+  // A boolean `data-section` renders as "true" — treat that as "no explicit label".
+  const explicit = el.getAttribute("data-section")?.trim();
+  if (explicit && explicit !== "true") return explicit;
+  const heading = el.querySelector("h1, h2, h3, .font-heading");
+  const text = (heading?.textContent ?? "").trim();
+  return text || `סעיף ${index + 1}`;
+}
+
 /**
- * Sticky in-page section navigation for long, scroll-heavy screens. A horizontal,
- * swipeable row of chips that smooth-scrolls to each section and briefly flashes a
- * ring on the target card so it's clear where you landed. The active chip tracks
- * the section nearest the top as you scroll. Sticks to the top once the
- * (non-sticky) header scrolls away. Sections are matched by element id.
+ * Self-discovering sticky in-page navigation. Any element on the page marked with
+ * `data-section` becomes a chip — its label comes from the element's heading (or an
+ * explicit `data-section="…"`), so chips always match the real section titles and
+ * new sections appear automatically (a MutationObserver keeps the list in sync). A
+ * click smooth-scrolls + flashes the target and pins the highlight until the user
+ * scrolls themselves; otherwise a scroll-spy tracks the section nearest the top.
+ * Drop `<SectionNav />` on any scroll-heavy screen and mark its sections.
  */
-export function SectionNav({
-  sections,
-  className,
-}: {
-  sections: NavSection[];
-  className?: string;
-}) {
-  const [active, setActive] = useState(sections[0]?.id ?? "");
-  // After a click we PIN the highlight to the clicked chip and stop the scroll-spy
-  // from overriding it, until the user scrolls on their own (wheel/touch/keys).
-  // This is reliable even when the smooth-scroll is long or the target sits at the
-  // bottom and can't reach the top line.
+export function SectionNav({ className }: { className?: string }) {
+  const [sections, setSections] = useState<FoundSection[]>([]);
+  const [active, setActive] = useState("");
   const pinned = useRef(false);
 
+  // Discover [data-section] elements (in DOM order) + re-scan on DOM changes.
+  useEffect(() => {
+    let raf = 0;
+    const scan = () => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>("[data-section]"));
+      const found = els.map((el, i) => {
+        if (!el.id) el.id = `sec-auto-${i}`;
+        return { id: el.id, label: labelFor(el, i) };
+      });
+      setSections((prev) =>
+        prev.length === found.length &&
+        prev.every((p, i) => p.id === found[i].id && p.label === found[i].label)
+          ? prev
+          : found
+      );
+    };
+    scan();
+    const obs = new MutationObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(scan);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      obs.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  // Scroll-spy — tracks the section nearest the nav line (released by user scroll).
   useEffect(() => {
     const onScroll = () => {
-      if (pinned.current) return; // a click selection is being honoured
+      if (pinned.current) return;
       const line = NAV_OFFSET + 12;
       const atBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
       let current = sections[0]?.id ?? "";
 
       if (atBottom) {
-        // Bottom sections can't reach the line, so pick the one whose top is
-        // closest to the line (the one you're actually looking at).
         let best = Infinity;
         for (const s of sections) {
           const el = document.getElementById(s.id);
@@ -51,8 +82,6 @@ export function SectionNav({
           }
         }
       } else {
-        // The section whose top is nearest the line from above — by position, not
-        // array order, so it stays correct across the parallel columns.
         let bestTop = -Infinity;
         for (const s of sections) {
           const el = document.getElementById(s.id);
@@ -67,16 +96,11 @@ export function SectionNav({
       setActive(current);
     };
 
-    // The user taking over scrolling releases the pin so the spy resumes.
     const release = () => {
       pinned.current = false;
     };
     const onKey = (e: KeyboardEvent) => {
-      if (
-        ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"].includes(
-          e.key
-        )
-      )
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"].includes(e.key))
         release();
     };
 
@@ -98,16 +122,17 @@ export function SectionNav({
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-    setActive(id); // highlight immediately…
-    pinned.current = true; // …and hold it until the user scrolls themselves
-    // Flash AFTER the smooth-scroll has settled, so it's still visible on arrival.
+    setActive(id);
+    pinned.current = true; // hold the selection until the user scrolls themselves
     window.setTimeout(() => {
       el.classList.remove("section-flash");
-      void el.offsetWidth; // restart the animation if re-triggered
+      void el.offsetWidth;
       el.classList.add("section-flash");
       window.setTimeout(() => el.classList.remove("section-flash"), 2700);
     }, 450);
   }
+
+  if (sections.length < 2) return null; // nothing worth navigating
 
   return (
     <nav
@@ -126,7 +151,7 @@ export function SectionNav({
               onClick={() => go(s.id)}
               aria-current={isActive ? "true" : undefined}
               className={cn(
-                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors active:scale-95",
+                "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors active:scale-95",
                 isActive
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"

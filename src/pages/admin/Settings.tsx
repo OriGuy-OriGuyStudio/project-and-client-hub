@@ -25,16 +25,8 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { sendTestEmail } from "@/lib/invite";
-import { SectionNav, type NavSection } from "@/components/layout/SectionNav";
+import { SectionNav } from "@/components/layout/SectionNav";
 import { clampText } from "@/lib/sanitize";
-
-const SETTINGS_SECTIONS: NavSection[] = [
-  { id: "set-studio", label: "פרטי הסטודיו" },
-  { id: "set-templates", label: "תבניות שלבים" },
-  { id: "set-resources", label: "חומרי שותפים" },
-  { id: "set-welcome", label: "מייל ברוכים הבאים" },
-  { id: "set-warranty", label: "מייל אחריות" },
-];
 import type {
   PartnerResource,
   StageTemplate,
@@ -67,12 +59,12 @@ export default function Settings() {
         title="הגדרות"
         subtitle="פרטי הסטודיו, תבניות העבודה וחומרי השותפים - במקום אחד."
       />
-      <SectionNav sections={SETTINGS_SECTIONS} />
-      <div id="set-studio" className="scroll-mt-20"><StudioDetailsSection /></div>
-      <div id="set-templates" className="scroll-mt-20"><StageTemplatesSection /></div>
-      <div id="set-resources" className="scroll-mt-20"><PartnerResourcesSection /></div>
-      <div id="set-welcome" className="scroll-mt-20"><WelcomeEmailSection /></div>
-      <div id="set-warranty" className="scroll-mt-20"><WarrantyEmailSection /></div>
+      <SectionNav />
+      <div data-section className="scroll-mt-20"><StudioDetailsSection /></div>
+      <div data-section className="scroll-mt-20"><StageTemplatesSection /></div>
+      <div data-section className="scroll-mt-20"><PartnerResourcesSection /></div>
+      <div data-section className="scroll-mt-20"><WelcomeEmailSection /></div>
+      <div data-section className="scroll-mt-20"><WarrantyEmailSection /></div>
     </div>
   );
 }
