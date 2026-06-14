@@ -11,6 +11,10 @@ interface AutoScrollShotProps {
   webm?: string;
   mp4?: string;
   poster?: string;
+  /** Taller viewport - used for the featured/hero portfolio item. */
+  tall?: boolean;
+  /** Stretch to fill the parent's height (featured item matching a stacked column). */
+  fill?: boolean;
 }
 
 /**
@@ -19,7 +23,7 @@ interface AutoScrollShotProps {
  * shot) and only plays while in view; reduced-motion users see the poster. Until a
  * recording lands it animates a placeholder "page" so the layout is already there.
  */
-export function AutoScrollShot({ title, subtitle, status, webm, mp4, poster }: AutoScrollShotProps) {
+export function AutoScrollShot({ title, subtitle, status, webm, mp4, poster, tall, fill }: AutoScrollShotProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const reduced = usePrefersReducedMotion();
   const hasVideo = !!(webm || mp4);
@@ -40,7 +44,7 @@ export function AutoScrollShot({ title, subtitle, status, webm, mp4, poster }: A
   }, [reduced]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+    <div className={"flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft " + (fill ? "h-full" : "")}>
       {/* Browser chrome */}
       <div className="flex items-center gap-1.5 border-b border-border bg-background/40 px-3 py-2">
         <span className="size-2.5 rounded-full bg-destructive/60" />
@@ -52,7 +56,12 @@ export function AutoScrollShot({ title, subtitle, status, webm, mp4, poster }: A
       </div>
 
       {/* Viewport */}
-      <div className="relative h-64 overflow-hidden bg-[#0d0c12]">
+      <div
+        className={
+          "relative overflow-hidden bg-[#0d0c12] " +
+          (fill ? "min-h-64 flex-1" : tall ? "h-[28rem] sm:h-[34rem]" : "h-64")
+        }
+      >
         {hasVideo ? (
           <video
             ref={videoRef}

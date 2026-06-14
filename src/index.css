@@ -684,7 +684,130 @@
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ───────── Referral landing: cinematic motion primitives ─────────
+   Used only by /ref/:code (the public partner landing). All gated on
+   prefers-reduced-motion below. */
+
+/* Gentle character float (hero portrait / Pixel). */
+@keyframes ref-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-16px) rotate(-1.3deg); }
+}
+.ref-float { animation: ref-float 6.5s ease-in-out infinite; will-change: transform; }
+
+/* Looping trust marquee (duplicated content, slides one half-width). */
+@keyframes ref-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ref-marquee { animation: ref-marquee 22s linear infinite; will-change: transform; }
+
+/* Expanding "live" ping ring (on the Orion / online dot). */
+@keyframes ref-ping {
+  0% { transform: scale(0.85); opacity: 0.65; }
+  70% { transform: scale(1.7); opacity: 0; }
+  100% { opacity: 0; }
+}
+.ref-ping { animation: ref-ping 2.4s ease-out infinite; }
+
+/* Animated conic glow ring behind the hero CTA / stat cards. */
+@keyframes ref-spin { to { transform: rotate(1turn); } }
+.ref-spin { animation: ref-spin 9s linear infinite; }
+
+/* Soft film grain — sits over the hero so the mesh gradient reads premium,
+   not flat. SVG fractal-noise data URI, no extra asset. */
+.ref-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Liquid-glass surface (progress nav). Approximates the Osmo layered-glass look
+   with a single element: blur + saturation + inset highlight/shadow edges. */
+.ref-glass {
+  background-color: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+  backdrop-filter: saturate(150%) blur(14px);
+  box-shadow:
+    inset 0.22em 0.28em 0.09em -0.28em rgba(255, 255, 255, 0.7),
+    inset -0.18em -0.28em 0.09em -0.22em rgba(255, 255, 255, 0.25),
+    inset 0 0 1.6em rgba(255, 255, 255, 0.07),
+    0 14px 40px -16px rgba(0, 0, 0, 0.55);
+}
+
+/* Bottom fade so a portrait cutout dissolves instead of hard-cutting (cheap look). */
+.ref-portrait-mask {
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+
+/* Animated gradient sweep on the hero keyword. */
+.ref-gradient-text {
+  background: linear-gradient(100deg, #b4d670, #77becf, #b4d670);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: ref-textshine 4.5s linear infinite;
+}
+@keyframes ref-textshine {
+  to { background-position: 200% center; }
+}
+
+/* Radial vignette so the hero edges fall to black (cinematic focus). */
+.ref-vignette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 45%, rgba(8, 7, 12, 0.7) 100%);
+}
+
+/* Outlined (stroke-only) headline words — typographic contrast in the hero. */
+.ref-stroke {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.55);
+  color: transparent;
+}
+
+/* Slow-rotating light rays behind the hero focal object. */
+.ref-rays {
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(180, 214, 112, 0.10) 0deg 4deg,
+    transparent 4deg 16deg
+  );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 62%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 62%);
+  animation: ref-spin 40s linear infinite;
+}
+
+/* Full-screen brand intro curtain (plays once per load on /ref). */
+.ref-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0910;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ref-rays { animation: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .autoshot-scroll { animation: none; }
   .reveal-up { opacity: 1; transform: none; transition: none; }
+  .ref-float,
+  .ref-marquee,
+  .ref-ping,
+  .ref-spin,
+  .ref-gradient-text { animation: none; }
 }
