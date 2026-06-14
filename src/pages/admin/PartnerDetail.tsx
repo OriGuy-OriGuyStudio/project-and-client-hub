@@ -32,6 +32,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartnerDetail } from "@/hooks/usePartnerDetail";
 import { rateLabel } from "@/hooks/usePartners";
+import { referralDisplay, referralUrl } from "@/lib/referral";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
 
 function ils(n: number | null | undefined) {
@@ -116,12 +117,12 @@ export default function PartnerDetail() {
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">לינק הפניה אישי</p>
             <p className="mt-1 break-all font-mono-code text-sm text-foreground">
-              studioriguy.com/ref/{partner.referral_code}
+              {referralDisplay(partner.referral_code)}
             </p>
           </div>
           <div className="flex">
             <CopyButton
-              content={`studioriguy.com/ref/${partner.referral_code}`}
+              content={referralUrl(partner.referral_code)}
               label="העתקת לינק"
               toastMessage="לינק ההפניה הועתק"
               className="w-full sm:w-auto"

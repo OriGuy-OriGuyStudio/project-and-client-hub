@@ -15,8 +15,8 @@ import { usePartner } from "@/hooks/usePartner";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
+import { referralDisplay, referralUrl } from "@/lib/referral";
 
-const REFERRAL_BASE = "studioriguy.com/ref/";
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string | number }) {
   return (
@@ -46,7 +46,8 @@ export default function PartnerDashboard() {
     .filter((l) => l.payment_confirmed_at)
     .reduce((sum, l) => sum + (l.commission_amount ?? 0), 0);
 
-  const refLink = data?.profile ? `${REFERRAL_BASE}${data.profile.referral_code}` : "";
+  const code = data?.profile?.referral_code ?? "";
+  const refLink = code ? referralDisplay(code) : "";
 
   return (
     <div className="space-y-6">
@@ -88,7 +89,7 @@ export default function PartnerDashboard() {
                 {refLink || "-"}
               </code>
               <CopyButton
-                content={refLink ? `https://${refLink}` : ""}
+                content={code ? referralUrl(code) : ""}
                 label="העתקת לינק"
                 toastMessage="הלינק הועתק"
                 disabled={!refLink}

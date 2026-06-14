@@ -1,8 +1,21 @@
 import { supabase } from "@/lib/supabase";
 
-/** Where partner referral links live: `<REFERRAL_BASE><code>`. Single source of
- *  truth — update here when the public domain is finalized. */
-export const REFERRAL_BASE = "studioriguy.com/ref/";
+/** The origin the app (and the /ref/ landing) is served from. In dev this is
+ *  localhost:8080; in production it's the deployed domain — so a partner's link
+ *  always points at wherever the app is actually running. */
+function appOrigin(): string {
+  return typeof window !== "undefined" ? window.location.origin : "https://studioriguy.com";
+}
+
+/** Full, clickable referral URL for a code (for copy / sharing). */
+export function referralUrl(code: string): string {
+  return `${appOrigin()}/ref/${code}`;
+}
+
+/** Pretty referral link for display (drops the protocol). */
+export function referralDisplay(code: string): string {
+  return `${appOrigin().replace(/^https?:\/\//, "")}/ref/${code}`;
+}
 
 export interface ResolveResult {
   valid: boolean;

@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { usePartners, rateLabel, type ActivePartner } from "@/hooks/usePartners";
 import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
 import { sendInvite } from "@/lib/invite";
+import { referralUrl } from "@/lib/referral";
 import type { AllowedEmail } from "@/types/database";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,7 +115,7 @@ export default function Partners() {
                           <>
                             <span>· ref/{p.referral_code}</span>
                             <CopyButton
-                              content={`studioriguy.com/ref/${p.referral_code}`}
+                              content={referralUrl(p.referral_code)}
                               variant="ghost"
                               size="icon"
                               className="size-5 shrink-0 hover:text-foreground"
