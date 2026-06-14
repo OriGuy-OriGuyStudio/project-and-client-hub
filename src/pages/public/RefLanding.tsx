@@ -24,8 +24,11 @@ const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const HERO_COLORS = ["#16151c", "#1d9e75", "#77becf", "#B4D670", "#91be37"];
 const TYPES: PartnerProjectType[] = ["business_site", "ecommerce", "system", "other"];
 
-// Portfolio items. Add webm/mp4/poster (files under /public/portfolio/) per item
-// when the recordings are ready; until then each shows an animated placeholder.
+// Portfolio videos live in the public Supabase `portfolio` bucket (compressed
+// webm/mp4). Add an item's webm/mp4 URL when its recording is uploaded; until then
+// it shows an animated placeholder.
+const STORAGE =
+  "https://tirasinbjsotcrqggipe.supabase.co/storage/v1/object/public/portfolio";
 const PORTFOLIO: {
   title: string;
   subtitle?: string;
@@ -34,8 +37,13 @@ const PORTFOLIO: {
   mp4?: string;
   poster?: string;
 }[] = [
-  { title: "פרויקט ראשון", subtitle: "אתר עסקי", status: "בקרוב" },
-  { title: "פרויקט שני", subtitle: "חנות אונליין", status: "בקרוב" },
+  {
+    title: "יולי מסטרמן",
+    subtitle: "עיצוב פנים · חידוש אתר (WordPress + קוד מותאם)",
+    status: "באוויר",
+    webm: `${STORAGE}/yuli.webm`,
+  },
+  { title: "פרויקט שני", subtitle: "בקרוב", status: "בקרוב" },
   { title: "פרויקט שלישי", subtitle: "עולה לאוויר בקרוב", status: "בעבודה" },
 ];
 
