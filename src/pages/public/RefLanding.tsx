@@ -24,6 +24,21 @@ const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const HERO_COLORS = ["#16151c", "#1d9e75", "#77becf", "#B4D670", "#91be37"];
 const TYPES: PartnerProjectType[] = ["business_site", "ecommerce", "system", "other"];
 
+// Portfolio items. Add webm/mp4/poster (files under /public/portfolio/) per item
+// when the recordings are ready; until then each shows an animated placeholder.
+const PORTFOLIO: {
+  title: string;
+  subtitle?: string;
+  status?: string;
+  webm?: string;
+  mp4?: string;
+  poster?: string;
+}[] = [
+  { title: "פרויקט ראשון", subtitle: "אתר עסקי", status: "בקרוב" },
+  { title: "פרויקט שני", subtitle: "חנות אונליין", status: "בקרוב" },
+  { title: "פרויקט שלישי", subtitle: "עולה לאוויר בקרוב", status: "בעבודה" },
+];
+
 function waLink() {
   if (!WHATSAPP) return undefined;
   return `https://wa.me/${WHATSAPP.replace(/\D/g, "")}`;
@@ -170,12 +185,14 @@ export default function RefLanding() {
         </div>
       </Section>
 
-      {/* ───────── Portfolio ───────── */}
+      {/* ───────── Portfolio ─────────
+          To wire a real project: drop the recording in /public/portfolio/ and add
+          webm/mp4/poster paths below (videos play muted, looping, while in view). */}
       <Section title="כמה דברים שעשיתי לאחרונה">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <AutoScrollShot title="פרויקט ראשון" subtitle="אתר עסקי" status="בקרוב" />
-          <AutoScrollShot title="פרויקט שני" subtitle="חנות אונליין" status="בקרוב" />
-          <AutoScrollShot title="פרויקט שלישי" subtitle="עולה לאוויר בקרוב" status="בעבודה" />
+          {PORTFOLIO.map((p) => (
+            <AutoScrollShot key={p.title} {...p} />
+          ))}
         </div>
       </Section>
 

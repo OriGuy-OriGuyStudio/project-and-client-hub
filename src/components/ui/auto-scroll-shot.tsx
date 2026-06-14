@@ -1,18 +1,44 @@
+import { useEffect, useRef } from "react";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+
 interface AutoScrollShotProps {
-  /** Tall screenshot URL. When absent, a placeholder "page" auto-scrolls instead. */
-  src?: string;
   title: string;
   subtitle?: string;
   /** Small status pill, e.g. "בקרוב" / "בעבודה". */
   status?: string;
+  /** Video sources (a muted screen recording). WebM is smaller; MP4/H.264 is the
+   *  safe fallback for Safari/iOS. A still poster shows before play. */
+  webm?: string;
+  mp4?: string;
+  poster?: string;
 }
 
 /**
- * A browser-framed preview of a long website screenshot that auto-scrolls to show
- * the whole page in motion (lighter than video). Until a real screenshot is
- * supplied it animates a placeholder mock so the layout is already in place.
+ * A browser-framed preview of a real project. When a video is supplied it plays a
+ * muted, looping screen recording (so the site's animations show, not just a static
+ * shot) and only plays while in view; reduced-motion users see the poster. Until a
+ * recording lands it animates a placeholder "page" so the layout is already there.
  */
-export function AutoScrollShot({ src, title, subtitle, status }: AutoScrollShotProps) {
+export function AutoScrollShot({ title, subtitle, status, webm, mp4, poster }: AutoScrollShotProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const hasVideo = !!(webm || mp4);
+
+  // Play only while scrolled into view (and never under reduced-motion).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || reduced) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) void v.play().catch(() => {});
+        else v.pause();
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [reduced]);
+
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       {/* Browser chrome */}
@@ -25,10 +51,21 @@ export function AutoScrollShot({ src, title, subtitle, status }: AutoScrollShotP
         </span>
       </div>
 
-      {/* Auto-scrolling viewport */}
+      {/* Viewport */}
       <div className="relative h-64 overflow-hidden bg-[#0d0c12]">
-        {src ? (
-          <img src={src} alt={title} className="autoshot-scroll w-full" />
+        {hasVideo ? (
+          <video
+            ref={videoRef}
+            poster={poster}
+            muted
+            loop
+            playsInline
+            preload="none"
+            className="h-full w-full object-cover"
+          >
+            {webm && <source src={webm} type="video/webm" />}
+            {mp4 && <source src={mp4} type="video/mp4" />}
+          </video>
         ) : (
           <PlaceholderPage />
         )}
@@ -39,17 +76,15 @@ export function AutoScrollShot({ src, title, subtitle, status }: AutoScrollShotP
         )}
       </div>
 
-      {(subtitle || title) && (
-        <div className="px-4 py-3">
-          <p className="font-heading text-sm font-bold text-foreground">{title}</p>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-        </div>
-      )}
+      <div className="px-4 py-3">
+        <p className="font-heading text-sm font-bold text-foreground">{title}</p>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
     </div>
   );
 }
 
-/** A mock "long page" that reads as a scrolling website until a real shot lands. */
+/** A mock "long page" that reads as a scrolling website until a real recording lands. */
 function PlaceholderPage() {
   return (
     <div className="autoshot-scroll space-y-4 p-4">
@@ -63,7 +98,6 @@ function PlaceholderPage() {
       </div>
       <div className="h-32 rounded-xl bg-foreground/[0.05]" />
       <div className="h-3 w-3/4 rounded bg-foreground/10" />
-      <div className="h-3 w-2/5 rounded bg-foreground/10" />
       <div className="grid grid-cols-2 gap-3">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="h-20 rounded-lg bg-foreground/[0.06]" />
@@ -71,7 +105,7 @@ function PlaceholderPage() {
       </div>
       <div className="h-24 rounded-xl bg-gradient-to-tr from-brand-green-base/20 to-brand-cyan-base/20" />
       <div className="flex justify-center pt-2 text-[11px] text-muted-foreground">
-        צילום מסך בקרוב
+        סרטון בקרוב
       </div>
     </div>
   );
