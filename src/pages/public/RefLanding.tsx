@@ -1174,23 +1174,6 @@ const ORION_TABS = [
 function OrionPeek() {
   const [tab, setTab] = useState(ORION_TABS[0].key);
   const active = ORION_TABS.find((t) => t.key === tab) ?? ORION_TABS[0];
-  const reduced = usePrefersReducedMotion();
-  const previewRef = useRef<HTMLVideoElement>(null);
-
-  // Small muted preview that plays only while in view (no sound, no click-to-jump).
-  useEffect(() => {
-    const v = previewRef.current;
-    if (!v || reduced) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) void v.play().catch(() => {});
-        else v.pause();
-      },
-      { threshold: 0.4 }
-    );
-    io.observe(v);
-    return () => io.disconnect();
-  }, [reduced]);
 
   return (
     <section className="reveal-up px-6 py-20 sm:py-28">
@@ -1260,17 +1243,12 @@ function OrionPeek() {
               data-orion-video-slot
               className="relative aspect-video overflow-hidden rounded-3xl border border-border bg-[#0d0c12]"
             >
-              <video
-                ref={previewRef}
-                poster={ORION_POSTER}
-                muted
-                loop
-                playsInline
-                preload="none"
+              <img
+                src={ORION_POSTER}
+                alt="תצוגה של מערכת Orion"
+                loading="lazy"
                 className="h-full w-full object-cover"
-              >
-                <source src={ORION_VIDEO} type="video/mp4" />
-              </video>
+              />
             </div>
             <p className="rounded-2xl border border-border bg-card p-5 leading-relaxed text-foreground">
               במהלך הפרויקט אתה לא צריך לנחש איפה דברים עומדים. הכל שקוף
