@@ -34,7 +34,7 @@ export function useClientPartner() {
         supabase.rpc("get_client_credits", { p_client_id: uid! }),
         supabase.from("partner_enrollments").select("*").eq("client_id", uid!).maybeSingle(),
         supabase.from("referrals").select("*").order("created_at", { ascending: false }),
-        supabase.from("rewards").select("*").eq("is_active", true).order("credit_cost"),
+        supabase.from("rewards").select("*").eq("is_active", true).eq("audience", "client").order("credit_cost"),
         supabase.from("reward_redemptions").select("*").order("redeemed_at", { ascending: false }),
         supabase.from("credit_transactions").select("*").order("created_at", { ascending: false }),
       ]);

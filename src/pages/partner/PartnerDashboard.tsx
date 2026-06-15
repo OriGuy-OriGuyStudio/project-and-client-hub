@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
+import { PartnerRewards } from "@/components/partner/PartnerRewards";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
@@ -141,6 +142,9 @@ export default function PartnerDashboard() {
               </div>
             )}
           </div>
+
+          <WavePath className="my-4" />
+          <PartnerRewards />
         </>
       )}
 

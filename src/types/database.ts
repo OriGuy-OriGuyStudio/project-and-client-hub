@@ -81,6 +81,10 @@ export type PartnerProfile = {
   tier: PartnerTier;
   /** When true (e.g. a negotiated rate), the tier ladder won't auto-set commission_rate. */
   tier_locked: boolean;
+  /** Active store-bought commission boost (added on top of the tier rate). */
+  boost_pct: number;
+  /** Closed deals the boost still applies to (auto-decrements, 0 = none). */
+  boost_deals_left: number;
 }
 
 export type PartnerCoinTransaction = {
@@ -397,6 +401,21 @@ export type Reward = {
   reward_type: "studio_pro" | "custom" | null;
   is_active: boolean;
   created_at: string;
+  /** Which program the reward belongs to. */
+  audience: "client" | "partner";
+  /** Special handling for partner-store items. */
+  kind: "generic" | "payout" | "commission_boost";
+}
+
+export type PartnerRewardRedemption = {
+  id: string;
+  partner_id: string;
+  reward_id: string;
+  coins_spent: number;
+  status: "pending" | "fulfilled" | "cancelled";
+  note: string | null;
+  created_at: string;
+  fulfilled_at: string | null;
 }
 
 export type PartnerEnrollment = {
@@ -470,6 +489,7 @@ export interface Database {
       reward_redemptions: TableShape<RewardRedemption>;
       partner_profiles: TableShape<PartnerProfile>;
       partner_coin_transactions: TableShape<PartnerCoinTransaction>;
+      partner_reward_redemptions: TableShape<PartnerRewardRedemption>;
       partner_leads: TableShape<PartnerLead>;
       referral_tracking: TableShape<ReferralTracking>;
       partner_resources: TableShape<PartnerResource>;
@@ -485,6 +505,8 @@ export interface Database {
       is_admin: { Args: Record<string, never>; Returns: boolean };
       get_client_credits: { Args: { p_client_id: string }; Returns: number };
       redeem_reward: { Args: { p_reward_id: string }; Returns: string };
+      get_partner_coins: { Args: { p_partner: string }; Returns: number };
+      redeem_partner_reward: { Args: { p_reward_id: string }; Returns: string };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
       resolve_referral: {
