@@ -66,6 +66,8 @@ export type AllowedEmail = {
   invite_last_error: string | null;
 }
 
+export type PartnerTier = "bronze" | "silver" | "gold" | "platinum" | "ambassador";
+
 export type PartnerProfile = {
   id: string;
   commission_rate: number;
@@ -75,6 +77,20 @@ export type PartnerProfile = {
   referral_code: string;
   is_active: boolean;
   joined_at: string;
+  /** Performance tier (5% bronze → 10% ambassador), auto-managed unless tier_locked. */
+  tier: PartnerTier;
+  /** When true (e.g. a negotiated rate), the tier ladder won't auto-set commission_rate. */
+  tier_locked: boolean;
+}
+
+export type PartnerCoinTransaction = {
+  id: string;
+  partner_id: string;
+  amount: number;
+  reason: "deal_closed" | "reward_redeemed" | "manual_adjustment" | null;
+  lead_id: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export type PartnerLead = {
@@ -453,6 +469,7 @@ export interface Database {
       partner_enrollments: TableShape<PartnerEnrollment>;
       reward_redemptions: TableShape<RewardRedemption>;
       partner_profiles: TableShape<PartnerProfile>;
+      partner_coin_transactions: TableShape<PartnerCoinTransaction>;
       partner_leads: TableShape<PartnerLead>;
       referral_tracking: TableShape<ReferralTracking>;
       partner_resources: TableShape<PartnerResource>;
