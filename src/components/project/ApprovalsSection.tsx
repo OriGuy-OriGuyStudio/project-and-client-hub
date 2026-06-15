@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity";
+import { celebrate } from "@/lib/confetti";
 import { approvalStatusHe } from "@/lib/status";
 import { clampText } from "@/lib/sanitize";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -167,7 +168,10 @@ function ApprovalRow({
           ? `אושר: "${approval.title}"`
           : `התקבלו הערות על: "${approval.title}"`,
     });
-    if (status === "approved") toast({ title: "אושר בהצלחה", variant: "success" });
+    if (status === "approved") {
+      celebrate();
+      toast({ title: "אושר בהצלחה", variant: "success" });
+    }
     setNoting(false);
     onChange();
   }

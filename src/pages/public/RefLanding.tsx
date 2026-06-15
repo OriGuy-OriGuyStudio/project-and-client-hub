@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
+import gsap from "gsap";
 import {
   motion,
   useScroll,
@@ -21,6 +23,7 @@ import {
   Quote,
   Sparkles,
   Star,
+  X,
 } from "lucide-react";
 import { AutoScrollShot } from "@/components/ui/auto-scroll-shot";
 import Aurora from "@/components/ui/aurora";
@@ -67,6 +70,10 @@ const PORTFOLIO: {
   { title: "פרויקט שלישי", subtitle: "בקרוב", status: "בקרוב" },
 ];
 
+// Designed Orion product video (Remotion render, hosted in the public bucket).
+const ORION_VIDEO = `${BUCKET}/orion-marketing.mp4`;
+const ORION_POSTER = `${BUCKET}/orion-marketing-poster.jpg`;
+
 const MARQUEE = [
   "בלי תבניות",
   "סטודיו של איש אחד",
@@ -80,6 +87,7 @@ const MARQUEE = [
 const NAV = [
   { id: "story", label: "הסיפור" },
   { id: "orion", label: "Orion" },
+  { id: "showreel", label: "סרטון" },
   { id: "work", label: "עבודות" },
   { id: "reviews", label: "המלצות" },
   { id: "contact", label: "צור קשר" },
@@ -181,6 +189,8 @@ export default function RefLanding() {
       <section id="orion">
         <OrionPeek />
       </section>
+
+      <OrionShowreel />
 
       <StorySection
         img={IMG.oriSocial}
@@ -1164,6 +1174,23 @@ const ORION_TABS = [
 function OrionPeek() {
   const [tab, setTab] = useState(ORION_TABS[0].key);
   const active = ORION_TABS.find((t) => t.key === tab) ?? ORION_TABS[0];
+  const reduced = usePrefersReducedMotion();
+  const previewRef = useRef<HTMLVideoElement>(null);
+
+  // Small muted preview that plays only while in view (no sound, no click-to-jump).
+  useEffect(() => {
+    const v = previewRef.current;
+    if (!v || reduced) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) void v.play().catch(() => {});
+        else v.pause();
+      },
+      { threshold: 0.4 }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [reduced]);
 
   return (
     <section className="reveal-up px-6 py-20 sm:py-28">
@@ -1231,15 +1258,19 @@ function OrionPeek() {
           <div className="space-y-5">
             <div
               data-orion-video-slot
-              className="group relative aspect-video overflow-hidden rounded-3xl border border-border bg-[#0d0c12]"
+              className="relative aspect-video overflow-hidden rounded-3xl border border-border bg-[#0d0c12]"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-brand-cyan-base/10 to-transparent" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-                <span className="flex size-16 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-lift transition-transform group-hover:scale-110">
-                  <Play className="size-6 translate-x-0.5 fill-current" />
-                </span>
-                <p className="text-sm font-medium text-white/80">סרטון הדגמה של Orion · בקרוב</p>
-              </div>
+              <video
+                ref={previewRef}
+                poster={ORION_POSTER}
+                muted
+                loop
+                playsInline
+                preload="none"
+                className="h-full w-full object-cover"
+              >
+                <source src={ORION_VIDEO} type="video/mp4" />
+              </video>
             </div>
             <p className="rounded-2xl border border-border bg-card p-5 leading-relaxed text-foreground">
               במהלך הפרויקט אתה לא צריך לנחש איפה דברים עומדים. הכל שקוף
@@ -1249,6 +1280,200 @@ function OrionPeek() {
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+/* ───────────────────────── Orion showreel (teaser → click-to-play w/ sound) ───────────────────────── */
+
+function OrionShowreel() {
+  const [open, setOpen] = useState(false);
+  const reduced = usePrefersReducedMotion();
+  const teaserRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const lightVideoRef = useRef<HTMLVideoElement>(null);
+  const animating = useRef(false);
+
+  // Muted teaser loops while in view.
+  useEffect(() => {
+    const v = teaserRef.current;
+    if (!v || reduced) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) void v.play().catch(() => {});
+        else v.pause();
+      },
+      { threshold: 0.35 }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [reduced]);
+
+  // Manual FLIP: measure the card and the lightbox frame, then animate the frame
+  // FROM the card's position/scale to its own (the "expand from the card" morph).
+  const flip = (dir: "in" | "out", onDone?: () => void) => {
+    const card = cardRef.current;
+    const frame = frameRef.current;
+    const bd = backdropRef.current;
+    if (!card || !frame) {
+      onDone?.();
+      return;
+    }
+    const c = card.getBoundingClientRect();
+    const f = frame.getBoundingClientRect();
+    // If we can't measure (hidden card, zero-size viewport), skip the morph so
+    // open/close still resolves instead of hanging on a never-completing tween.
+    if (!c.width || !c.height || !f.width || !f.height) {
+      if (bd) gsap.set(bd, { opacity: dir === "in" ? 1 : 0 });
+      onDone?.();
+      return;
+    }
+    const sx = c.width / f.width;
+    const sy = c.height / f.height;
+    const dx = c.left + c.width / 2 - (f.left + f.width / 2);
+    const dy = c.top + c.height / 2 - (f.top + f.height / 2);
+    const atCard = { x: dx, y: dy, scaleX: sx, scaleY: sy, transformOrigin: "center center" };
+    if (dir === "in") {
+      gsap.fromTo(bd, { opacity: 0 }, { opacity: 1, duration: 0.55, ease: "power2.out" });
+      gsap.fromTo(
+        frame,
+        { ...atCard, opacity: 0.5 },
+        { x: 0, y: 0, scaleX: 1, scaleY: 1, opacity: 1, duration: 0.8, ease: "power3.out" }
+      );
+    } else {
+      gsap.to(bd, { opacity: 0, duration: 0.45, ease: "power2.inOut" });
+      gsap.to(frame, { ...atCard, opacity: 0.4, duration: 0.5, ease: "power3.inOut", onComplete: onDone });
+    }
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const v = lightVideoRef.current;
+    if (v) {
+      v.currentTime = 0;
+      void v.play().catch(() => {});
+    }
+    if (reduced) {
+      if (backdropRef.current) gsap.set(backdropRef.current, { opacity: 1 });
+      return;
+    }
+    flip("in");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const close = () => {
+    if (animating.current) return;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      lightVideoRef.current?.pause();
+      animating.current = false;
+      setOpen(false);
+    };
+    if (reduced) return finish();
+    animating.current = true;
+    flip("out", finish);
+    // Safety net: always resolve even if the tween's onComplete never fires.
+    window.setTimeout(finish, 800);
+  };
+
+  // Esc closes; lock the page scroll while the lightbox is open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return (
+    <section id="showreel" className="reveal-up px-6 py-20 sm:py-28">
+      <div className="mx-auto max-w-4xl text-center">
+        <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-card px-3 py-1 text-xs font-medium text-primary">
+          <Play className="size-3.5 fill-current" /> סרטון
+        </span>
+        <h2 className="mt-4 font-heading text-3xl font-black text-foreground sm:text-5xl">
+          ראה את Orion בפעולה.
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl leading-relaxed text-muted-foreground">
+          חצי דקה שמראה איך זה מרגיש לעבוד איתי, מהכניסה הראשונה ועד ההשקה. הפעל עם סאונד.
+        </p>
+
+        <div className="mx-auto mt-10 w-full max-w-3xl">
+          <button
+            ref={cardRef}
+            onClick={() => !open && !animating.current && setOpen(true)}
+            className="group relative block aspect-video w-full overflow-hidden rounded-3xl border border-border bg-[#0d0c12] shadow-lift"
+            aria-label="הפעלת הסרטון עם סאונד"
+          >
+            <video
+              ref={teaserRef}
+              poster={ORION_POSTER}
+              muted
+              loop
+              playsInline
+              preload="none"
+              className="h-full w-full object-cover"
+            >
+              <source src={ORION_VIDEO} type="video/mp4" />
+            </video>
+            <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/15">
+              <span className="flex items-center gap-3 rounded-full bg-card/85 px-5 py-2.5 shadow-lift backdrop-blur">
+                <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Play className="size-4 translate-x-0.5 fill-current" />
+                </span>
+                <span className="font-heading text-sm font-bold text-foreground">הפעל עם סאונד</span>
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Lightbox (portaled to body so `fixed` can't be trapped by a transformed ancestor) */}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000]">
+            <div
+              ref={backdropRef}
+              onClick={close}
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+            />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 sm:p-10">
+              <div
+                ref={frameRef}
+                className="pointer-events-auto relative aspect-video w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-[#0d0c12] shadow-2xl"
+              >
+                <video
+                  ref={lightVideoRef}
+                  src={ORION_VIDEO}
+                  poster={ORION_POSTER}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </div>
+            <button
+              onClick={close}
+              aria-label="סגירה"
+              className="absolute end-5 top-5 z-[10002] flex size-11 items-center justify-center rounded-full border border-border bg-card/80 text-foreground backdrop-blur transition hover:bg-card"
+            >
+              <X className="size-5" />
+            </button>
+          </div>,
+          document.body
+        )}
     </section>
   );
 }
@@ -1353,6 +1578,10 @@ const FAQS = [
   {
     q: "אני לא טכני, זו בעיה?",
     a: "ממש לא. אני מסביר הכל בשפה פשוטה, ו-Orion שומר את כל הקבצים, ההחלטות והשיחות מסודרים במקום אחד, כך שלא תצטרך לזכור כלום.",
+  },
+  {
+    q: "מה אם אני מסתבך עם המערכת?",
+    a: "אתה לא לבד לרגע. בתוך Orion יש הסברים מובנים שמלווים אותך בכל חלק, ופיקסל, ה-AI שלי, נמצא שם כדי לעזור לך בכל שאלה (ובהמשך גם יבצע בשבילך פעולות במערכת). ומעבר לזה, אני זמין לך באופן אישי, גם בצ'אט של המערכת וגם בוואטסאפ. אם משהו לא ברור, פשוט תשאל.",
   },
   {
     q: "מה קורה אחרי ההשקה?",
