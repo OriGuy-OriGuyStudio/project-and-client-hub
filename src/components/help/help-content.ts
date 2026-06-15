@@ -21,6 +21,13 @@ export interface TourStep {
   selector: string;
   title: string;
   description: string;
+  /**
+   * Tour "version" this step was added/changed in (default 1). Bump the number
+   * when you add a screen or significantly change one: new users see every step,
+   * while veterans get a "what's new" mini-tour of only the steps newer than the
+   * version they last saw. See [[onboarding-tour-on-ui-changes]] memory.
+   */
+  since?: number;
 }
 
 /** What each part of the client portal does. */
@@ -115,8 +122,10 @@ export const clientTourSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="partner"]',
-    title: "תוכנית שותפים",
-    description: "אם הופעלה לך תוכנית השותפים, כאן מפנים לקוחות, צוברים קרדיטים ומממשים פרסים.",
+    title: "חדש: חנות פרסים מחודשת ✨",
+    description:
+      "תוכנית השותפים: מפנים לקוחות, צוברים קרדיטים, וממשים פרסים בחנות שעוצבה מחדש — לכל פרס יש שווי בש״ח, בר התקדמות (\"עוד X ואתה משחרר\"), פרסים מודגשים ומבצעים מוגבלים בזמן.",
+    since: 2,
   },
   {
     selector: '[data-tour="help"]',
@@ -206,8 +215,10 @@ export const partnerTourSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="partner-rewards"]',
-    title: "מטבעות, מסלול וחנות",
-    description: "כאן רואים את יתרת המטבעות, את מסלול העמלה (5%→10%), ואת החנות שבה ממירים מטבעות בפרסים.",
+    title: "חדש: החנות עוצבה מחדש ✨",
+    description:
+      "יתרת המטבעות, מסלול העמלה (5%→10%), והחנות שעוצבה מחדש — פרסים עם שווי בש״ח, פרסים מודגשים, בר התקדמות לכל פרס ומבצעים מוגבלים בזמן.",
+    since: 2,
   },
   {
     selector: '[data-tour="help"]',
@@ -215,3 +226,7 @@ export const partnerTourSteps: TourStep[] = [
     description: "כל ההסברים והשאלות תמיד כאן מאחורי כפתור ה-? - וגם אפשר להפעיל את ההדרכה הזו שוב.",
   },
 ];
+
+/** Current tour version per audience = the highest `since` among its steps. */
+export const CLIENT_TOUR_VERSION = Math.max(...clientTourSteps.map((s) => s.since ?? 1));
+export const PARTNER_TOUR_VERSION = Math.max(...partnerTourSteps.map((s) => s.since ?? 1));
