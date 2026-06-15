@@ -48,14 +48,21 @@ export function PartnerRewards() {
     : 100;
 
   const redeem = useMutation({
-    mutationFn: async (rewardId: string) => {
-      const { error } = await supabase.rpc("redeem_partner_reward", { p_reward_id: rewardId });
+    mutationFn: async (reward: Reward) => {
+      const { error } = await supabase.rpc("redeem_partner_reward", { p_reward_id: reward.id });
       if (error) throw error;
+      return reward;
     },
-    onSuccess: () => {
+    onSuccess: (reward) => {
       qc.invalidateQueries({ queryKey: ["partner-me"] });
       celebrate();
-      toast({ title: "הפרס מומש! נטפל בו בקרוב 🎉", variant: "success" });
+      toast({
+        title:
+          reward.kind === "commission_boost"
+            ? "הבוסט הופעל! 🎉"
+            : "הבקשה נשלחה, ממתינה לאישור 🎁",
+        variant: "success",
+      });
     },
     onError: (e: unknown) =>
       toastError((e as { message?: string })?.message || "המימוש נכשל."),
@@ -146,6 +153,9 @@ export function PartnerRewards() {
             );
           })}
         </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          ✨ עוד פרסים יתווספו לחנות בהמשך
+        </p>
       </div>
 
       {/* History */}
@@ -187,7 +197,7 @@ export function PartnerRewards() {
         confirmLabel="מימוש"
         destructive={false}
         onConfirm={() => {
-          if (confirm) redeem.mutate(confirm.id);
+          if (confirm) redeem.mutate(confirm);
           setConfirm(null);
         }}
       />

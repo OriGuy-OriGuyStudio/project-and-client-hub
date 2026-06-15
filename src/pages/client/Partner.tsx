@@ -72,7 +72,7 @@ export default function Partner() {
     setRedeeming(null);
     if (error) return toastError("המימוש נכשל.");
     celebrate();
-    toast({ title: "הפרס מומש 🎁", variant: "success" });
+    toast({ title: "הבקשה נשלחה, ממתינה לאישור 🎁", variant: "success" });
     refresh();
   }
 
@@ -208,6 +208,9 @@ export default function Partner() {
               })}
             </div>
           )}
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            ✨ עוד פרסים יתווספו לחנות בהמשך
+          </p>
         </Card>
       </div>
 
