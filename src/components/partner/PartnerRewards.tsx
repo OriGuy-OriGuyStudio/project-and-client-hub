@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Coins, TrendingUp, Gift, BadgePercent, Sparkles, Zap } from "lucide-react";
+import { Coins, TrendingUp, Gift, Zap } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rewards/StoreUI";
 import { usePartner } from "@/hooks/usePartner";
 import { supabase } from "@/lib/supabase";
-import { celebrate } from "@/lib/confetti";
+import { celebrate, celebrateBig } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
 import { notifyAdminTask } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
@@ -25,7 +25,7 @@ const TIERS = [
 const REDEMPTION_STATUS: Record<string, string> = {
   pending: "ממתין לטיפול",
   fulfilled: "טופל",
-  cancelled: "בוטל",
+  cancelled: "לא אושר",
 };
 
 export function PartnerRewards() {
@@ -40,6 +40,7 @@ export function PartnerRewards() {
   const boostLeft = data?.profile?.boost_deals_left ?? 0;
   const rewards = data?.rewards ?? [];
   const redemptions = data?.redemptions ?? [];
+  const coinLedger = data?.coinLedger ?? [];
 
   const currentIdx = TIERS.reduce((acc, t, i) => (closed >= t.at ? i : acc), 0);
   const current = TIERS[currentIdx];
@@ -56,7 +57,8 @@ export function PartnerRewards() {
     },
     onSuccess: (reward) => {
       qc.invalidateQueries({ queryKey: ["partner-me"] });
-      celebrate();
+      if (reward.is_featured) celebrateBig();
+      else celebrate();
       toast({
         title:
           reward.kind === "commission_boost"
@@ -76,7 +78,7 @@ export function PartnerRewards() {
   return (
     <div className="space-y-6">
       {/* Coins + tier */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div data-section="המטבעות שלי" className="scroll-mt-20 grid gap-4 lg:grid-cols-2">
         <Card className="relative overflow-hidden p-5">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Coins className="size-4 text-primary" />
@@ -122,50 +124,47 @@ export function PartnerRewards() {
       </div>
 
       {/* Store */}
-      <div>
-        <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+      <div data-section className="scroll-mt-20 space-y-4">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-foreground">
           <Gift className="size-5 text-primary" /> החנות
         </h2>
+        <NextRewardNudge
+          rewards={rewards}
+          balance={coins}
+          redemptions={redemptions}
+          currencyLabel="מטבעות"
+          boostActive={boostLeft > 0}
+        />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rewards.map((r) => {
-            const affordable = coins >= r.credit_cost;
-            const avail = rewardAvailability(r, redemptions, { boostActive: boostLeft > 0 });
-            const Icon = r.kind === "commission_boost" ? BadgePercent : r.kind === "payout" ? Coins : Sparkles;
-            return (
-              <Card key={r.id} className="flex flex-col p-5">
-                <div className="flex items-center gap-2 text-primary">
-                  <Icon className="size-5" />
-                  <span className="font-heading text-sm font-bold text-foreground">{r.name}</span>
-                </div>
-                {r.description && (
-                  <p className="mt-2 flex-1 text-xs leading-relaxed text-muted-foreground">
-                    {r.description}
-                  </p>
-                )}
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1 font-heading text-sm font-bold text-foreground">
-                    <Coins className="size-4 text-primary" /> {r.credit_cost}
-                  </span>
-                  <Button
-                    size="sm"
-                    disabled={!avail.ok || !affordable || redeem.isPending}
-                    onClick={() => setConfirm(r)}
-                  >
-                    {!avail.ok ? avail.label : affordable ? "מימוש" : "אין מספיק"}
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
+          {rewards.map((r) => (
+            <RewardStoreCard
+              key={r.id}
+              reward={r}
+              balance={coins}
+              currencyLabel="מטבעות"
+              ilsPerCoin={data?.ilsPerCoin}
+              giftValuePct={data?.giftValuePct}
+              avail={rewardAvailability(r, redemptions, { boostActive: boostLeft > 0 })}
+              redeeming={redeem.isPending}
+              onRedeem={() => setConfirm(r)}
+            />
+          ))}
         </div>
-        <p className="mt-4 text-center text-xs text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           ✨ עוד פרסים יתווספו לחנות בהמשך
         </p>
       </div>
 
-      {/* History */}
+      {/* Coin history */}
+      {coinLedger.length > 0 && (
+        <div data-section className="scroll-mt-20">
+          <CoinTimeline entries={coinLedger} currencyLabel="מטבעות" />
+        </div>
+      )}
+
+      {/* Redemptions */}
       {redemptions.length > 0 && (
-        <div>
+        <div data-section className="scroll-mt-20">
           <h2 className="mb-3 font-heading text-lg font-bold text-foreground">המימושים שלי</h2>
           <div className="space-y-2">
             {redemptions.map((red) => {

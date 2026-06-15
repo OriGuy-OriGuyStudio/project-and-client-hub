@@ -802,6 +802,38 @@
   .ref-rays { animation: none; }
 }
 
+/* ============================================================
+   Featured reward card — brand glow ring + periodic shine sweep
+   (a React-Bits-style "spotlight" so the המודגש card truly pops)
+   ============================================================ */
+.reward-featured {
+  box-shadow:
+    0 0 0 1.5px rgba(180, 214, 112, 0.6),
+    0 12px 34px -14px rgba(180, 214, 112, 0.55);
+}
+.reward-featured::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(180, 214, 112, 0.16) 50%,
+    transparent 62%
+  );
+  transform: translateX(-130%);
+  animation: reward-shine 5s ease-in-out infinite;
+}
+@keyframes reward-shine {
+  0% { transform: translateX(-130%); }
+  55%, 100% { transform: translateX(130%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reward-featured::after { animation: none; opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .autoshot-scroll { animation: none; }
   .reveal-up { opacity: 1; transform: none; transition: none; }

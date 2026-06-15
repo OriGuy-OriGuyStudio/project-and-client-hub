@@ -32,7 +32,7 @@ export function AdminTasksPanel() {
     if (error) return toastError(error.message || "העדכון נכשל.");
     if (status === "fulfilled") void sendRedemptionNotice(t.recipientId, t.rewardName);
     toast({
-      title: status === "fulfilled" ? "אושר ✓ נשלח עדכון למקבל" : "בוטל והמטבעות הוחזרו",
+      title: status === "fulfilled" ? "אושר ✓ נשלח עדכון למקבל" : "סומן כלא אושר והמטבעות הוחזרו",
       variant: "success",
     });
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
@@ -94,7 +94,7 @@ export function AdminTasksPanel() {
                   disabled={busy === t.id}
                   onClick={() => decideRedemption(t, "cancelled")}
                 >
-                  <X className="size-4" /> ביטול
+                  <X className="size-4" /> לא אושר
                 </Button>
               </div>
             </div>

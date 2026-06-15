@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Coins, Gift, Lock, Pencil, Send, Sparkles, Trash2, Users } from "lucide-react";
+import { Coins, Gift, Lock, Pencil, Send, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { SectionNav } from "@/components/layout/SectionNav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +26,9 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientPartner } from "@/hooks/useClientPartner";
 import { clampText } from "@/lib/sanitize";
-import { celebrate } from "@/lib/confetti";
+import { celebrate, celebrateBig } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
+import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rewards/StoreUI";
 import { notifyAdminTask } from "@/lib/invite";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
@@ -66,13 +68,14 @@ export default function Partner() {
     refresh();
   }
 
-  async function redeem(rewardId: string, cost: number, rewardName?: string) {
+  async function redeem(rewardId: string, cost: number, rewardName?: string, featured?: boolean) {
     if ((data?.credits ?? 0) < cost) return toastError("אין מספיק קרדיטים.");
     setRedeeming(rewardId);
     const { error } = await supabase.rpc("redeem_reward", { p_reward_id: rewardId });
     setRedeeming(null);
     if (error) return toastError(error.message || "המימוש נכשל.");
-    celebrate();
+    if (featured) celebrateBig();
+    else celebrate();
     toast({ title: "הבקשה נשלחה, ממתינה לאישור 🎁", variant: "success" });
     void notifyAdminTask("מימוש חדש בחנות (לקוח)", rewardName || "");
     refresh();
@@ -101,6 +104,8 @@ export default function Partner() {
         subtitle="הפנה עסקים לסטודיו, צבור קרדיטים, וממש אותם על פרסים."
       />
 
+      <SectionNav />
+
       {/* Credits with coin burst (no overflow-hidden so coins can fly out) */}
       <Card className="relative flex items-center justify-between gap-4 p-6">
         <div className="flex items-center gap-3">
@@ -121,103 +126,80 @@ export default function Partner() {
         <CoinBurst trigger={coinBurst} disabled={reduced} />
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Submit referral */}
-        <Card className="space-y-4 p-5">
+      {/* Submit referral — full-width form */}
+      <section data-section="הגשת הפניה" className="scroll-mt-20">
+        <Card className="space-y-4 p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Send className="size-5 text-brand-cyan-base" />
             <h2 className="font-heading text-lg font-semibold text-foreground">
               הגשת הפניה
             </h2>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="r-name">שם המופנה</Label>
-            <Input id="r-name" value={form.name} maxLength={120}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="r-contact">טלפון או מייל</Label>
-            <Input id="r-contact" dir="ltr" value={form.contact} maxLength={160}
-              onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="r-name">שם המופנה</Label>
+              <Input id="r-name" value={form.name} maxLength={120}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="r-contact">טלפון או מייל</Label>
+              <Input id="r-contact" dir="ltr" value={form.contact} maxLength={160}
+                onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))} />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="r-note">הערה</Label>
             <Textarea id="r-note" value={form.note} maxLength={2000}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
           </div>
-          <Button className="w-full" onClick={submitReferral} disabled={sending}>
+          <Button className="w-full sm:w-auto" onClick={submitReferral} disabled={sending}>
             {sending ? "שולח…" : "שליחה (קרדיט אחד מיידי)"}
           </Button>
         </Card>
+      </section>
 
-        {/* Rewards store */}
-        <Card className="space-y-4 p-5">
-          <div className="flex items-center gap-2">
-            <Gift className="size-5 text-brand-cyan-base" />
-            <h2 className="font-heading text-lg font-semibold text-foreground">
-              חנות הפרסים
-            </h2>
-          </div>
-          {isLoading ? (
-            <Skeleton className="h-24 w-full rounded-xl" />
-          ) : !data?.rewards.length ? (
-            <EmptyState icon={Gift} title="אין עדיין פרסים" />
-          ) : (
-            <div className="space-y-2">
-              {data.rewards.map((r) => {
-                const can = credits >= r.credit_cost;
-                const avail = rewardAvailability(r, data.redemptions ?? []);
-                const remaining = Math.max(0, r.credit_cost - credits);
-                const pct = Math.min(100, Math.round((credits / r.credit_cost) * 100));
-                return (
-                  <div key={r.id} className="rounded-xl border border-border bg-background/30 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-foreground">{r.name}</p>
-                      <Badge variant={can ? "success" : "secondary"}>
-                        <Sparkles className="size-3" /> {r.credit_cost}
-                      </Badge>
-                    </div>
-                    {r.description && (
-                      <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>
-                    )}
-                    {/* progress to reward */}
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {!avail.ok
-                        ? avail.label
-                        : can
-                          ? "אפשר לממש עכשיו 🎉"
-                          : `עלות ${r.credit_cost} · נשארו לך ${remaining} קרדיטים`}
-                    </p>
-                    <Button
-                      size="sm"
-                      className="mt-2 w-full"
-                      disabled={!avail.ok || !can || redeeming === r.id}
-                      onClick={() => redeem(r.id, r.credit_cost, r.name)}
-                    >
-                      {redeeming === r.id
-                        ? "מממש…"
-                        : !avail.ok
-                          ? avail.label
-                          : can
-                            ? "מימוש"
-                            : "עדיין אוספים"}
-                    </Button>
-                  </div>
-                );
-              })}
+      {/* Rewards store — grid below the form */}
+      <section data-section="חנות הפרסים" className="scroll-mt-20 space-y-4">
+        <div className="flex items-center gap-2">
+          <Gift className="size-5 text-brand-cyan-base" />
+          <h2 className="font-heading text-lg font-semibold text-foreground">חנות הפרסים</h2>
+        </div>
+        {isLoading ? (
+          <Skeleton className="h-24 w-full rounded-xl" />
+        ) : !data?.rewards.length ? (
+          <EmptyState icon={Gift} title="אין עדיין פרסים" />
+        ) : (
+          <>
+            <NextRewardNudge
+              rewards={data.rewards}
+              balance={credits}
+              redemptions={data.redemptions ?? []}
+              currencyLabel="קרדיטים"
+            />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {data.rewards.map((r) => (
+                <RewardStoreCard
+                  key={r.id}
+                  reward={r}
+                  balance={credits}
+                  currencyLabel="קרדיטים"
+                  ilsPerCoin={data.ilsPerCoin}
+                  giftValuePct={data.giftValuePct}
+                  avail={rewardAvailability(r, data.redemptions ?? [])}
+                  redeeming={redeeming === r.id}
+                  onRedeem={() => redeem(r.id, r.credit_cost, r.name, r.is_featured)}
+                />
+              ))}
             </div>
-          )}
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            ✨ עוד פרסים יתווספו לחנות בהמשך
-          </p>
-        </Card>
-      </div>
+          </>
+        )}
+        <p className="text-center text-xs text-muted-foreground">
+          ✨ עוד פרסים יתווספו לחנות בהמשך
+        </p>
+      </section>
 
       {/* Referrals list */}
-      <div>
+      <div data-section="ההפניות שלך" className="scroll-mt-20">
         <h2 className="mb-3 font-heading text-lg font-bold text-foreground">ההפניות שלך</h2>
         {isLoading ? (
           <Skeleton className="h-20 w-full rounded-2xl" />
@@ -264,6 +246,13 @@ export default function Partner() {
           </div>
         )}
       </div>
+
+      {/* Credit history */}
+      {data?.ledger && data.ledger.length > 0 && (
+        <div data-section="היסטוריית הקרדיטים" className="scroll-mt-20">
+          <CoinTimeline entries={data.ledger} currencyLabel="קרדיטים" title="היסטוריית הקרדיטים" />
+        </div>
+      )}
 
       <EditReferralDialog target={editTarget} onClose={() => setEditTarget(null)} onSaved={refresh} />
       <DeleteReferralDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} onSaved={refresh} />

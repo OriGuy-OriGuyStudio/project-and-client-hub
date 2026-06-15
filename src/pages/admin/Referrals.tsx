@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Gift, Handshake, Plus, Settings2, Sparkles, Trash2 } from "lucide-react";
+import { Handshake, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { RewardsStore } from "@/components/admin/RewardsStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +18,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminReferrals, type AdminReferral } from "@/hooks/useAdminReferrals";
 import { useNotifications } from "@/hooks/useNotifications";
-import { clampText } from "@/lib/sanitize";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 import type { ReferralStatus } from "@/types/database";
 
@@ -48,7 +47,6 @@ export default function Referrals() {
       <PageHeader
         title="ניהול הפניות"
         subtitle="הפניות מהלקוחות, עדכון סטטוס, וחנות הפרסים."
-        actions={<RewardDialog />}
       />
 
       {isLoading ? (
@@ -100,21 +98,13 @@ export default function Referrals() {
       )}
 
       {/* Rewards store management */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Gift className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-bold text-foreground">חנות הפרסים</h2>
-        </div>
-        {data?.rewards.length ? (
-          <div className="space-y-2">
-            {data.rewards.map((rw) => (
-              <RewardRow key={rw.id} reward={rw} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState icon={Gift} title="אין עדיין פרסים" />
-        )}
-      </section>
+      {!isLoading && (
+        <RewardsStore
+          rewards={data?.rewards ?? []}
+          ilsPerCoin={data?.ilsPerCoin ?? 1}
+          giftValuePct={data?.giftValuePct ?? 75}
+        />
+      )}
 
       <ManageReferralDialog referral={active} onClose={() => setActive(null)} />
     </div>
@@ -277,104 +267,3 @@ function ManageReferralDialog({
   );
 }
 
-function RewardRow({ reward }: { reward: import("@/types/database").Reward }) {
-  const qc = useQueryClient();
-  async function toggle() {
-    const { error } = await supabase
-      .from("rewards")
-      .update({ is_active: !reward.is_active })
-      .eq("id", reward.id);
-    if (error) return toastError("העדכון נכשל.");
-    qc.invalidateQueries({ queryKey: ["admin-referrals"] });
-  }
-  async function remove() {
-    const { error } = await supabase.from("rewards").delete().eq("id", reward.id);
-    if (error) return toastError("המחיקה נכשלה.");
-    qc.invalidateQueries({ queryKey: ["admin-referrals"] });
-  }
-  return (
-    <Card className="flex items-center justify-between gap-3 p-4">
-      <div className="min-w-0">
-        <p className="truncate font-medium text-foreground">{reward.name}</p>
-        {reward.description && (
-          <p className="truncate text-xs text-muted-foreground">{reward.description}</p>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Badge variant={reward.is_active ? "success" : "secondary"}>
-          <Sparkles className="size-3" /> {reward.credit_cost}
-        </Badge>
-        <Button size="sm" variant="ghost" onClick={toggle}>
-          {reward.is_active ? "השבת" : "הפעל"}
-        </Button>
-        <Button variant="ghost" size="icon" className="text-destructive" aria-label="מחיקה" onClick={remove}>
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-function RewardDialog() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", credit_cost: "100" });
-
-  async function save() {
-    const name = clampText(form.name.trim(), 120);
-    const cost = Number(form.credit_cost);
-    if (!name) return toastError("תן שם לפרס.");
-    if (!Number.isInteger(cost) || cost <= 0) return toastError("עלות קרדיטים לא תקינה.");
-    setSaving(true);
-    const { error } = await supabase.from("rewards").insert({
-      name,
-      description: clampText(form.description.trim(), 300) || null,
-      credit_cost: cost,
-      reward_type: "custom",
-    });
-    setSaving(false);
-    if (error) return toastError("הוספת הפרס נכשלה.");
-    toast({ title: "הפרס נוסף", variant: "success" });
-    qc.invalidateQueries({ queryKey: ["admin-referrals"] });
-    setForm({ name: "", description: "", credit_cost: "100" });
-    setOpen(false);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="secondary">
-          <Plus className="size-4" /> פרס חדש
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>הוספת פרס</DialogTitle>
-          <DialogDescription>פרס שהלקוחות יוכלו לממש בקרדיטים.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="rw-name">שם הפרס</Label>
-            <Input id="rw-name" value={form.name} maxLength={120}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="rw-desc">תיאור</Label>
-            <Input id="rw-desc" value={form.description} maxLength={300}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="rw-cost">עלות בקרדיטים</Label>
-            <Input id="rw-cost" dir="ltr" type="number" min="1" value={form.credit_cost}
-              onChange={(e) => setForm((f) => ({ ...f, credit_cost: e.target.value }))} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={save} disabled={saving}>{saving ? "מוסיף…" : "הוספה"}</Button>
-          <Button variant="ghost" onClick={() => setOpen(false)}>ביטול</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
