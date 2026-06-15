@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { PartnerRewards } from "@/components/partner/PartnerRewards";
+import { startPartnerTour } from "@/components/help/tour";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
@@ -32,12 +33,24 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
 }
 
 export default function PartnerDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { data, isLoading, isError } = usePartner();
 
   useEffect(() => {
     if (isError) toastError("טעינת הנתונים נכשלה.");
   }, [isError]);
+
+  // First-ever visit → play the partner orientation tour once (per user, per browser).
+  useEffect(() => {
+    if (isLoading || !user?.id) return;
+    const key = `sog-partner-tour-${user.id}`;
+    if (localStorage.getItem(key)) return;
+    const t = setTimeout(() => {
+      startPartnerTour();
+      localStorage.setItem(key, "1");
+    }, 900);
+    return () => clearTimeout(t);
+  }, [isLoading, user?.id]);
 
   const firstName = profile?.full_name?.split(" ")[0] || "";
   const leads = data?.leads ?? [];
@@ -56,7 +69,7 @@ export default function PartnerDashboard() {
         title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הלידים שהגשת והעמלות שלך, במבט אחד."
         actions={
-          <Button asChild>
+          <Button asChild data-tour="new-lead">
             <Link to="/partner-portal/new-lead">
               <Plus className="size-4" /> הגשת ליד
             </Link>
@@ -72,7 +85,7 @@ export default function PartnerDashboard() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-tour="partner-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat icon={Users} label="לידים שהוגשו" value={leads.length} />
             <Stat icon={Briefcase} label="לידים פתוחים" value={open} />
             <Stat icon={Check} label="עסקאות שנסגרו" value={closed} />
@@ -80,7 +93,7 @@ export default function PartnerDashboard() {
           </div>
 
           {/* Referral link */}
-          <Card className="p-5">
+          <Card data-tour="referral-link" className="p-5">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MousePointerClick className="size-4" />
               <span className="text-sm">לינק ההפניה האישי שלך</span>
@@ -144,7 +157,9 @@ export default function PartnerDashboard() {
           </div>
 
           <WavePath className="my-4" />
-          <PartnerRewards />
+          <div data-tour="partner-rewards">
+            <PartnerRewards />
+          </div>
         </>
       )}
 

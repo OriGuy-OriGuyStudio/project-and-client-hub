@@ -3,8 +3,9 @@ import { createPortal } from "react-dom";
 import { HelpCircle, Sparkles, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { helpSections, faq } from "./help-content";
-import { startClientTour } from "./tour";
+import { useAuth } from "@/hooks/useAuth";
+import { helpSections, faq, partnerHelpSections, partnerFaq } from "./help-content";
+import { startClientTour, startPartnerTour } from "./tour";
 
 /**
  * Help center: a "?" button in the header that opens a right-side panel
@@ -13,6 +14,11 @@ import { startClientTour } from "./tour";
 export function HelpCenter() {
   const [open, setOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { profile } = useAuth();
+  const isPartner = profile?.role === "partner";
+  const sections = isPartner ? partnerHelpSections : helpSections;
+  const faqItems = isPartner ? partnerFaq : faq;
+  const startTour = isPartner ? startPartnerTour : startClientTour;
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +61,7 @@ export function HelpCenter() {
                   className="w-full"
                   onClick={() => {
                     setOpen(false);
-                    setTimeout(startClientTour, 250);
+                    setTimeout(startTour, 250);
                   }}
                 >
                   <Sparkles className="size-4" /> התחל הדרכה מודרכת
@@ -66,7 +72,7 @@ export function HelpCenter() {
                     מה כל חלק עושה
                   </h3>
                   <div className="space-y-2">
-                    {helpSections.map((s) => (
+                    {sections.map((s) => (
                       <div
                         key={s.title}
                         className="rounded-xl border border-border bg-field p-3"
@@ -85,7 +91,7 @@ export function HelpCenter() {
                     שאלות נפוצות
                   </h3>
                   <div className="space-y-2">
-                    {faq.map((item, i) => {
+                    {faqItems.map((item, i) => {
                       const isOpen = openFaq === i;
                       return (
                         <div key={i} className="rounded-xl border border-border">
