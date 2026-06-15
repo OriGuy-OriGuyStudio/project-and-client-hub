@@ -8,6 +8,7 @@ import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Card } from "@/components/ui/card";
+import { AdminTasksPanel } from "@/components/admin/AdminTasksPanel";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -51,6 +52,10 @@ export default function AdminDashboard() {
         <StatCard label="פרויקטים פעילים" value={active} />
         <StatCard label="בהמתנה" value={onHold} />
         <StatCard label="הושלמו" value={completed} />
+      </div>
+
+      <div className="mt-6">
+        <AdminTasksPanel />
       </div>
 
       <WavePath className="my-8" />
