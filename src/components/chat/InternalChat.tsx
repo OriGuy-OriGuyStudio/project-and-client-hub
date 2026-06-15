@@ -12,6 +12,7 @@ import { toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { useNotifyClient } from "@/components/project/NotifyClient";
+import { notifyAdminTask } from "@/lib/invite";
 import type { Message } from "@/types/database";
 
 export function InternalChat({
@@ -79,12 +80,18 @@ export function InternalChat({
       .insert({ project_id: projectId, sender_id: senderId, content });
     setSending(false);
     if (error) return toastError("שליחת ההודעה נכשלה.");
+    // Show it immediately - don't rely only on the realtime channel (which is
+    // a no-op if replication isn't enabled for `messages`).
+    qc.invalidateQueries({ queryKey: ["messages", projectId] });
     if (isAdmin) {
       requestNotify({
         type: "message",
         title: "הודעה חדשה מהסטודיו",
         body: content,
       });
+    } else {
+      // Client wrote → let the studio know there's a thread awaiting a reply.
+      void notifyAdminTask("הודעה חדשה בצ'אט", `${projectTitle}: ${content}`);
     }
     setText("");
   }

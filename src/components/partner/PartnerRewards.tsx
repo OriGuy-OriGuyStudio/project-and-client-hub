@@ -10,6 +10,7 @@ import { usePartner } from "@/hooks/usePartner";
 import { supabase } from "@/lib/supabase";
 import { celebrate } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
+import { notifyAdminTask } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import type { Reward } from "@/types/database";
 
@@ -63,6 +64,10 @@ export function PartnerRewards() {
             : "הבקשה נשלחה, ממתינה לאישור 🎁",
         variant: "success",
       });
+      // Boost is auto-applied; everything else needs the admin.
+      if (reward.kind !== "commission_boost") {
+        void notifyAdminTask("מימוש חדש בחנות (שותף)", reward.name);
+      }
     },
     onError: (e: unknown) =>
       toastError((e as { message?: string })?.message || "המימוש נכשל."),

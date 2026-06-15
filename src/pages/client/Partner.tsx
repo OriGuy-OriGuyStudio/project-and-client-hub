@@ -27,6 +27,7 @@ import { useClientPartner } from "@/hooks/useClientPartner";
 import { clampText } from "@/lib/sanitize";
 import { celebrate } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
+import { notifyAdminTask } from "@/lib/invite";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 import type { Referral } from "@/types/database";
@@ -65,14 +66,15 @@ export default function Partner() {
     refresh();
   }
 
-  async function redeem(rewardId: string, cost: number) {
+  async function redeem(rewardId: string, cost: number, rewardName?: string) {
     if ((data?.credits ?? 0) < cost) return toastError("אין מספיק קרדיטים.");
     setRedeeming(rewardId);
     const { error } = await supabase.rpc("redeem_reward", { p_reward_id: rewardId });
     setRedeeming(null);
-    if (error) return toastError("המימוש נכשל.");
+    if (error) return toastError(error.message || "המימוש נכשל.");
     celebrate();
     toast({ title: "הבקשה נשלחה, ממתינה לאישור 🎁", variant: "success" });
+    void notifyAdminTask("מימוש חדש בחנות (לקוח)", rewardName || "");
     refresh();
   }
 
@@ -193,7 +195,7 @@ export default function Partner() {
                       size="sm"
                       className="mt-2 w-full"
                       disabled={!avail.ok || !can || redeeming === r.id}
-                      onClick={() => redeem(r.id, r.credit_cost)}
+                      onClick={() => redeem(r.id, r.credit_cost, r.name)}
                     >
                       {redeeming === r.id
                         ? "מממש…"

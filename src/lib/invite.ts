@@ -87,3 +87,21 @@ export async function sendRedemptionNotice(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * Email the studio (fixed recipient) that a new task is awaiting the admin —
+ * a store redemption or a client chat message. Any signed-in user may trigger
+ * it (it only ever emails the studio, never arbitrary addresses). Best-effort.
+ */
+export async function notifyAdminTask(title: string, body: string): Promise<InviteResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("notify-admin-task", {
+      body: { title, body },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

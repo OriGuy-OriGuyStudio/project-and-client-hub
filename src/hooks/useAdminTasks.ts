@@ -29,7 +29,7 @@ export interface AdminTasks {
  *  last message is from the client (i.e. awaiting a reply). */
 export function useAdminTasks(adminId?: string) {
   return useQuery({
-    queryKey: ["admin-tasks"],
+    queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
       const [pr, cr, msgs] = await Promise.all([
         supabase
