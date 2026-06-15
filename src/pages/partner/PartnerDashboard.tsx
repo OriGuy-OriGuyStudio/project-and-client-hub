@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { PartnerRewards } from "@/components/partner/PartnerRewards";
 import { startPartnerTour } from "@/components/help/tour";
+import { PARTNER_TOUR_VERSION } from "@/components/help/help-content";
 import { GiftPopup } from "@/components/layout/GiftPopup";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { SparklesText } from "@/components/ui/sparkles-text";
@@ -43,14 +44,19 @@ export default function PartnerDashboard() {
     if (isError) toastError("טעינת הנתונים נכשלה.");
   }, [isError]);
 
-  // First-ever visit → play the partner orientation tour once (per user, per browser).
+  // First visit → full tour; returning partners → a "what's new" mini-tour of
+  // only the steps added since they last saw it (per user, per browser).
   useEffect(() => {
     if (isLoading || !user?.id) return;
-    const key = `sog-partner-tour-${user.id}`;
-    if (localStorage.getItem(key)) return;
+    const seenKey = `sog-partner-tour-${user.id}`;
+    const verKey = `sog-partner-tour-ver-${user.id}`;
+    const firstTime = !localStorage.getItem(seenKey);
+    const seenVer = firstTime ? 0 : Number(localStorage.getItem(verKey) ?? "1");
+    if (!firstTime && seenVer >= PARTNER_TOUR_VERSION) return;
     const t = setTimeout(() => {
-      startPartnerTour();
-      localStorage.setItem(key, "1");
+      startPartnerTour(firstTime ? undefined : { since: seenVer });
+      localStorage.setItem(seenKey, "1");
+      localStorage.setItem(verKey, String(PARTNER_TOUR_VERSION));
     }, 900);
     return () => clearTimeout(t);
   }, [isLoading, user?.id]);

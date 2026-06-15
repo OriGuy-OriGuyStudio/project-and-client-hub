@@ -8,9 +8,14 @@ function firstVisible(selector: string): HTMLElement | null {
   return els.find((el) => el.offsetParent !== null) ?? null;
 }
 
-/** Runs an orientation tour over whichever target elements are visible. */
-function runTour(tourSteps: TourStep[]) {
+/**
+ * Runs an orientation tour over whichever target elements are visible.
+ * Pass `sinceExclusive` to run a "what's new" delta — only steps whose `since`
+ * is greater than the version the user last saw.
+ */
+function runTour(tourSteps: TourStep[], sinceExclusive = 0) {
   const steps = tourSteps
+    .filter((s) => (s.since ?? 1) > sinceExclusive)
     .map((s) => {
       const el = firstVisible(s.selector);
       return el
@@ -31,10 +36,11 @@ function runTour(tourSteps: TourStep[]) {
   }).drive();
 }
 
-export function startClientTour() {
-  runTour(clientTourSteps);
+/** `since`: when set, runs only the steps newer than that version (delta tour). */
+export function startClientTour(opts?: { since?: number }) {
+  runTour(clientTourSteps, opts?.since ?? 0);
 }
 
-export function startPartnerTour() {
-  runTour(partnerTourSteps);
+export function startPartnerTour(opts?: { since?: number }) {
+  runTour(partnerTourSteps, opts?.since ?? 0);
 }
