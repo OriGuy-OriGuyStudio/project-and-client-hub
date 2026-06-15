@@ -53,7 +53,7 @@ export function GrantCoinsDialog({
     if (Number.isNaN(n) || n <= 0) return toastError("צריך להזין כמות מטבעות חיובית.");
 
     setSaving(true);
-    const { error } = await supabase.rpc("grant_coins", {
+    const { data: grantId, error } = await supabase.rpc("grant_coins", {
       p_user: userId,
       p_amount: Math.round(n),
       p_kind: kind,
@@ -64,8 +64,15 @@ export function GrantCoinsDialog({
       return toastError(error.message || "מתן המטבעות נכשל.");
     }
 
-    // Best-effort email; the in-app popup works regardless.
+    // Best-effort email; the in-app popup works regardless. Record the outcome
+    // on the audit row so the admin can see whether the email went out.
     const mail = await sendGiftNotice(userId, kind, Math.round(n), reason.trim());
+    if (grantId) {
+      await supabase
+        .from("coin_grants")
+        .update({ email_status: mail.ok ? "sent" : "failed" })
+        .eq("id", grantId as string);
+    }
     setSaving(false);
 
     toast({

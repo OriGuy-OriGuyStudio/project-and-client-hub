@@ -70,6 +70,7 @@ export default function Partner() {
     const { error } = await supabase.rpc("redeem_reward", { p_reward_id: rewardId });
     setRedeeming(null);
     if (error) return toastError("המימוש נכשל.");
+    celebrate();
     toast({ title: "הפרס מומש 🎁", variant: "success" });
     refresh();
   }

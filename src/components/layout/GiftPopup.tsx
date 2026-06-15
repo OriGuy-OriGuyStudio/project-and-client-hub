@@ -18,60 +18,81 @@ type GiftNotification = {
   body: string | null;
 };
 
+const EMOJI: Record<string, string> = {
+  gift: "🎁",
+  compensation: "💛",
+  redemption_fulfilled: "🎉",
+};
+
 /**
- * Celebratory popup shown to a client/partner when the admin granted them gift
- * or compensation coins. Reads the unread gift/compensation notification, fires
- * confetti, and marks it read on acknowledge. Mount on the portal dashboards.
+ * Celebratory popup(s) shown to a client/partner for unread gift / compensation
+ * grants and approved redemptions. Queues multiple (one after another), waits
+ * for the post-login loader to clear before showing, fires confetti per popup,
+ * and records the acknowledgement (acknowledge_coin_grant) for the audit trail.
  */
 export function GiftPopup() {
   const qc = useQueryClient();
-  const [dismissed, setDismissed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [queue, setQueue] = useState<GiftNotification[] | null>(null);
 
-  const { data: gift } = useQuery({
+  const { data } = useQuery({
     queryKey: ["gift-popup"],
-    queryFn: async (): Promise<GiftNotification | null> => {
+    queryFn: async (): Promise<GiftNotification[]> => {
       const uid = (await supabase.auth.getUser()).data.user?.id;
-      if (!uid) return null;
+      if (!uid) return [];
       const { data } = await supabase
         .from("notifications")
         .select("id, type, title, body")
         .eq("recipient_id", uid)
-        .in("type", ["gift", "compensation"])
+        .in("type", ["gift", "compensation", "redemption_fulfilled"])
         .eq("is_read", false)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return (data as GiftNotification | null) ?? null;
+        .order("created_at", { ascending: true });
+      return (data as GiftNotification[] | null) ?? [];
     },
   });
 
-  const open = !!gift && !dismissed;
+  // Let the post-login loader finish before popping anything.
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 2200);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Seed the queue once (so a re-fetch can't re-open dismissed ones mid-session).
+  useEffect(() => {
+    if (ready && queue === null && data) setQueue(data);
+  }, [ready, data, queue]);
+
+  const current = queue && queue.length ? queue[0] : null;
 
   useEffect(() => {
-    if (open) celebrate();
-  }, [open]);
+    if (current) celebrate();
+  }, [current?.id]);
 
   async function ack() {
-    if (gift) {
-      await supabase.from("notifications").update({ is_read: true }).eq("id", gift.id);
-      qc.invalidateQueries({ queryKey: ["gift-popup"] });
-      qc.invalidateQueries({ queryKey: ["notifications"] });
+    if (!current) return;
+    if (current.type === "gift" || current.type === "compensation") {
+      await supabase.rpc("acknowledge_coin_grant", { p_notification_id: current.id });
+    } else {
+      await supabase.from("notifications").update({ is_read: true }).eq("id", current.id);
     }
-    setDismissed(true);
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+    setQueue((q) => (q ? q.slice(1) : q));
   }
 
-  if (!open || !gift) return null;
+  if (!current) return null;
 
   return (
     <Dialog open onOpenChange={(o) => !o && ack()}>
       <DialogContent className="max-w-sm text-center">
         <div className="text-6xl" aria-hidden>
-          {gift.type === "gift" ? "🎁" : "💛"}
+          {EMOJI[current.type] ?? "🎉"}
         </div>
         <DialogHeader>
-          <DialogTitle className="text-center font-heading text-2xl">{gift.title}</DialogTitle>
+          <DialogTitle className="text-center font-heading text-2xl">{current.title}</DialogTitle>
         </DialogHeader>
-        {gift.body && <p className="text-sm leading-relaxed text-muted-foreground">{gift.body}</p>}
+        {current.body && (
+          <p className="text-sm leading-relaxed text-muted-foreground">{current.body}</p>
+        )}
         <DialogFooter>
           <Button className="w-full" onClick={ack}>
             מגניב, תודה! 🙌

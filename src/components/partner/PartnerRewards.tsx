@@ -5,8 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePartner } from "@/hooks/usePartner";
 import { supabase } from "@/lib/supabase";
+import { celebrate } from "@/lib/confetti";
 import { toast, toastError } from "@/hooks/use-toast";
 import type { Reward } from "@/types/database";
 
@@ -51,6 +53,7 @@ export function PartnerRewards() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["partner-me"] });
+      celebrate();
       toast({ title: "הפרס מומש! נטפל בו בקרוב 🎉", variant: "success" });
     },
     onError: (e: unknown) =>
@@ -67,7 +70,7 @@ export function PartnerRewards() {
             <span className="text-sm">המטבעות שלי</span>
           </div>
           <p className="mt-2 font-heading text-4xl font-black text-foreground">
-            {coins.toLocaleString("he-IL")}
+            <AnimatedNumber value={coins} />
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             מרוויחים 20 מטבעות על כל עסקה שנסגרת, וממירים אותם בחנות שלמטה.

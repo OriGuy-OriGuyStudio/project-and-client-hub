@@ -5,9 +5,15 @@ import type {
   BrandColor,
   ClientBrand,
   ClientCallLog,
+  CoinGrant,
   Profile,
   Project,
+  RewardRedemption,
 } from "@/types/database";
+
+export type ClientRedemptionRow = RewardRedemption & {
+  reward: { name: string } | null;
+};
 
 export interface ClientDetailData {
   profile: Profile | null;
@@ -20,6 +26,8 @@ export interface ClientDetailData {
   credits: number;
   enrolled: boolean;
   curious: boolean;
+  grants: CoinGrant[];
+  redemptions: ClientRedemptionRow[];
   invite: {
     invite_sent_at: string | null;
     invite_send_count: number;
@@ -45,6 +53,8 @@ export function useClientDetail(clientId: string | undefined) {
         { data: credits },
         { data: enrollment },
         { data: curious },
+        { data: grants },
+        { data: redemptions },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
@@ -56,6 +66,12 @@ export function useClientDetail(clientId: string | undefined) {
         supabase.rpc("get_client_credits", { p_client_id: id }),
         supabase.from("partner_enrollments").select("client_id").eq("client_id", id).maybeSingle(),
         supabase.from("easter_egg_claims").select("client_id").eq("client_id", id).maybeSingle(),
+        supabase.from("coin_grants").select("*").eq("user_id", id).order("created_at", { ascending: false }),
+        supabase
+          .from("reward_redemptions")
+          .select("*, reward:rewards(name)")
+          .eq("client_id", id)
+          .order("redeemed_at", { ascending: false }),
       ]);
 
       // Welcome-invite status lives on the whitelist row (keyed by email).
@@ -80,6 +96,8 @@ export function useClientDetail(clientId: string | undefined) {
         credits: credits ?? 0,
         enrolled: !!enrollment,
         curious: !!curious,
+        grants: grants ?? [],
+        redemptions: (redemptions as unknown as ClientRedemptionRow[] | null) ?? [],
         invite,
       };
     },

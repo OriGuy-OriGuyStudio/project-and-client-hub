@@ -432,8 +432,21 @@ export type RewardRedemption = {
   reward_id: string;
   credits_spent: number;
   redeemed_at: string;
-  status: "pending" | "fulfilled";
+  status: "pending" | "fulfilled" | "cancelled";
   fulfilled_at: string | null;
+}
+
+export type CoinGrant = {
+  id: string;
+  user_id: string;
+  kind: "gift" | "compensation" | null;
+  amount: number;
+  reason: string | null;
+  granted_by: string | null;
+  email_status: "pending" | "sent" | "failed";
+  notification_id: string | null;
+  created_at: string;
+  acknowledged_at: string | null;
 }
 
 /** Generic helper to derive Insert/Update shapes from a Row type. */
@@ -487,6 +500,7 @@ export interface Database {
       rewards: TableShape<Reward>;
       partner_enrollments: TableShape<PartnerEnrollment>;
       reward_redemptions: TableShape<RewardRedemption>;
+      coin_grants: TableShape<CoinGrant>;
       partner_profiles: TableShape<PartnerProfile>;
       partner_coin_transactions: TableShape<PartnerCoinTransaction>;
       partner_reward_redemptions: TableShape<PartnerRewardRedemption>;
@@ -508,7 +522,9 @@ export interface Database {
       get_partner_coins: { Args: { p_partner: string }; Returns: number };
       redeem_partner_reward: { Args: { p_reward_id: string }; Returns: string };
       set_partner_redemption_status: { Args: { p_id: string; p_status: string }; Returns: undefined };
-      grant_coins: { Args: { p_user: string; p_amount: number; p_kind: string; p_reason?: string | null }; Returns: undefined };
+      grant_coins: { Args: { p_user: string; p_amount: number; p_kind: string; p_reason?: string | null }; Returns: string };
+      acknowledge_coin_grant: { Args: { p_notification_id: string }; Returns: undefined };
+      set_client_redemption_status: { Args: { p_id: string; p_status: string }; Returns: undefined };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
       resolve_referral: {

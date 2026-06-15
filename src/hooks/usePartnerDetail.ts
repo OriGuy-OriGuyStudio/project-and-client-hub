@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type {
+  CoinGrant,
   PartnerLead,
   PartnerProfile,
   PartnerRewardRedemption,
@@ -20,6 +21,7 @@ export interface PartnerDetailData {
   paidCommission: number; // sum of commission_amount where payment confirmed
   coins: number;
   redemptions: PartnerRedemptionRow[];
+  grants: CoinGrant[];
 }
 
 /** Everything the admin needs on one partner's detail page. */
@@ -29,22 +31,29 @@ export function usePartnerDetail(partnerId: string | undefined) {
     queryKey: ["partner-detail", partnerId],
     queryFn: async (): Promise<PartnerDetailData> => {
       const id = partnerId!;
-      const [{ data: profile }, { data: partner }, { data: leads }, { data: coins }, { data: redemptions }] =
-        await Promise.all([
-          supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-          supabase.from("partner_profiles").select("*").eq("id", id).maybeSingle(),
-          supabase
-            .from("partner_leads")
-            .select("*")
-            .eq("partner_id", id)
-            .order("created_at", { ascending: false }),
-          supabase.rpc("get_partner_coins", { p_partner: id }),
-          supabase
-            .from("partner_reward_redemptions")
-            .select("*, reward:rewards(name,kind)")
-            .eq("partner_id", id)
-            .order("created_at", { ascending: false }),
-        ]);
+      const [
+        { data: profile },
+        { data: partner },
+        { data: leads },
+        { data: coins },
+        { data: redemptions },
+        { data: grants },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
+        supabase.from("partner_profiles").select("*").eq("id", id).maybeSingle(),
+        supabase
+          .from("partner_leads")
+          .select("*")
+          .eq("partner_id", id)
+          .order("created_at", { ascending: false }),
+        supabase.rpc("get_partner_coins", { p_partner: id }),
+        supabase
+          .from("partner_reward_redemptions")
+          .select("*, reward:rewards(name,kind)")
+          .eq("partner_id", id)
+          .order("created_at", { ascending: false }),
+        supabase.from("coin_grants").select("*").eq("user_id", id).order("created_at", { ascending: false }),
+      ]);
 
       const rows = leads ?? [];
       const paidCommission = rows
@@ -60,6 +69,7 @@ export function usePartnerDetail(partnerId: string | undefined) {
         paidCommission,
         coins: (coins as number | null) ?? 0,
         redemptions: (redemptions as unknown as PartnerRedemptionRow[] | null) ?? [],
+        grants: grants ?? [],
       };
     },
   });

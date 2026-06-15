@@ -35,6 +35,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartnerDetail } from "@/hooks/usePartnerDetail";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
+import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
 import { rateLabel } from "@/hooks/usePartners";
 import { referralDisplay, referralUrl } from "@/lib/referral";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
@@ -95,7 +96,7 @@ export default function PartnerDetail() {
     return <EmptyState icon={Handshake} title="השותף לא נמצא" />;
   }
 
-  const { profile, partner, leads, totalLeads, closedDeals, paidCommission, coins, redemptions } = data;
+  const { profile, partner, leads, totalLeads, closedDeals, paidCommission, coins, redemptions, grants } = data;
 
   return (
     <div className="space-y-6">
@@ -259,6 +260,8 @@ export default function PartnerDetail() {
           </div>
         )}
       </div>
+
+      <CoinGrantsAudit grants={grants} />
 
       <AddRetroDealDialog
         partnerId={id!}

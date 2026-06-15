@@ -26,6 +26,8 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
+import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
+import { supabase } from "@/lib/supabase";
 import { sendInvite } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { toast, toastError } from "@/hooks/use-toast";
@@ -51,8 +53,25 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Coins; label: string;
 
 export default function ClientDetail() {
   const { id } = useParams();
+  const qc = useQueryClient();
   const { data, isLoading } = useClientDetail(id);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
+
+  async function setRedemption(redId: string, status: "fulfilled" | "cancelled") {
+    setBusyRedemption(redId);
+    const { error } = await supabase.rpc("set_client_redemption_status", {
+      p_id: redId,
+      p_status: status,
+    });
+    setBusyRedemption(null);
+    if (error) return toastError(error.message || "עדכון המימוש נכשל.");
+    toast({
+      title: status === "fulfilled" ? "המימוש סומן כטופל ✓" : "המימוש בוטל והקרדיטים הוחזרו",
+      variant: "success",
+    });
+    qc.invalidateQueries({ queryKey: ["client-detail", id] });
+  }
 
   if (isLoading) {
     return (
@@ -66,7 +85,7 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, invite } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, invite } = data;
   const hasBrand =
     !!brand?.logo_url ||
     !!brand?.business_name ||
@@ -271,6 +290,64 @@ export default function ClientDetail() {
           </ul>
         )}
       </Card>
+
+      {redemptions.length > 0 && (
+        <div id="cd-redemptions" data-section className="scroll-mt-20">
+          <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+            <Gift className="size-5" /> מימושים בחנות
+          </h2>
+          <div className="space-y-2">
+            {redemptions.map((r) => (
+              <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{r.reward?.name ?? "פרס"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(r.redeemed_at).toLocaleDateString("he-IL")} · {r.credits_spent} קרדיטים
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      r.status === "fulfilled"
+                        ? "success"
+                        : r.status === "cancelled"
+                          ? "secondary"
+                          : "warning"
+                    }
+                  >
+                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "בוטל" : "ממתין"}
+                  </Badge>
+                  {r.status === "pending" && (
+                    <Button
+                      size="sm"
+                      disabled={busyRedemption === r.id}
+                      onClick={() => setRedemption(r.id, "fulfilled")}
+                    >
+                      אישור
+                    </Button>
+                  )}
+                  {r.status !== "cancelled" && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busyRedemption === r.id}
+                      onClick={() => setRedemption(r.id, "cancelled")}
+                    >
+                      ביטול
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {grants.length > 0 && (
+        <div id="cd-grants" data-section className="scroll-mt-20">
+          <CoinGrantsAudit grants={grants} />
+        </div>
+      )}
     </div>
   );
 }
