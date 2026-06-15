@@ -36,6 +36,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartnerDetail } from "@/hooks/usePartnerDetail";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
 import { sendRedemptionNotice } from "@/lib/invite";
 import { rateLabel } from "@/hooks/usePartners";
@@ -65,6 +66,7 @@ export default function PartnerDetail() {
   const [addOpen, setAddOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
+  const [releaseTarget, setReleaseTarget] = useState<{ id: string; name?: string } | null>(null);
 
   async function setRedemption(
     redId: string,
@@ -245,7 +247,13 @@ export default function PartnerDetail() {
         ) : (
           <div className="space-y-2">
             {redemptions.map((r) => (
-              <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <Card
+                key={r.id}
+                className={
+                  "flex flex-wrap items-center justify-between gap-3 p-4" +
+                  (r.status === "pending" ? "" : " opacity-60")
+                }
+              >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-foreground">{r.reward?.name ?? "פרס"}</p>
                   <p className="text-xs text-muted-foreground">
@@ -273,7 +281,7 @@ export default function PartnerDetail() {
                       <Check className="size-4" /> אישור
                     </Button>
                   )}
-                  {r.status !== "cancelled" && (
+                  {r.status === "pending" && (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -288,7 +296,7 @@ export default function PartnerDetail() {
                       size="sm"
                       variant="ghost"
                       disabled={busyRedemption === "release-" + r.reward_id}
-                      onClick={() => releaseReward(r.reward_id, r.reward?.name)}
+                      onClick={() => setReleaseTarget({ id: r.reward_id, name: r.reward?.name })}
                     >
                       <Unlock className="size-4" /> שחרר פרס
                     </Button>
@@ -315,6 +323,40 @@ export default function PartnerDetail() {
         userId={id!}
         recipientName={profile.full_name || undefined}
         invalidateKeys={[["partner-detail", id]]}
+      />
+
+      <ConfirmDialog
+        open={!!releaseTarget}
+        onOpenChange={(o) => !o && setReleaseTarget(null)}
+        title="שחרור פרס"
+        destructive={false}
+        confirmLabel="שחרר את הפרס"
+        description={
+          <span className="block space-y-2 text-start">
+            <span className="block">
+              הפעולה תבטל את <b>כל</b> המימושים הפעילים של{" "}
+              <b>"{releaseTarget?.name ?? "הפרס"}"</b> אצל השותף, תחזיר לו את המטבעות שהוצאו,
+              ותפתח את הפרס מחדש כך שיוכל לממש אותו שוב.
+            </span>
+            <span className="block rounded-lg bg-muted p-2.5 text-xs">
+              <b className="block text-foreground">מתי להשתמש בזה:</b>
+              <span className="mt-1 block text-muted-foreground">
+                • השותף קנה את אותו פרס פעמיים בטעות (או באג) — לניקוי והחזר.
+              </span>
+              <span className="block text-muted-foreground">
+                • רוצים לתת לשותף לממש שוב פרס חד-פעמי שכבר נוצל.
+              </span>
+              <span className="block text-muted-foreground">
+                • לאפס מוקדם תקופת המתנה של פרס, כדי שיוכל לממש כבר עכשיו.
+              </span>
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              <b>ההבדל מ"לא אושר":</b> "לא אושר" מבטל מימוש <b>בודד</b> (דחיית בקשה שממתינה)
+              ומחזיר מטבעות. "שחרר פרס" עושה את אותו דבר על <b>כל</b> המימושים של הפרס יחד.
+            </span>
+          </span>
+        }
+        onConfirm={() => releaseTarget && releaseReward(releaseTarget.id, releaseTarget.name)}
       />
     </div>
   );
