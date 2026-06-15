@@ -43,3 +43,26 @@ export async function sendTestEmail(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * Notify a client/partner by email that the admin granted them gift /
+ * compensation coins waiting in the portal (the `send-gift-notice` Edge Function
+ * sends it via Gmail; admin-gated). Best-effort: returns `{ ok, error }`.
+ */
+export async function sendGiftNotice(
+  userId: string,
+  kind: "gift" | "compensation",
+  amount: number,
+  reason: string
+): Promise<InviteResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-gift-notice", {
+      body: { userId, kind, amount, reason },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

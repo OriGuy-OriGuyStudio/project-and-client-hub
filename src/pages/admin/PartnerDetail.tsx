@@ -34,6 +34,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartnerDetail } from "@/hooks/usePartnerDetail";
+import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { rateLabel } from "@/hooks/usePartners";
 import { referralDisplay, referralUrl } from "@/lib/referral";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
@@ -59,6 +60,7 @@ export default function PartnerDetail() {
   const qc = useQueryClient();
   const { data, isLoading } = usePartnerDetail(id);
   const [addOpen, setAddOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
 
   async function setRedemption(redId: string, status: "fulfilled" | "cancelled" | "pending") {
@@ -112,9 +114,14 @@ export default function PartnerDetail() {
         }
         subtitle={profile.email}
         actions={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="size-4" /> הוספת עסקה
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setGiftOpen(true)}>
+              <Gift className="size-4" /> מתנה
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" /> הוספת עסקה
+            </Button>
+          </div>
         }
       />
 
@@ -258,6 +265,14 @@ export default function PartnerDetail() {
         defaultRate={partner?.commission_rate ?? null}
         open={addOpen}
         onClose={() => setAddOpen(false)}
+      />
+
+      <GrantCoinsDialog
+        open={giftOpen}
+        onClose={() => setGiftOpen(false)}
+        userId={id!}
+        recipientName={profile.full_name || undefined}
+        invalidateKeys={[["partner-detail", id]]}
       />
     </div>
   );

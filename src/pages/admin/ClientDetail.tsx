@@ -6,6 +6,7 @@ import {
   Building2,
   Coins,
   FolderKanban,
+  Gift,
   Handshake,
   Mail,
   MessageCircle,
@@ -24,6 +25,7 @@ import { ColorSwatch } from "@/components/brand/ColorSwatch";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
+import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { sendInvite } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { toast, toastError } from "@/hooks/use-toast";
@@ -50,6 +52,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Coins; label: string;
 export default function ClientDetail() {
   const { id } = useParams();
   const { data, isLoading } = useClientDetail(id);
+  const [giftOpen, setGiftOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -93,6 +96,9 @@ export default function ClientDetail() {
         subtitle={profile.full_name || undefined}
         actions={
           <div className="flex items-center gap-1">
+            <Button variant="secondary" size="sm" onClick={() => setGiftOpen(true)}>
+              <Gift className="size-4" /> מתנה
+            </Button>
             {phone && (
               <Button variant="secondary" size="icon" asChild aria-label="וואטסאפ">
                 <a href={waLink(phone)} target="_blank" rel="noreferrer noopener">
@@ -134,6 +140,14 @@ export default function ClientDetail() {
             />
           </div>
         }
+      />
+
+      <GrantCoinsDialog
+        open={giftOpen}
+        onClose={() => setGiftOpen(false)}
+        userId={id!}
+        recipientName={profile.full_name || undefined}
+        invalidateKeys={[["client-detail", id]]}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

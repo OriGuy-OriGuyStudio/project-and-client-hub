@@ -508,6 +508,7 @@ export interface Database {
       get_partner_coins: { Args: { p_partner: string }; Returns: number };
       redeem_partner_reward: { Args: { p_reward_id: string }; Returns: string };
       set_partner_redemption_status: { Args: { p_id: string; p_status: string }; Returns: undefined };
+      grant_coins: { Args: { p_user: string; p_amount: number; p_kind: string; p_reason?: string | null }; Returns: undefined };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
       resolve_referral: {
