@@ -152,6 +152,10 @@ export type StudioSettings = {
   welcome_email_subject: string | null;
   welcome_email_body: string | null;
   portal_url: string | null;
+  /** How many ILS one coin/credit is worth (rewards-store calculator). */
+  ils_per_coin: number;
+  /** Percent of full coin value shown as a monetary reward's ₪ value. */
+  gift_value_pct: number;
   updated_at: string;
 }
 
@@ -401,12 +405,27 @@ export type Reward = {
   reward_type: "studio_pro" | "custom" | null;
   is_active: boolean;
   created_at: string;
-  /** Which program the reward belongs to. */
-  audience: "client" | "partner";
+  /** Which program the reward belongs to ("both" = shown in both stores). */
+  audience: "client" | "partner" | "both";
   /** Special handling for partner-store items. */
   kind: "generic" | "payout" | "commission_boost";
   /** Repeat policy: null = one-time, 0 = repeatable once handled, N = N-day cooldown. */
   cooldown_days: number | null;
+  /** Emoji shown on the store card. */
+  icon: string | null;
+  /** Manual display order in the store (ascending). */
+  sort_order: number;
+  /** Total non-cancelled redemptions allowed across all users; null = unlimited. */
+  stock: number | null;
+  /** Availability window (null = open-ended). */
+  available_from: string | null;
+  available_until: string | null;
+  /** Spotlight flag — pinned + highlighted at the top of the store. */
+  is_featured: boolean;
+  /** When true the store shows a derived ₪ value (cost × ils_per_coin × gift_value_pct%). */
+  is_monetary: boolean;
+  /** Derived client-side from `rewards_stock_used`; not a column. null = unlimited. */
+  stock_left?: number | null;
 }
 
 export type PartnerRewardRedemption = {
@@ -536,6 +555,10 @@ export interface Database {
       track_referral_click: {
         Args: { p_code: string; p_ua: string };
         Returns: string | null;
+      };
+      rewards_stock_used: {
+        Args: { p_audience: string };
+        Returns: { reward_id: string; used: number }[];
       };
       submit_referral_lead: {
         Args: {

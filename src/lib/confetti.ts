@@ -43,6 +43,24 @@ export function sparkBurst(x: number, y: number) {
   }, 140);
 }
 
+/**
+ * A grander celebration for a "featured" reward redemption — a 1.8s show of
+ * star bursts raining from the top plus side cannons. Respects reduced-motion.
+ */
+export function celebrateBig() {
+  if (prefersReducedMotion()) return;
+  const end = Date.now() + 1800;
+  const star = { shapes: ["star"] as ("star" | "circle")[], colors: BRAND };
+  // Opening double cannon.
+  confetti({ particleCount: 120, spread: 90, startVelocity: 55, origin: { x: 0.5, y: 0.6 }, colors: BRAND, zIndex: 9998 });
+  (function frame() {
+    confetti({ ...star, particleCount: 6, angle: 60, spread: 70, startVelocity: 60, origin: { x: 0, y: 0.65 }, zIndex: 9998 });
+    confetti({ ...star, particleCount: 6, angle: 120, spread: 70, startVelocity: 60, origin: { x: 1, y: 0.65 }, zIndex: 9998 });
+    confetti({ ...star, particleCount: 4, spread: 360, startVelocity: 25, gravity: 0.8, origin: { x: Math.random(), y: -0.1 }, zIndex: 9998 });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
 /** Celebratory confetti bursting in from both sides. Respects reduced-motion. */
 export function celebrate() {
   if (

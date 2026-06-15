@@ -13,6 +13,7 @@ import {
   Palette,
   Phone,
   Sparkles,
+  Unlock,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -72,9 +73,32 @@ export default function ClientDetail() {
     if (error) return toastError(error.message || "עדכון המימוש נכשל.");
     if (status === "fulfilled" && id) void sendRedemptionNotice(id, rewardName || "");
     toast({
-      title: status === "fulfilled" ? "המימוש סומן כטופל ✓" : "המימוש בוטל והקרדיטים הוחזרו",
+      title: status === "fulfilled" ? "המימוש סומן כטופל ✓" : "המימוש סומן כלא אושר והקרדיטים הוחזרו",
       variant: "success",
     });
+    qc.invalidateQueries({ queryKey: ["client-detail", id] });
+  }
+
+  // Cancel ALL of this client's active redemptions of a reward, freeing it to be
+  // redeemed again (a one-time reward stays locked while any fulfilled one exists).
+  async function releaseReward(rewardId: string, rewardName?: string) {
+    const targets = (data?.redemptions ?? []).filter(
+      (r) => r.reward_id === rewardId && r.status !== "cancelled"
+    );
+    if (!targets.length) return;
+    setBusyRedemption("release-" + rewardId);
+    for (const t of targets) {
+      const { error } = await supabase.rpc("set_client_redemption_status", {
+        p_id: t.id,
+        p_status: "cancelled",
+      });
+      if (error) {
+        setBusyRedemption(null);
+        return toastError(error.message || "שחרור הפרס נכשל.");
+      }
+    }
+    setBusyRedemption(null);
+    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר — הלקוח יכול לממש שוב`, variant: "success" });
     qc.invalidateQueries({ queryKey: ["client-detail", id] });
   }
 
@@ -320,7 +344,7 @@ export default function ClientDetail() {
                           : "warning"
                     }
                   >
-                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "בוטל" : "ממתין"}
+                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "לא אושר" : "ממתין"}
                   </Badge>
                   {r.status === "pending" && (
                     <Button
@@ -338,7 +362,17 @@ export default function ClientDetail() {
                       disabled={busyRedemption === r.id}
                       onClick={() => setRedemption(r.id, "cancelled")}
                     >
-                      ביטול
+                      לא אושר
+                    </Button>
+                  )}
+                  {r.status === "fulfilled" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyRedemption === "release-" + r.reward_id}
+                      onClick={() => releaseReward(r.reward_id, r.reward?.name)}
+                    >
+                      <Unlock className="size-4" /> שחרר פרס
                     </Button>
                   )}
                 </div>

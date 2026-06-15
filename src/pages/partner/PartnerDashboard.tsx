@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Check, MousePointerClick, Users, Briefcase, Wallet, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { SectionNav } from "@/components/layout/SectionNav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -81,6 +82,8 @@ export default function PartnerDashboard() {
         }
       />
 
+      <SectionNav />
+
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -89,7 +92,7 @@ export default function PartnerDashboard() {
         </div>
       ) : (
         <>
-          <div data-tour="partner-stats" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-tour="partner-stats" data-section="במבט אחד" className="scroll-mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Stat icon={Users} label="לידים שהוגשו" value={leads.length} />
             <Stat icon={Briefcase} label="לידים פתוחים" value={open} />
             <Stat icon={Check} label="עסקאות שנסגרו" value={closed} />
@@ -97,7 +100,7 @@ export default function PartnerDashboard() {
           </div>
 
           {/* Referral link */}
-          <Card data-tour="referral-link" className="p-5">
+          <Card data-tour="referral-link" data-section="לינק ההפניה" className="scroll-mt-20 p-5">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MousePointerClick className="size-4" />
               <span className="text-sm">לינק ההפניה האישי שלך</span>
@@ -120,7 +123,7 @@ export default function PartnerDashboard() {
           </Card>
 
           {/* Leads table */}
-          <div>
+          <div data-section className="scroll-mt-20">
             <h2 className="mb-3 font-heading text-lg font-bold text-foreground">
               הלידים שלך
             </h2>

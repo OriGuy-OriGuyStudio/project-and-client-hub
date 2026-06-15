@@ -9,6 +9,7 @@ import {
   Gift,
   Handshake,
   Plus,
+  Unlock,
   Wallet,
   X,
 } from "lucide-react";
@@ -83,10 +84,32 @@ export default function PartnerDetail() {
         status === "fulfilled"
           ? "המימוש סומן כטופל ✓"
           : status === "cancelled"
-            ? "המימוש בוטל והמטבעות הוחזרו"
+            ? "המימוש סומן כלא אושר והמטבעות הוחזרו"
             : "המימוש הוחזר לטיפול",
       variant: "success",
     });
+    qc.invalidateQueries({ queryKey: ["partner-detail", id] });
+  }
+
+  // Cancel ALL of this partner's active redemptions of a reward, freeing it again.
+  async function releaseReward(rewardId: string, rewardName?: string) {
+    const targets = (data?.redemptions ?? []).filter(
+      (r) => r.reward_id === rewardId && r.status !== "cancelled"
+    );
+    if (!targets.length) return;
+    setBusyRedemption("release-" + rewardId);
+    for (const t of targets) {
+      const { error } = await supabase.rpc("set_partner_redemption_status", {
+        p_id: t.id,
+        p_status: "cancelled",
+      });
+      if (error) {
+        setBusyRedemption(null);
+        return toastError(error.message || "שחרור הפרס נכשל.");
+      }
+    }
+    setBusyRedemption(null);
+    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר — השותף יכול לממש שוב`, variant: "success" });
     qc.invalidateQueries({ queryKey: ["partner-detail", id] });
   }
 
@@ -239,7 +262,7 @@ export default function PartnerDetail() {
                           : "warning"
                     }
                   >
-                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "בוטל" : "ממתין"}
+                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "לא אושר" : "ממתין"}
                   </Badge>
                   {r.status === "pending" && (
                     <Button
@@ -257,7 +280,17 @@ export default function PartnerDetail() {
                       disabled={busyRedemption === r.id}
                       onClick={() => setRedemption(r.id, "cancelled")}
                     >
-                      <X className="size-4" /> ביטול
+                      <X className="size-4" /> לא אושר
+                    </Button>
+                  )}
+                  {r.status === "fulfilled" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyRedemption === "release-" + r.reward_id}
+                      onClick={() => releaseReward(r.reward_id, r.reward?.name)}
+                    >
+                      <Unlock className="size-4" /> שחרר פרס
                     </Button>
                   )}
                 </div>
