@@ -405,6 +405,8 @@ export type Reward = {
   audience: "client" | "partner";
   /** Special handling for partner-store items. */
   kind: "generic" | "payout" | "commission_boost";
+  /** Repeat policy: null = one-time, 0 = repeatable once handled, N = N-day cooldown. */
+  cooldown_days: number | null;
 }
 
 export type PartnerRewardRedemption = {

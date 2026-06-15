@@ -9,6 +9,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { usePartner } from "@/hooks/usePartner";
 import { supabase } from "@/lib/supabase";
 import { celebrate } from "@/lib/confetti";
+import { rewardAvailability } from "@/lib/rewards";
 import { toast, toastError } from "@/hooks/use-toast";
 import type { Reward } from "@/types/database";
 
@@ -116,6 +117,7 @@ export function PartnerRewards() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rewards.map((r) => {
             const affordable = coins >= r.credit_cost;
+            const avail = rewardAvailability(r, redemptions, { boostActive: boostLeft > 0 });
             const Icon = r.kind === "commission_boost" ? BadgePercent : r.kind === "payout" ? Coins : Sparkles;
             return (
               <Card key={r.id} className="flex flex-col p-5">
@@ -134,10 +136,10 @@ export function PartnerRewards() {
                   </span>
                   <Button
                     size="sm"
-                    disabled={!affordable || redeem.isPending}
+                    disabled={!avail.ok || !affordable || redeem.isPending}
                     onClick={() => setConfirm(r)}
                   >
-                    {affordable ? "מימוש" : "אין מספיק"}
+                    {!avail.ok ? avail.label : affordable ? "מימוש" : "אין מספיק"}
                   </Button>
                 </div>
               </Card>

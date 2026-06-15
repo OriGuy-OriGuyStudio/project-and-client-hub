@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useClientPartner } from "@/hooks/useClientPartner";
 import { clampText } from "@/lib/sanitize";
 import { celebrate } from "@/lib/confetti";
+import { rewardAvailability } from "@/lib/rewards";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 import type { Referral } from "@/types/database";
@@ -163,6 +164,7 @@ export default function Partner() {
             <div className="space-y-2">
               {data.rewards.map((r) => {
                 const can = credits >= r.credit_cost;
+                const avail = rewardAvailability(r, data.redemptions ?? []);
                 const remaining = Math.max(0, r.credit_cost - credits);
                 const pct = Math.min(100, Math.round((credits / r.credit_cost) * 100));
                 return (
@@ -181,17 +183,25 @@ export default function Partner() {
                       <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {can
-                        ? "אפשר לממש עכשיו 🎉"
-                        : `עלות ${r.credit_cost} · נשארו לך ${remaining} קרדיטים`}
+                      {!avail.ok
+                        ? avail.label
+                        : can
+                          ? "אפשר לממש עכשיו 🎉"
+                          : `עלות ${r.credit_cost} · נשארו לך ${remaining} קרדיטים`}
                     </p>
                     <Button
                       size="sm"
                       className="mt-2 w-full"
-                      disabled={!can || redeeming === r.id}
+                      disabled={!avail.ok || !can || redeeming === r.id}
                       onClick={() => redeem(r.id, r.credit_cost)}
                     >
-                      {redeeming === r.id ? "מממש…" : can ? "מימוש" : "עדיין אוספים"}
+                      {redeeming === r.id
+                        ? "מממש…"
+                        : !avail.ok
+                          ? avail.label
+                          : can
+                            ? "מימוש"
+                            : "עדיין אוספים"}
                     </Button>
                   </div>
                 );
