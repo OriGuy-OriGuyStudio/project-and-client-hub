@@ -66,3 +66,24 @@ export async function sendGiftNotice(
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/**
+ * Notify a client/partner by email that the store redemption they requested was
+ * approved and handled (the `send-redemption-notice` Edge Function, admin-gated).
+ * Best-effort: returns `{ ok, error }`.
+ */
+export async function sendRedemptionNotice(
+  userId: string,
+  rewardName: string
+): Promise<InviteResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-redemption-notice", {
+      body: { userId, rewardName },
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

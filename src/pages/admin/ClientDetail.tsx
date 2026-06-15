@@ -28,7 +28,7 @@ import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail"
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
 import { supabase } from "@/lib/supabase";
-import { sendInvite } from "@/lib/invite";
+import { sendInvite, sendRedemptionNotice } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { toast, toastError } from "@/hooks/use-toast";
 
@@ -58,7 +58,11 @@ export default function ClientDetail() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
 
-  async function setRedemption(redId: string, status: "fulfilled" | "cancelled") {
+  async function setRedemption(
+    redId: string,
+    status: "fulfilled" | "cancelled",
+    rewardName?: string
+  ) {
     setBusyRedemption(redId);
     const { error } = await supabase.rpc("set_client_redemption_status", {
       p_id: redId,
@@ -66,6 +70,7 @@ export default function ClientDetail() {
     });
     setBusyRedemption(null);
     if (error) return toastError(error.message || "עדכון המימוש נכשל.");
+    if (status === "fulfilled" && id) void sendRedemptionNotice(id, rewardName || "");
     toast({
       title: status === "fulfilled" ? "המימוש סומן כטופל ✓" : "המימוש בוטל והקרדיטים הוחזרו",
       variant: "success",
@@ -321,7 +326,7 @@ export default function ClientDetail() {
                     <Button
                       size="sm"
                       disabled={busyRedemption === r.id}
-                      onClick={() => setRedemption(r.id, "fulfilled")}
+                      onClick={() => setRedemption(r.id, "fulfilled", r.reward?.name)}
                     >
                       אישור
                     </Button>

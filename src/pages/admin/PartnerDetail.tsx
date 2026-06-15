@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePartnerDetail } from "@/hooks/usePartnerDetail";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
+import { sendRedemptionNotice } from "@/lib/invite";
 import { rateLabel } from "@/hooks/usePartners";
 import { referralDisplay, referralUrl } from "@/lib/referral";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
@@ -64,7 +65,11 @@ export default function PartnerDetail() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
 
-  async function setRedemption(redId: string, status: "fulfilled" | "cancelled" | "pending") {
+  async function setRedemption(
+    redId: string,
+    status: "fulfilled" | "cancelled" | "pending",
+    rewardName?: string
+  ) {
     setBusyRedemption(redId);
     const { error } = await supabase.rpc("set_partner_redemption_status", {
       p_id: redId,
@@ -72,6 +77,7 @@ export default function PartnerDetail() {
     });
     setBusyRedemption(null);
     if (error) return toastError(error.message || "עדכון המימוש נכשל.");
+    if (status === "fulfilled" && id) void sendRedemptionNotice(id, rewardName || "");
     toast({
       title:
         status === "fulfilled"
@@ -239,7 +245,7 @@ export default function PartnerDetail() {
                     <Button
                       size="sm"
                       disabled={busyRedemption === r.id}
-                      onClick={() => setRedemption(r.id, "fulfilled")}
+                      onClick={() => setRedemption(r.id, "fulfilled", r.reward?.name)}
                     >
                       <Check className="size-4" /> אישור
                     </Button>

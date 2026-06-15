@@ -8,6 +8,7 @@ import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { startClientTour } from "@/components/help/tour";
 import { GiftPopup } from "@/components/layout/GiftPopup";
+import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ export default function Dashboard() {
         title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הפרויקטים שלך במבט אחד"
       />
+      <PendingRedemptionsBanner />
 
       <div data-tour="projects">
         {isLoading ? (

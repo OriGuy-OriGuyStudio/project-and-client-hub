@@ -12,6 +12,7 @@ import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { PartnerRewards } from "@/components/partner/PartnerRewards";
 import { startPartnerTour } from "@/components/help/tour";
 import { GiftPopup } from "@/components/layout/GiftPopup";
+import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
@@ -67,6 +68,7 @@ export default function PartnerDashboard() {
   return (
     <div className="space-y-6">
       <GiftPopup />
+      <PendingRedemptionsBanner />
       <PageHeader
         title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הלידים שהגשת והעמלות שלך, במבט אחד."
