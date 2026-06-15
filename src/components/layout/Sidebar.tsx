@@ -62,7 +62,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="px-6 py-4">
-        <p className="font-mono-code text-[10px] text-muted-foreground/70">
+        <p className="text-[11px] text-muted-foreground/70">
           {isAdmin ? "מצב אדמין" : isPartner ? "פורטל שותפים" : "פורטל לקוח"}
         </p>
       </div>
