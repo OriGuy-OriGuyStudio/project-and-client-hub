@@ -5,9 +5,12 @@ import {
   ArrowRight,
   Briefcase,
   Check,
+  Coins,
+  Gift,
   Handshake,
   Plus,
   Wallet,
+  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -53,8 +56,30 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Wallet; label: string
 
 export default function PartnerDetail() {
   const { id } = useParams();
+  const qc = useQueryClient();
   const { data, isLoading } = usePartnerDetail(id);
   const [addOpen, setAddOpen] = useState(false);
+  const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
+
+  async function setRedemption(redId: string, status: "fulfilled" | "cancelled" | "pending") {
+    setBusyRedemption(redId);
+    const { error } = await supabase.rpc("set_partner_redemption_status", {
+      p_id: redId,
+      p_status: status,
+    });
+    setBusyRedemption(null);
+    if (error) return toastError(error.message || "עדכון המימוש נכשל.");
+    toast({
+      title:
+        status === "fulfilled"
+          ? "המימוש סומן כטופל ✓"
+          : status === "cancelled"
+            ? "המימוש בוטל והמטבעות הוחזרו"
+            : "המימוש הוחזר לטיפול",
+      variant: "success",
+    });
+    qc.invalidateQueries({ queryKey: ["partner-detail", id] });
+  }
 
   if (isLoading) {
     return (
@@ -68,7 +93,7 @@ export default function PartnerDetail() {
     return <EmptyState icon={Handshake} title="השותף לא נמצא" />;
   }
 
-  const { profile, partner, leads, totalLeads, closedDeals, paidCommission } = data;
+  const { profile, partner, leads, totalLeads, closedDeals, paidCommission, coins, redemptions } = data;
 
   return (
     <div className="space-y-6">
@@ -93,7 +118,7 @@ export default function PartnerDetail() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat icon={Briefcase} label="עסקאות / לידים" value={totalLeads} />
         <Stat icon={Check} label="עסקאות שנסגרו" value={closedDeals} />
         <Stat icon={Wallet} label="סך עמלות ששולמו" value={ils(paidCommission)} />
@@ -109,7 +134,11 @@ export default function PartnerDetail() {
               partner?.commission_rate_max
             )}
           </p>
+          {partner && partner.boost_deals_left > 0 && (
+            <p className="mt-1 text-xs text-primary">בוסט +{partner.boost_pct}% · {partner.boost_deals_left} עסקאות</p>
+          )}
         </Card>
+        <Stat icon={Coins} label="מטבעות" value={coins} />
       </div>
 
       {partner?.referral_code && (
@@ -160,6 +189,64 @@ export default function PartnerDetail() {
                   </p>
                 </div>
                 <Badge variant={leadStatusVariant[l.status]}>{leadStatusHe[l.status]}</Badge>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+          <Gift className="size-5" /> מימושים בחנות
+        </h2>
+        {redemptions.length === 0 ? (
+          <EmptyState
+            icon={Gift}
+            title="אין מימושים"
+            description="כשהשותף יממש פרס בחנות, הוא יופיע כאן לאישור."
+          />
+        ) : (
+          <div className="space-y-2">
+            {redemptions.map((r) => (
+              <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{r.reward?.name ?? "פרס"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleDateString("he-IL")} · {r.coins_spent} מטבעות
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={
+                      r.status === "fulfilled"
+                        ? "success"
+                        : r.status === "cancelled"
+                          ? "secondary"
+                          : "warning"
+                    }
+                  >
+                    {r.status === "fulfilled" ? "טופל" : r.status === "cancelled" ? "בוטל" : "ממתין"}
+                  </Badge>
+                  {r.status === "pending" && (
+                    <Button
+                      size="sm"
+                      disabled={busyRedemption === r.id}
+                      onClick={() => setRedemption(r.id, "fulfilled")}
+                    >
+                      <Check className="size-4" /> אישור
+                    </Button>
+                  )}
+                  {r.status !== "cancelled" && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busyRedemption === r.id}
+                      onClick={() => setRedemption(r.id, "cancelled")}
+                    >
+                      <X className="size-4" /> ביטול
+                    </Button>
+                  )}
+                </div>
               </Card>
             ))}
           </div>

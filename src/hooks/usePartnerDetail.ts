@@ -1,6 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { PartnerLead, PartnerProfile, Profile } from "@/types/database";
+import type {
+  PartnerLead,
+  PartnerProfile,
+  PartnerRewardRedemption,
+  Profile,
+} from "@/types/database";
+
+export type PartnerRedemptionRow = PartnerRewardRedemption & {
+  reward: { name: string; kind: string } | null;
+};
 
 export interface PartnerDetailData {
   profile: Profile | null;
@@ -9,6 +18,8 @@ export interface PartnerDetailData {
   totalLeads: number;
   closedDeals: number;
   paidCommission: number; // sum of commission_amount where payment confirmed
+  coins: number;
+  redemptions: PartnerRedemptionRow[];
 }
 
 /** Everything the admin needs on one partner's detail page. */
@@ -18,15 +29,22 @@ export function usePartnerDetail(partnerId: string | undefined) {
     queryKey: ["partner-detail", partnerId],
     queryFn: async (): Promise<PartnerDetailData> => {
       const id = partnerId!;
-      const [{ data: profile }, { data: partner }, { data: leads }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-        supabase.from("partner_profiles").select("*").eq("id", id).maybeSingle(),
-        supabase
-          .from("partner_leads")
-          .select("*")
-          .eq("partner_id", id)
-          .order("created_at", { ascending: false }),
-      ]);
+      const [{ data: profile }, { data: partner }, { data: leads }, { data: coins }, { data: redemptions }] =
+        await Promise.all([
+          supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
+          supabase.from("partner_profiles").select("*").eq("id", id).maybeSingle(),
+          supabase
+            .from("partner_leads")
+            .select("*")
+            .eq("partner_id", id)
+            .order("created_at", { ascending: false }),
+          supabase.rpc("get_partner_coins", { p_partner: id }),
+          supabase
+            .from("partner_reward_redemptions")
+            .select("*, reward:rewards(name,kind)")
+            .eq("partner_id", id)
+            .order("created_at", { ascending: false }),
+        ]);
 
       const rows = leads ?? [];
       const paidCommission = rows
@@ -40,6 +58,8 @@ export function usePartnerDetail(partnerId: string | undefined) {
         totalLeads: rows.length,
         closedDeals: rows.filter((l) => l.status === "closed").length,
         paidCommission,
+        coins: (coins as number | null) ?? 0,
+        redemptions: (redemptions as unknown as PartnerRedemptionRow[] | null) ?? [],
       };
     },
   });
