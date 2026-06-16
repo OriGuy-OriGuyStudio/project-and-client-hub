@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2 } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,23 @@ export function AdminTasksPanel() {
 
   const redemptions = data?.redemptions ?? [];
   const messages = data?.messages ?? [];
-  const total = redemptions.length + messages.length;
+  const accessRequests = data?.accessRequests ?? [];
+  const total = redemptions.length + messages.length + accessRequests.length;
+
+  async function decideAccess(id: string, approve: boolean) {
+    setBusy(id);
+    const { error } = approve
+      ? await supabase.rpc("approve_access_request", { p_id: id, p_role: "client" })
+      : await supabase.rpc("reject_access_request", { p_id: id });
+    setBusy(null);
+    if (error) return toastError(error.message || "הפעולה נכשלה.");
+    toast({
+      title: approve ? "הלקוח הוקם ✓ עכשיו הוא יכול להתחבר" : "הבקשה נדחתה",
+      variant: "success",
+    });
+    qc.invalidateQueries({ queryKey: ["admin-tasks"] });
+    qc.invalidateQueries({ queryKey: ["clients"] });
+  }
 
   async function decideRedemption(t: AdminTaskRedemption, status: "fulfilled" | "cancelled") {
     setBusy(t.id);
@@ -70,6 +86,50 @@ export function AdminTasksPanel() {
         <p className="text-sm text-muted-foreground">הכול מטופל, אין משימות ממתינות 🎉</p>
       ) : (
         <div className="space-y-2.5">
+          {/* Access requests (someone tried to join) */}
+          {accessRequests.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-xl border border-primary/30 bg-primary/[0.05] p-3.5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <UserPlus className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      <span className="font-semibold">{r.fullName}</span> ביקש/ה גישה
+                      {r.businessName ? <span className="text-muted-foreground"> · {r.businessName}</span> : null}
+                    </p>
+                    <p className="font-mono-code text-xs text-muted-foreground">{r.email}</p>
+                    {r.phone && (
+                      <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Phone className="size-3" /> {r.phone}
+                      </p>
+                    )}
+                    {r.message && (
+                      <p className="mt-1 rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">
+                        {r.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" disabled={busy === r.id} onClick={() => decideAccess(r.id, true)}>
+                    <UserPlus className="size-4" /> הקם לקוח
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy === r.id}
+                    onClick={() => decideAccess(r.id, false)}
+                  >
+                    <X className="size-4" /> דחייה
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+
           {/* Pending store redemptions */}
           {redemptions.map((t) => (
             <div

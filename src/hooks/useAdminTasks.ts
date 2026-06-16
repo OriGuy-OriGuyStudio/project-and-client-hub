@@ -18,9 +18,19 @@ export interface AdminTaskMessage {
   createdAt: string;
 }
 
+export interface AdminTaskAccessRequest {
+  id: string;
+  email: string;
+  fullName: string;
+  businessName: string | null;
+  phone: string | null;
+  message: string | null;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
+  accessRequests: AdminTaskAccessRequest[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -31,7 +41,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs] = await Promise.all([
+      const [pr, cr, msgs, ar] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -47,6 +57,11 @@ export function useAdminTasks(adminId?: string) {
           .select("project_id, sender_id, content, created_at, project:projects(title), sender:profiles(full_name)")
           .order("created_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("access_requests")
+          .select("id, email, full_name, business_name, phone, message")
+          .eq("status", "pending")
+          .order("created_at", { ascending: true }),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -84,7 +99,16 @@ export function useAdminTasks(adminId?: string) {
         });
       }
 
-      return { redemptions, messages };
+      const accessRequests: AdminTaskAccessRequest[] = (((ar.data as any[]) ?? []).map((r) => ({
+        id: r.id,
+        email: r.email,
+        fullName: r.full_name ?? r.email,
+        businessName: r.business_name,
+        phone: r.phone,
+        message: r.message,
+      })));
+
+      return { redemptions, messages, accessRequests };
     },
   });
 }

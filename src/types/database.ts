@@ -493,6 +493,20 @@ export type EasterEggClaimResult = {
   reason?: string;
 };
 
+export type AccessRequest = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  full_name: string | null;
+  business_name: string | null;
+  phone: string | null;
+  message: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  handled_at: string | null;
+  handled_by: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -531,6 +545,7 @@ export interface Database {
       studio_settings: TableShape<StudioSettings>;
       stage_templates: TableShape<StageTemplate>;
       easter_egg_claims: TableShape<EasterEggClaim>;
+      access_requests: TableShape<AccessRequest>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -560,6 +575,8 @@ export interface Database {
         Args: { p_audience: string };
         Returns: { reward_id: string; used: number }[];
       };
+      approve_access_request: { Args: { p_id: string; p_role?: string }; Returns: undefined };
+      reject_access_request: { Args: { p_id: string }; Returns: undefined };
       submit_referral_lead: {
         Args: {
           p_code: string;
