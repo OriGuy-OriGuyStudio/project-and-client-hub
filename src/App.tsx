@@ -4,7 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/toaster";
-import { AIWidget } from "@/components/ai-widget/AIWidget";
+// import { AIWidget } from "@/components/ai-widget/AIWidget"; // hidden until the Pixel chat product is polished
 import { AppShell } from "@/components/layout/AppShell";
 import { PostLoginLoader } from "@/components/layout/PostLoginLoader";
 import {
@@ -115,8 +115,9 @@ function App() {
           </Routes>
 
           <Toaster />
-          {/* Persistent across navigation - outside the router outlet */}
-          <AIWidget />
+          {/* Pixel floating chat temporarily removed until the product is polished.
+              Restore by un-commenting the import above and this mount. */}
+          {/* <AIWidget /> */}
           {/* Number/bar loader, shown once right after a successful sign-in */}
           <PostLoginLoader />
           </AuthProvider>
