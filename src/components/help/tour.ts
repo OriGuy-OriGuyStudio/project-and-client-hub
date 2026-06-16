@@ -8,14 +8,9 @@ function firstVisible(selector: string): HTMLElement | null {
   return els.find((el) => el.offsetParent !== null) ?? null;
 }
 
-/**
- * Runs an orientation tour over whichever target elements are visible.
- * Pass `sinceExclusive` to run a "what's new" delta — only steps whose `since`
- * is greater than the version the user last saw.
- */
-function runTour(tourSteps: TourStep[], sinceExclusive = 0) {
+/** Runs the full orientation tour over whichever target elements are visible. */
+function runTour(tourSteps: TourStep[]) {
   const steps = tourSteps
-    .filter((s) => (s.since ?? 1) > sinceExclusive)
     .map((s) => {
       const el = firstVisible(s.selector);
       return el
@@ -36,11 +31,38 @@ function runTour(tourSteps: TourStep[], sinceExclusive = 0) {
   }).drive();
 }
 
-/** `since`: when set, runs only the steps newer than that version (delta tour). */
-export function startClientTour(opts?: { since?: number }) {
-  runTour(clientTourSteps, opts?.since ?? 0);
+export function startClientTour() {
+  runTour(clientTourSteps);
 }
 
-export function startPartnerTour(opts?: { since?: number }) {
-  runTour(partnerTourSteps, opts?.since ?? 0);
+export function startPartnerTour() {
+  runTour(partnerTourSteps);
+}
+
+/**
+ * Wait until it's safe to interrupt the user — the post-login loader has cleared
+ * and no modal/dialog is open (e.g. the gift / redemption-approved popup) — then
+ * run `cb`. Polls, gives up after `maxWait` (so a stuck dialog won't block forever).
+ * Returns a canceller for effect cleanup.
+ */
+export function whenUiIsClear(
+  cb: () => void,
+  opts?: { minDelay?: number; maxWait?: number }
+): () => void {
+  const minDelay = opts?.minDelay ?? 2400;
+  const maxWait = opts?.maxWait ?? 12000;
+  let cancelled = false;
+  const start = Date.now();
+  const tick = () => {
+    if (cancelled) return;
+    const blocked =
+      document.readyState !== "complete" || !!document.querySelector('[role="dialog"]');
+    if (!blocked) return cb();
+    if (Date.now() - start < maxWait) window.setTimeout(tick, 500);
+  };
+  const first = window.setTimeout(tick, minDelay);
+  return () => {
+    cancelled = true;
+    window.clearTimeout(first);
+  };
 }

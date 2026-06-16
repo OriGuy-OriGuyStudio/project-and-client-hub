@@ -6,9 +6,10 @@ import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
-import { startClientTour } from "@/components/help/tour";
+import { startClientTour, whenUiIsClear } from "@/components/help/tour";
 import { CLIENT_TOUR_VERSION } from "@/components/help/help-content";
 import { GiftPopup } from "@/components/layout/GiftPopup";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,22 +24,17 @@ export default function Dashboard() {
     if (isError) toastError("טעינת הפרויקטים נכשלה.");
   }, [isError]);
 
-  // First visit → full tour; returning users → a "what's new" mini-tour of only
-  // the steps added since they last saw it (per user, per browser).
+  // First-ever visit → the full orientation tour (returning users get the
+  // <WhatsNew/> modal instead). Waits for the loader + any popup to clear.
   useEffect(() => {
     if (isLoading || !user?.id) return;
     const seenKey = `sog-tour-${user.id}`;
-    const verKey = `sog-tour-ver-${user.id}`;
-    const firstTime = !localStorage.getItem(seenKey);
-    // Veterans from before versioning existed are treated as having seen v1.
-    const seenVer = firstTime ? 0 : Number(localStorage.getItem(verKey) ?? "1");
-    if (!firstTime && seenVer >= CLIENT_TOUR_VERSION) return;
-    const t = setTimeout(() => {
-      startClientTour(firstTime ? undefined : { since: seenVer });
+    if (localStorage.getItem(seenKey)) return;
+    return whenUiIsClear(() => {
+      startClientTour();
       localStorage.setItem(seenKey, "1");
-      localStorage.setItem(verKey, String(CLIENT_TOUR_VERSION));
-    }, 900);
-    return () => clearTimeout(t);
+      localStorage.setItem(`sog-tour-ver-${user.id}`, String(CLIENT_TOUR_VERSION));
+    });
   }, [isLoading, user?.id]);
 
   const firstName = profile?.full_name?.split(" ")[0] || "";
@@ -46,6 +42,7 @@ export default function Dashboard() {
   return (
     <div>
       <GiftPopup />
+      <WhatsNew audience="client" />
       <PageHeader
         title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
         subtitle="הפרויקטים שלך במבט אחד"

@@ -11,8 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StudioContactCta } from "@/components/brand/StudioContactCta";
 import { PartnerRewards } from "@/components/partner/PartnerRewards";
-import { startPartnerTour } from "@/components/help/tour";
+import { startPartnerTour, whenUiIsClear } from "@/components/help/tour";
 import { PARTNER_TOUR_VERSION } from "@/components/help/help-content";
+import { WhatsNew } from "@/components/layout/WhatsNew";
 import { GiftPopup } from "@/components/layout/GiftPopup";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { SparklesText } from "@/components/ui/sparkles-text";
@@ -44,21 +45,17 @@ export default function PartnerDashboard() {
     if (isError) toastError("טעינת הנתונים נכשלה.");
   }, [isError]);
 
-  // First visit → full tour; returning partners → a "what's new" mini-tour of
-  // only the steps added since they last saw it (per user, per browser).
+  // First-ever visit → the full orientation tour (returning partners get the
+  // <WhatsNew/> modal instead). Waits for the loader + any popup to clear.
   useEffect(() => {
     if (isLoading || !user?.id) return;
     const seenKey = `sog-partner-tour-${user.id}`;
-    const verKey = `sog-partner-tour-ver-${user.id}`;
-    const firstTime = !localStorage.getItem(seenKey);
-    const seenVer = firstTime ? 0 : Number(localStorage.getItem(verKey) ?? "1");
-    if (!firstTime && seenVer >= PARTNER_TOUR_VERSION) return;
-    const t = setTimeout(() => {
-      startPartnerTour(firstTime ? undefined : { since: seenVer });
+    if (localStorage.getItem(seenKey)) return;
+    return whenUiIsClear(() => {
+      startPartnerTour();
       localStorage.setItem(seenKey, "1");
-      localStorage.setItem(verKey, String(PARTNER_TOUR_VERSION));
-    }, 900);
-    return () => clearTimeout(t);
+      localStorage.setItem(`sog-partner-tour-ver-${user.id}`, String(PARTNER_TOUR_VERSION));
+    });
   }, [isLoading, user?.id]);
 
   const firstName = profile?.full_name?.split(" ")[0] || "";
@@ -75,6 +72,7 @@ export default function PartnerDashboard() {
   return (
     <div className="space-y-6">
       <GiftPopup />
+      <WhatsNew audience="partner" />
       <PendingRedemptionsBanner />
       <PageHeader
         title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
