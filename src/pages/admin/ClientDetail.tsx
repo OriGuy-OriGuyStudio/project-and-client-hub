@@ -100,7 +100,7 @@ export default function ClientDetail() {
       }
     }
     setBusyRedemption(null);
-    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר — הלקוח יכול לממש שוב`, variant: "success" });
+    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר. הלקוח יכול לממש שוב`, variant: "success" });
     qc.invalidateQueries({ queryKey: ["client-detail", id] });
   }
 
@@ -406,7 +406,7 @@ export default function ClientDetail() {
             <span className="block rounded-lg bg-muted p-2.5 text-xs">
               <b className="block text-foreground">מתי להשתמש בזה:</b>
               <span className="mt-1 block text-muted-foreground">
-                • הלקוח קנה את אותו פרס פעמיים בטעות (או באג) — לניקוי והחזר.
+                • הלקוח קנה את אותו פרס פעמיים בטעות (או באג), לניקוי והחזר.
               </span>
               <span className="block text-muted-foreground">
                 • רוצים לתת ללקוח לממש שוב פרס חד-פעמי שכבר נוצל.
