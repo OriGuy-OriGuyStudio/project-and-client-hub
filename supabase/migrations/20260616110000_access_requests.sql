@@ -25,7 +25,10 @@ alter table public.access_requests enable row level security;
 -- Any signed-in (even not-yet-whitelisted) user may file a request.
 create policy access_requests_insert on public.access_requests
   for insert to authenticated with check (true);
--- Only the admin reads / manages them.
+-- A requester can read their OWN request (so the page can show "pending").
+create policy access_requests_owner_select on public.access_requests
+  for select to authenticated using (user_id = auth.uid());
+-- Only the admin reads / manages them all.
 create policy access_requests_admin_all on public.access_requests
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 

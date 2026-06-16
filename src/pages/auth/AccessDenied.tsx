@@ -1,19 +1,39 @@
-import { useState } from "react";
-import { ShieldAlert, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ShieldAlert, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { notifyAdminTask } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 
+type View = "checking" | "form" | "pending";
+
 export default function AccessDenied() {
   const { signOut, user } = useAuth();
+  const [view, setView] = useState<View>("checking");
   const [form, setForm] = useState({ full_name: "", business_name: "", phone: "", message: "" });
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+
+  // On load, check whether this user already has a pending request.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("access_requests")
+        .select("id")
+        .eq("status", "pending")
+        .limit(1);
+      if (!cancelled) setView(data && data.length ? "pending" : "form");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function submit() {
     const full_name = clampText(form.full_name.trim(), 120);
@@ -26,25 +46,40 @@ export default function AccessDenied() {
       phone: clampText(form.phone.trim(), 40) || null,
       message: clampText(form.message.trim(), 1000) || null,
     });
+    if (error) {
+      setSending(false);
+      return toastError("שליחת הבקשה נכשלה. נסה שוב.");
+    }
+    // Email Ori that someone is waiting (best-effort, never blocks).
+    void notifyAdminTask(
+      "בקשת גישה חדשה לפורטל",
+      `${full_name}${form.business_name ? " · " + form.business_name : ""} (${user?.email ?? ""})${
+        form.phone ? " · " + form.phone : ""
+      }`
+    );
     setSending(false);
-    if (error) return toastError("שליחת הבקשה נכשלה. נסה שוב.");
-    setSent(true);
+    setView("pending");
     toast({ title: "הבקשה נשלחה לאורי 🎉", variant: "success" });
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-10">
       <div className="flex w-full max-w-md flex-col items-center gap-6 text-center">
-        {sent ? (
+        {view === "checking" ? (
+          <CenteredLoader />
+        ) : view === "pending" ? (
           <>
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <CheckCircle2 className="size-8" />
+              <Clock className="size-8" />
             </div>
             <div className="space-y-2">
-              <h1 className="font-heading text-2xl font-black text-foreground">הבקשה נשלחה</h1>
+              <h1 className="font-heading text-2xl font-black text-foreground">הבקשה שלך ממתינה</h1>
               <p className="mx-auto max-w-sm text-muted-foreground">
-                אורי קיבל את הפרטים שלך ויפתח לך גישה בהקדם. תקבל הודעה כשהכל מוכן.
+                אורי קיבל את הפרטים שלך, והבקשה ממתינה לאישור. הוא יצור איתך קשר ויפתח לך גישה בקרוב.
               </p>
+              {user?.email && (
+                <p className="font-mono-code text-xs text-muted-foreground">{user.email}</p>
+              )}
             </div>
             <Button variant="secondary" onClick={() => signOut()}>
               התנתקות
