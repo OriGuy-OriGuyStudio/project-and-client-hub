@@ -21,13 +21,18 @@ export interface TourStep {
   selector: string;
   title: string;
   description: string;
-  /**
-   * Tour "version" this step was added/changed in (default 1). Bump the number
-   * when you add a screen or significantly change one: new users see every step,
-   * while veterans get a "what's new" mini-tour of only the steps newer than the
-   * version they last saw. See [[onboarding-tour-on-ui-changes]] memory.
-   */
-  since?: number;
+}
+
+/**
+ * A "what's new" entry shown to RETURNING users (a text modal), versus the full
+ * driver.js tour shown to brand-new users. When you add/change client or partner
+ * UI: add an entry here with the next `version` number AND (for new users) update
+ * the matching tour step / data-tour. See [[onboarding-tour-on-ui-changes]] memory.
+ */
+export interface WhatsNewEntry {
+  version: number;
+  title: string;
+  items: string[];
 }
 
 /** What each part of the client portal does. */
@@ -122,10 +127,9 @@ export const clientTourSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="partner"]',
-    title: "חדש: חנות פרסים מחודשת ✨",
+    title: "תוכנית שותפים",
     description:
-      "תוכנית השותפים: מפנים לקוחות, צוברים קרדיטים, וממשים פרסים בחנות שעוצבה מחדש — לכל פרס יש שווי בש״ח, בר התקדמות (\"עוד X ואתה משחרר\"), פרסים מודגשים ומבצעים מוגבלים בזמן.",
-    since: 2,
+      "אם הופעלה לך תוכנית השותפים, כאן מפנים לקוחות, צוברים קרדיטים, וממשים פרסים בחנות — לכל פרס יש שווי בש״ח ובר התקדמות.",
   },
   {
     selector: '[data-tour="help"]',
@@ -215,10 +219,9 @@ export const partnerTourSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="partner-rewards"]',
-    title: "חדש: החנות עוצבה מחדש ✨",
+    title: "מטבעות, מסלול וחנות",
     description:
-      "יתרת המטבעות, מסלול העמלה (5%→10%), והחנות שעוצבה מחדש — פרסים עם שווי בש״ח, פרסים מודגשים, בר התקדמות לכל פרס ומבצעים מוגבלים בזמן.",
-    since: 2,
+      "יתרת המטבעות, מסלול העמלה (5%→10%), והחנות שבה ממירים מטבעות בפרסים — לכל פרס שווי בש״ח ובר התקדמות.",
   },
   {
     selector: '[data-tour="help"]',
@@ -227,6 +230,32 @@ export const partnerTourSteps: TourStep[] = [
   },
 ];
 
-/** Current tour version per audience = the highest `since` among its steps. */
-export const CLIENT_TOUR_VERSION = Math.max(...clientTourSteps.map((s) => s.since ?? 1));
-export const PARTNER_TOUR_VERSION = Math.max(...partnerTourSteps.map((s) => s.since ?? 1));
+/* ───────── "What's new" for returning users (modal, not the full tour) ───────── */
+
+export const clientWhatsNew: WhatsNewEntry[] = [
+  {
+    version: 2,
+    title: "חנות הפרסים עוצבה מחדש 🎁",
+    items: [
+      "כל פרס מראה עכשיו את השווי בש״ח",
+      'בר התקדמות לכל פרס — "עוד X ואתה משחרר"',
+      "פרסים מודגשים ומבצעים מוגבלים בזמן",
+    ],
+  },
+];
+
+export const partnerWhatsNew: WhatsNewEntry[] = [
+  {
+    version: 2,
+    title: "החנות עוצבה מחדש 🎁",
+    items: [
+      "כל פרס מראה את השווי בש״ח ובר התקדמות",
+      "פרסים מודגשים ומבצעים מוגבלים בזמן",
+      "תפריט מהיר לקפיצה בין החלקים בעמוד",
+    ],
+  },
+];
+
+/** Current version per audience = the highest "what's new" version. */
+export const CLIENT_TOUR_VERSION = Math.max(1, ...clientWhatsNew.map((e) => e.version));
+export const PARTNER_TOUR_VERSION = Math.max(1, ...partnerWhatsNew.map((e) => e.version));
