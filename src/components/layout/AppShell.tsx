@@ -10,6 +10,7 @@ import { WarpOverlay } from "@/components/brand/WarpOverlay";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { toast } from "@/hooks/use-toast";
 
 const GENDER_NOTE_KEY = "sog-gender-note";
@@ -35,6 +36,9 @@ export function AppShell() {
   const sidebarRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // First-party usage analytics (clients & partners only; admin is never measured).
+  useUsageTracking();
 
   useEffect(() => {
     if (reduced) return;

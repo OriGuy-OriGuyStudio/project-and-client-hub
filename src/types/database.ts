@@ -507,6 +507,16 @@ export type AccessRequest = {
   handled_by: string | null;
 }
 
+export type UsageEvent = {
+  id: string;
+  user_id: string | null;
+  role: string | null;
+  event: string;
+  path: string | null;
+  meta: Record<string, unknown> | null;
+  created_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -546,10 +556,15 @@ export interface Database {
       stage_templates: TableShape<StageTemplate>;
       easter_egg_claims: TableShape<EasterEggClaim>;
       access_requests: TableShape<AccessRequest>;
+      usage_events: TableShape<UsageEvent>;
     };
     Views: Record<string, never>;
     Functions: {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
+      log_usage_event: {
+        Args: { p_event: string; p_path?: string | null; p_meta?: Record<string, unknown> | null };
+        Returns: undefined;
+      };
       get_my_role: { Args: Record<string, never>; Returns: string };
       ensure_my_profile: { Args: Record<string, never>; Returns: string | null };
       is_admin: { Args: Record<string, never>; Returns: boolean };

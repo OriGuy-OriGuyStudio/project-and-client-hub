@@ -3,6 +3,7 @@ import {
   FolderKanban,
   Users,
   Settings,
+  BarChart3,
   Gift,
   UserCircle,
   Handshake,
@@ -40,6 +41,7 @@ export const adminNav: NavItem[] = [
     icon: MessageSquareHeart,
     badgeTypes: ["feedback"],
   },
+  { to: "/admin/analytics", label: "אנליטיקות", icon: BarChart3 },
   { to: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
 
