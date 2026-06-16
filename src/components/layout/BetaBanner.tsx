@@ -4,20 +4,21 @@ import { Rocket, ArrowLeft } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 
 const KEY = "sog-beta-banner-dismissed-v1";
-const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 
 /**
  * Site-wide "the system is in beta" notice shown across every page until the
  * user closes it (persisted per browser). Its action sends them to leave a note:
  * clients → the profile feedback form, admin → the feedback inbox, partners →
- * WhatsApp (no in-portal feedback form for them).
+ * an in-app feedback dialog.
  */
 export function BetaBanner() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [show, setShow] = useState(() => localStorage.getItem(KEY) !== "1");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   if (!show) return null;
 
@@ -29,11 +30,12 @@ export function BetaBanner() {
   function leaveNote() {
     const role = profile?.role;
     if (role === "admin") navigate("/admin/feedback");
-    else if (role === "partner" && WHATSAPP) window.open(`https://wa.me/${WHATSAPP}`, "_blank");
+    else if (role === "partner") setFeedbackOpen(true);
     else navigate("/profile#feedback");
   }
 
   return (
+    <>
     <Banner
       show={show}
       onHide={dismiss}
@@ -50,5 +52,7 @@ export function BetaBanner() {
         </Button>
       }
     />
+    <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
   );
 }
