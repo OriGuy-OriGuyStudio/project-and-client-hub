@@ -50,6 +50,21 @@ export function startClientStoreTour() {
 }
 
 /**
+ * Spotlight a single element (used by the help panel: click a "what each part
+ * does" item → highlight where it is on the current screen). Returns false if
+ * the element isn't on the current page so the caller can hint about that.
+ */
+export function spotlightStep(selector: string, title: string, description: string): boolean {
+  const el = firstVisible(selector);
+  if (!el) return false;
+  driver({ allowClose: true, doneBtnText: "סגירה" }).highlight({
+    element: el,
+    popover: { title, description },
+  });
+  return true;
+}
+
+/**
  * Wait until it's safe to interrupt the user — the post-login loader has cleared
  * and no modal/dialog is open (e.g. the gift / redemption-approved popup) — then
  * run `cb`. Polls, gives up after `maxWait` (so a stuck dialog won't block forever).
