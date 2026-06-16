@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,13 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminTasks, type AdminTaskRedemption } from "@/hooks/useAdminTasks";
 
+const PROJECT_TYPE_HE: Record<string, string> = {
+  business_site: "אתר תדמית",
+  ecommerce: "חנות אונליין",
+  system: "מערכת",
+  other: "אחר",
+};
+
 export function AdminTasksPanel() {
   const { profile } = useAuth();
   const qc = useQueryClient();
@@ -23,7 +30,8 @@ export function AdminTasksPanel() {
   const redemptions = data?.redemptions ?? [];
   const messages = data?.messages ?? [];
   const accessRequests = data?.accessRequests ?? [];
-  const total = redemptions.length + messages.length + accessRequests.length;
+  const leads = data?.leads ?? [];
+  const total = redemptions.length + messages.length + accessRequests.length + leads.length;
 
   async function decideAccess(id: string, approve: boolean) {
     setBusy(id);
@@ -126,6 +134,38 @@ export function AdminTasksPanel() {
                     <X className="size-4" /> דחייה
                   </Button>
                 </div>
+              </div>
+            </div>
+          ))}
+
+          {/* New partner leads awaiting a first look */}
+          {leads.map((l) => (
+            <div key={l.id} className="rounded-xl border border-brand-cyan-base/30 bg-background/30 p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Handshake className="mt-0.5 size-4 shrink-0 text-brand-cyan-base" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      ליד חדש מ<span className="font-semibold">{l.partnerName}</span>:{" "}
+                      <span className="font-semibold">{l.leadName}</span>
+                      {l.projectType ? (
+                        <span className="text-muted-foreground">
+                          {" "}· {PROJECT_TYPE_HE[l.projectType] ?? l.projectType}
+                        </span>
+                      ) : null}
+                    </p>
+                    {(l.leadPhone || l.leadEmail) && (
+                      <p className="mt-0.5 font-mono-code text-xs text-muted-foreground">
+                        {[l.leadPhone, l.leadEmail].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/partners">
+                    טיפול בליד <ExternalLink className="size-3.5" />
+                  </Link>
+                </Button>
               </div>
             </div>
           ))}

@@ -27,10 +27,20 @@ export interface AdminTaskAccessRequest {
   message: string | null;
 }
 
+export interface AdminTaskLead {
+  id: string;
+  partnerName: string;
+  leadName: string;
+  leadPhone: string | null;
+  leadEmail: string | null;
+  projectType: string | null;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
   accessRequests: AdminTaskAccessRequest[];
+  leads: AdminTaskLead[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -41,7 +51,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -62,6 +72,12 @@ export function useAdminTasks(adminId?: string) {
           .select("id, email, full_name, business_name, phone, message")
           .eq("status", "pending")
           .order("created_at", { ascending: true }),
+        supabase
+          .from("partner_leads")
+          .select("id, lead_name, lead_phone, lead_email, project_type, partner_id")
+          .eq("status", "submitted")
+          .order("created_at", { ascending: true }),
+        supabase.from("profiles").select("id, full_name").eq("role", "partner"),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -108,7 +124,18 @@ export function useAdminTasks(adminId?: string) {
         message: r.message,
       })));
 
-      return { redemptions, messages, accessRequests };
+      const partnerNames = new Map<string, string>();
+      for (const p of (pp.data as any[]) ?? []) partnerNames.set(p.id, p.full_name ?? "שותף");
+      const leads: AdminTaskLead[] = (((ld.data as any[]) ?? []).map((r) => ({
+        id: r.id,
+        partnerName: partnerNames.get(r.partner_id) ?? "שותף",
+        leadName: r.lead_name,
+        leadPhone: r.lead_phone,
+        leadEmail: r.lead_email,
+        projectType: r.project_type,
+      })));
+
+      return { redemptions, messages, accessRequests, leads };
     },
   });
 }

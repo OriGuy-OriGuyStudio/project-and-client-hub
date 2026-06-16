@@ -528,19 +528,20 @@ function AddPartnerDialog() {
       commission_rate_max: max,
       commission_notes: clampText(form.commission_notes.trim(), 500) || null,
     });
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toastError(error.code === "23505" ? "המשתמש כבר קיים." : "הוספת השותף נכשלה.");
       return;
     }
 
-    // Auto-send the "ברוכים הבאים ל-Orion" invitation (non-blocking).
+    // Auto-send the "ברוכים הבאים ל-Orion" invitation. Keep the button in its
+    // "מוסיף…" state through this — sending the email can take a few seconds.
     const invite = await sendInvite(email);
     if (invite.ok) {
       toast({ title: "השותף נוסף וההזמנה נשלחה למייל ✓", variant: "success" });
     } else {
       toast({
-        title: "השותף נוסף — שליחת ההזמנה נכשלה",
+        title: "השותף נוסף, שליחת ההזמנה נכשלה",
         description: "אפשר לשלוח שוב מרשימת הממתינים.",
         variant: "destructive",
       });
@@ -548,6 +549,7 @@ function AddPartnerDialog() {
     qc.invalidateQueries({ queryKey: ["partners"] });
     reset();
     setOpen(false);
+    setSaving(false);
   }
 
   return (

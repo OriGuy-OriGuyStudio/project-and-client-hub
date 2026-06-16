@@ -13,8 +13,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, Users, Eye, UserX } from "lucide-react";
+import { Activity, Users, Eye, UserX, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 
 const GREEN = "#B4D670";
@@ -68,7 +69,7 @@ function useAnalytics() {
 }
 
 export default function Analytics() {
-  const { data, isLoading } = useAnalytics();
+  const { data, isLoading, isFetching, refetch } = useAnalytics();
 
   const agg = useMemo(() => {
     const events = data?.events ?? [];
@@ -142,11 +143,17 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-black text-foreground">אנליטיקות</h1>
-        <p className="text-sm text-muted-foreground">
-          שימוש בפורטל של לקוחות ושותפים, 14 הימים האחרונים. הנתונים שלך כאדמין לא נמדדים.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-2xl font-black text-foreground">אנליטיקות</h1>
+          <p className="text-sm text-muted-foreground">
+            שימוש בפורטל של לקוחות ושותפים, 14 הימים האחרונים. הנתונים שלך כאדמין לא נמדדים.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+          רענון
+        </Button>
       </div>
 
       {agg.total === 0 ? (

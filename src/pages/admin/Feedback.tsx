@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { MessageSquareHeart } from "lucide-react";
+import { useNotifications } from "@/hooks/useNotifications";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,20 @@ const STATUSES: ClientFeedback["status"][] = ["open", "in_progress", "resolved"]
 
 export default function Feedback() {
   const { data, isLoading } = useAllFeedback();
+  const { items } = useNotifications();
+  const qc = useQueryClient();
+
+  // Opening this page clears the feedback badge: mark all unread feedback
+  // notifications as read (mirrors how opening a project clears its badges).
+  useEffect(() => {
+    const unread = items.filter((n) => n.type === "feedback" && !n.is_read).map((n) => n.id);
+    if (!unread.length) return;
+    void supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unread)
+      .then(() => qc.invalidateQueries({ queryKey: ["notifications"] }));
+  }, [items, qc]);
 
   return (
     <div>
