@@ -212,7 +212,7 @@ export default function Partner() {
       </section>
 
       {/* Referrals list */}
-      <div data-section="ההפניות שלך" className="scroll-mt-20">
+      <div data-tour="store-referrals" data-section="ההפניות שלך" className="scroll-mt-20">
         <h2 className="mb-3 font-heading text-lg font-bold text-foreground">ההפניות שלך</h2>
         {isLoading ? (
           <Skeleton className="h-20 w-full rounded-2xl" />
@@ -262,7 +262,7 @@ export default function Partner() {
 
       {/* Credit history */}
       {data?.ledger && data.ledger.length > 0 && (
-        <div data-section="היסטוריית הקרדיטים" className="scroll-mt-20">
+        <div data-tour="store-history" data-section="היסטוריית הקרדיטים" className="scroll-mt-20">
           <CoinTimeline entries={data.ledger} currencyLabel="קרדיטים" title="היסטוריית הקרדיטים" />
         </div>
       )}
