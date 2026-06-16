@@ -1,12 +1,24 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
-import { HelpCircle, Sparkles, X, ChevronDown } from "lucide-react";
+import { HelpCircle, Sparkles, X, ChevronDown, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { helpSections, faq, partnerHelpSections, partnerFaq } from "./help-content";
-import { startClientTour, startClientStoreTour, startPartnerTour } from "./tour";
+import { toast } from "@/hooks/use-toast";
+import {
+  helpSections,
+  faq,
+  partnerHelpSections,
+  partnerFaq,
+  type HelpSection,
+} from "./help-content";
+import {
+  startClientTour,
+  startClientStoreTour,
+  startPartnerTour,
+  spotlightStep,
+} from "./tour";
 
 /**
  * Help center: a "?" button in the header that opens a right-side panel
@@ -27,6 +39,17 @@ export function HelpCenter() {
     : pathname === "/partner"
       ? startClientStoreTour
       : startClientTour;
+
+  // Click a "what each part does" item → close the panel and spotlight that
+  // element on the current screen (or hint that it lives on another page).
+  function locate(s: HelpSection) {
+    if (!s.selector) return;
+    setOpen(false);
+    setTimeout(() => {
+      const found = spotlightStep(s.selector!, s.title, s.body);
+      if (!found) toast({ title: "החלק הזה נמצא בעמוד אחר" });
+    }, 300);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -79,18 +102,38 @@ export function HelpCenter() {
                   <h3 className="font-heading text-sm font-bold uppercase tracking-wide text-muted-foreground">
                     מה כל חלק עושה
                   </h3>
+                  <p className="-mt-1 text-xs text-muted-foreground">
+                    לחיצה על חלק תראה לך איפה הוא נמצא במסך.
+                  </p>
                   <div className="space-y-2">
-                    {sections.map((s) => (
-                      <div
-                        key={s.title}
-                        className="rounded-xl border border-border bg-field p-3"
-                      >
-                        <p className="text-sm font-semibold text-foreground">{s.title}</p>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                          {s.body}
-                        </p>
-                      </div>
-                    ))}
+                    {sections.map((s) =>
+                      s.selector ? (
+                        <button
+                          key={s.title}
+                          type="button"
+                          onClick={() => locate(s)}
+                          className="flex w-full items-start justify-between gap-2 rounded-xl border border-border bg-field p-3 text-start transition hover:border-primary/50"
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-foreground">{s.title}</span>
+                            <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+                              {s.body}
+                            </span>
+                          </span>
+                          <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                        </button>
+                      ) : (
+                        <div
+                          key={s.title}
+                          className="rounded-xl border border-border bg-field p-3"
+                        >
+                          <p className="text-sm font-semibold text-foreground">{s.title}</p>
+                          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                            {s.body}
+                          </p>
+                        </div>
+                      )
+                    )}
                   </div>
                 </section>
 

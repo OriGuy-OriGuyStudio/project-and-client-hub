@@ -9,6 +9,9 @@
 export interface HelpSection {
   title: string;
   body: string;
+  /** Optional data-tour selector — makes the help item clickable to spotlight
+   *  that element on screen (only when it's on the current page). */
+  selector?: string;
 }
 
 export interface FaqItem {
@@ -40,6 +43,7 @@ export const helpSections: HelpSection[] = [
   {
     title: "לוח בקרה",
     body: "המסך הראשי - כל הפרויקטים שלך במבט אחד. לחיצה על פרויקט פותחת את עמוד הפרויקט המלא.",
+    selector: '[data-tour="projects"]',
   },
   {
     title: "ציר התקדמות",
@@ -64,6 +68,7 @@ export const helpSections: HelpSection[] = [
   {
     title: "צ'אט ויצירת קשר",
     body: "תקשורת ישירה עם הסטודיו בתוך הפרויקט, או דרך כפתור 'דברו איתי' בוואטסאפ.",
+    selector: '[data-tour="contact"]',
   },
   {
     title: "אחריות",
@@ -72,10 +77,12 @@ export const helpSections: HelpSection[] = [
   {
     title: "תוכנית שותפים",
     body: "אם הופעלה עבורך - אפשר להפנות לקוחות, לצבור קרדיטים ולממש פרסים.",
+    selector: '[data-tour="partner"]',
   },
   {
     title: "פרופיל",
     body: "הפרטים האישיים שלך, וגם מקום לשלוח לי הערות לשיפור הממשק.",
+    selector: '[data-tour="profile"]',
   },
 ];
 
@@ -179,26 +186,32 @@ export const partnerHelpSections: HelpSection[] = [
   {
     title: "לוח בקרה",
     body: "כל מה שחשוב במבט אחד: הלידים שהגשת, העמלות שהתקבלו, יתרת המטבעות והמסלול שלך.",
+    selector: '[data-tour="partner-stats"]',
   },
   {
     title: "הגשת ליד",
     body: "מפנים לקוח חדש דרך הטופס. כל ליד מופיע אצלך עם הסטטוס שלו והעמלה הצפויה.",
+    selector: '[data-tour="new-lead"]',
   },
   {
     title: "לינק ההפניה האישי",
     body: "לינק אישי לשיתוף. כל כניסה דרכו וכל המרה לליד נספרות אוטומטית.",
+    selector: '[data-tour="referral-link"]',
   },
   {
     title: "עמלות ומסלולים",
     body: "מתחילים ב-5% ועולים עד 10% ככל שנסגרות יותר עסקאות איכותיות. אחוז המסלול הנוכחי מוצג בלוח הבקרה.",
+    selector: '[data-tour="partner-rewards"]',
   },
   {
     title: "מטבעות",
     body: "צוברים 20 מטבעות על כל עסקה שנסגרת. המטבעות נצברים בנפרד מהעמלה הכספית.",
+    selector: '[data-tour="partner-rewards"]',
   },
   {
     title: "החנות",
     body: "ממירים מטבעות בפרסים: בוסט עמלה +2%, המרה לתשלום, שוברים, פוסט שיתופי עם קישור לאתר שלך, גישה לפיקסל, ותרומה לצדקה בשמך.",
+    selector: '[data-tour="partner-rewards"]',
   },
   {
     title: "חומרי מכירה",
