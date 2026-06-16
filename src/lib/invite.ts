@@ -93,10 +93,18 @@ export async function sendRedemptionNotice(
  * a store redemption or a client chat message. Any signed-in user may trigger
  * it (it only ever emails the studio, never arbitrary addresses). Best-effort.
  */
+/** Tag emails that originate from a non-production environment so the admin
+ *  can tell where they came from (prod URL contains the prod project ref). */
+const ENV_TAG = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.includes(
+  "tirasinbjsotcrqggipe"
+)
+  ? ""
+  : "[STAGING] ";
+
 export async function notifyAdminTask(title: string, body: string): Promise<InviteResult> {
   try {
     const { data, error } = await supabase.functions.invoke("notify-admin-task", {
-      body: { title, body },
+      body: { title: ENV_TAG + title, body },
     });
     if (error) return { ok: false, error: error.message };
     if (data && data.ok === false) return { ok: false, error: data.error || "send failed" };

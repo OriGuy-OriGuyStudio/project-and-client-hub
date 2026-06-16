@@ -105,7 +105,7 @@ export default function Profile() {
       </Card>
 
       {/* Interface feedback */}
-      <Card className="space-y-4 p-5">
+      <Card id="feedback" className="scroll-mt-20 space-y-4 p-5">
         <div className="flex items-center gap-2">
           <MessageSquareHeart className="size-5 text-brand-cyan-base" />
           <h2 className="font-heading text-lg font-semibold text-foreground">

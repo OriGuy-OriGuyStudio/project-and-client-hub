@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { BackToTop } from "./BackToTop";
+import { BetaBanner } from "./BetaBanner";
 import { WarpOverlay } from "@/components/brand/WarpOverlay";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
@@ -75,6 +76,7 @@ export function AppShell() {
         <Header ref={headerRef} />
         <main ref={mainRef} className="flex-1 overflow-x-clip px-4 py-5 sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-5xl">
+            <BetaBanner />
             <Suspense fallback={<CenteredLoader />}>
               <Outlet />
             </Suspense>
