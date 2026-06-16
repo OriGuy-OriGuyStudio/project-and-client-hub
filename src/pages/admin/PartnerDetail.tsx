@@ -111,7 +111,7 @@ export default function PartnerDetail() {
       }
     }
     setBusyRedemption(null);
-    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר — השותף יכול לממש שוב`, variant: "success" });
+    toast({ title: `"${rewardName ?? "הפרס"}" שוחרר. השותף יכול לממש שוב`, variant: "success" });
     qc.invalidateQueries({ queryKey: ["partner-detail", id] });
   }
 
@@ -341,7 +341,7 @@ export default function PartnerDetail() {
             <span className="block rounded-lg bg-muted p-2.5 text-xs">
               <b className="block text-foreground">מתי להשתמש בזה:</b>
               <span className="mt-1 block text-muted-foreground">
-                • השותף קנה את אותו פרס פעמיים בטעות (או באג) — לניקוי והחזר.
+                • השותף קנה את אותו פרס פעמיים בטעות (או באג), לניקוי והחזר.
               </span>
               <span className="block text-muted-foreground">
                 • רוצים לתת לשותף לממש שוב פרס חד-פעמי שכבר נוצל.
@@ -445,7 +445,7 @@ function AddRetroDealDialog({
               value={form.lead_name}
               maxLength={160}
               onChange={(e) => update("lead_name", e.target.value)}
-              placeholder="למשל: אתר תדמית — חברת X"
+              placeholder="למשל: אתר תדמית, חברת X"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
