@@ -1,6 +1,11 @@
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { clientTourSteps, partnerTourSteps, type TourStep } from "./help-content";
+import {
+  clientTourSteps,
+  clientStoreTourSteps,
+  partnerTourSteps,
+  type TourStep,
+} from "./help-content";
 
 /** First element matching the selector that's actually visible on screen. */
 function firstVisible(selector: string): HTMLElement | null {
@@ -37,6 +42,11 @@ export function startClientTour() {
 
 export function startPartnerTour() {
   runTour(partnerTourSteps);
+}
+
+/** Tour for the client rewards-store page (runs on first visit to that page). */
+export function startClientStoreTour() {
+  runTour(clientStoreTourSteps);
 }
 
 /**

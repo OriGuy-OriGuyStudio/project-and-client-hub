@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Coins, Gift, Lock, Pencil, Send, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionNav } from "@/components/layout/SectionNav";
+import { startClientStoreTour, whenUiIsClear } from "@/components/help/tour";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +85,18 @@ export default function Partner() {
   const credits = data?.credits ?? 0;
   const enrolled = !!data?.enrollment;
 
+  // First visit to the rewards-store page → its own short tour (gated on the
+  // loader/popups clearing). The dashboard tour only points here via the nav.
+  useEffect(() => {
+    if (isLoading || !user?.id || !enrolled) return;
+    const key = `sog-store-tour-${user.id}`;
+    if (localStorage.getItem(key)) return;
+    return whenUiIsClear(() => {
+      startClientStoreTour();
+      localStorage.setItem(key, "1");
+    });
+  }, [isLoading, user?.id, enrolled]);
+
   if (!isLoading && !enrolled) {
     return (
       <div>
@@ -107,7 +120,7 @@ export default function Partner() {
       <SectionNav />
 
       {/* Credits with coin burst (no overflow-hidden so coins can fly out) */}
-      <Card className="relative flex items-center justify-between gap-4 p-6">
+      <Card data-tour="store-credits" className="relative flex items-center justify-between gap-4 p-6">
         <div className="flex items-center gap-3">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <Coins className="size-6" />
@@ -127,7 +140,7 @@ export default function Partner() {
       </Card>
 
       {/* Submit referral — full-width form */}
-      <section data-section="הגשת הפניה" className="scroll-mt-20">
+      <section data-tour="store-referral" data-section="הגשת הפניה" className="scroll-mt-20">
         <Card className="space-y-4 p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <Send className="size-5 text-brand-cyan-base" />
@@ -159,7 +172,7 @@ export default function Partner() {
       </section>
 
       {/* Rewards store — grid below the form */}
-      <section data-section="חנות הפרסים" className="scroll-mt-20 space-y-4">
+      <section data-tour="store-rewards" data-section="חנות הפרסים" className="scroll-mt-20 space-y-4">
         <div className="flex items-center gap-2">
           <Gift className="size-5 text-brand-cyan-base" />
           <h2 className="font-heading text-lg font-semibold text-foreground">חנות הפרסים</h2>
