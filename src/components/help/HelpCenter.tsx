@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router-dom";
 import { HelpCircle, Sparkles, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { helpSections, faq, partnerHelpSections, partnerFaq } from "./help-content";
-import { startClientTour, startPartnerTour } from "./tour";
+import { startClientTour, startClientStoreTour, startPartnerTour } from "./tour";
 
 /**
  * Help center: a "?" button in the header that opens a right-side panel
@@ -15,10 +16,17 @@ export function HelpCenter() {
   const [open, setOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { profile } = useAuth();
+  const { pathname } = useLocation();
   const isPartner = profile?.role === "partner";
   const sections = isPartner ? partnerHelpSections : helpSections;
   const faqItems = isPartner ? partnerFaq : faq;
-  const startTour = isPartner ? startPartnerTour : startClientTour;
+  // Replay the tour of the page you're on — the client store page (/partner)
+  // has its own walkthrough, otherwise the dashboard tour.
+  const startTour = isPartner
+    ? startPartnerTour
+    : pathname === "/partner"
+      ? startClientStoreTour
+      : startClientTour;
 
   useEffect(() => {
     if (!open) return;
