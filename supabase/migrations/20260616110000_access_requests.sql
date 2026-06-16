@@ -35,13 +35,13 @@ create policy access_requests_admin_all on public.access_requests
 -- One-click approve: whitelist + pre-create the profile, mark handled.
 create or replace function public.approve_access_request(p_id uuid, p_role text default 'client')
 returns void language plpgsql security definer set search_path = public as $$
-declare v_email text; v_name text; v_biz text; v_uid uuid;
+declare v_email text; v_name text; v_biz text; v_phone text; v_uid uuid;
 begin
   if not public.is_admin() then raise exception 'אין הרשאה'; end if;
   if p_role not in ('client', 'partner') then raise exception 'תפקיד לא תקין'; end if;
 
-  select email, full_name, business_name, user_id
-    into v_email, v_name, v_biz, v_uid
+  select email, full_name, business_name, phone, user_id
+    into v_email, v_name, v_biz, v_phone, v_uid
     from public.access_requests where id = p_id;
   if v_email is null then raise exception 'הבקשה לא נמצאה'; end if;
 
@@ -58,8 +58,9 @@ begin
     select id into v_uid from auth.users where lower(email) = lower(v_email) limit 1;
   end if;
   if v_uid is not null then
-    insert into public.profiles (id, email, full_name, role)
-      values (v_uid, v_email, v_name, p_role) on conflict (id) do nothing;
+    insert into public.profiles (id, email, full_name, role, phone)
+      values (v_uid, v_email, v_name, p_role, v_phone)
+      on conflict (id) do update set phone = coalesce(public.profiles.phone, excluded.phone);
     if p_role = 'client' then
       insert into public.client_brand (client_id, business_name)
         values (v_uid, v_biz) on conflict (client_id) do nothing;
