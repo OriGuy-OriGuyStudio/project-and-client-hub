@@ -105,68 +105,76 @@ function NotifyDialog({
   onClose: () => void;
 }) {
   const portalUrl = `${window.location.origin}/projects/${contact.projectId}`;
-  const [message, setMessage] = useState("");
-  const [showInApp, setShowInApp] = useState(true);
-  const [inserted, setInserted] = useState(false);
+  // Channels: where the message goes. Any combination ("גם וגם") is allowed.
+  const [chInApp, setChInApp] = useState(true);
+  const [chEmail, setChEmail] = useState(false);
+  const [chWhats, setChWhats] = useState(false);
+  // Custom-note toggle: off = a generic "there's an update" nudge (the old
+  // behaviour); on = the admin's own note is what gets delivered everywhere,
+  // including into the in-app bell (not just WhatsApp / email).
+  const [custom, setCustom] = useState(false);
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Re-seed the editable message each time a new request opens the dialog.
-  useEffect(() => {
-    if (!payload) return;
+  const defaultMessage = (() => {
+    if (!payload) return "";
     const greeting = contact.clientName ? `היי ${contact.clientName}, ` : "היי, ";
     const lead = payload.body ? `${payload.title} - ${payload.body}` : payload.title;
-    setMessage(`${greeting}${lead}.\nאפשר לראות את הפרטים בפורטל: ${portalUrl}`);
-    setShowInApp(true);
-    setInserted(false);
-  }, [payload, contact.clientName, portalUrl]);
+    return `${greeting}${lead}.\nאפשר לראות את הפרטים בפורטל: ${portalUrl}`;
+  })();
 
-  // Create the in-app notification once (idempotent across the channel buttons).
-  async function ensureInApp() {
-    if (!payload || inserted || !showInApp) return;
-    const { error } = await supabase.from("notifications").insert({
-      audience: "client",
-      recipient_id: contact.clientId,
-      type: payload.type,
-      title: payload.title,
-      body: payload.body ?? null,
-      link: `/projects/${contact.projectId}`,
-      project_id: contact.projectId,
-    });
-    if (error) {
-      toastError("יצירת ההתראה בממשק נכשלה.");
-      return;
+  // Re-seed each time a new request opens the dialog.
+  useEffect(() => {
+    if (!payload) return;
+    setChInApp(true);
+    setChEmail(false);
+    setChWhats(false);
+    setCustom(false);
+    setNote("");
+  }, [payload]);
+
+  // The free-text body sent over WhatsApp / email.
+  const messageText = custom ? note.trim() : defaultMessage;
+
+  async function send() {
+    if (!payload) return;
+    if (!chInApp && !chEmail && !chWhats) {
+      return toastError("בחר לפחות ערוץ אחד לשליחה.");
     }
-    setInserted(true);
-  }
+    if (custom && !note.trim()) {
+      return toastError("כתוב את ההערה המותאמת אישית, או כבה את ההערה.");
+    }
 
-  async function sendWhatsApp() {
-    if (!contact.clientPhone) return;
     setBusy(true);
-    await ensureInApp();
+    // 1) In-app bell. With a custom note, the note itself becomes the body the
+    //    client reads in the bell — otherwise it's the generic update nudge.
+    if (chInApp) {
+      const { error } = await supabase.from("notifications").insert({
+        audience: "client",
+        recipient_id: contact.clientId,
+        type: payload.type,
+        title: custom ? "הודעה מהסטודיו" : payload.title,
+        body: custom ? note.trim() : payload.body ?? null,
+        link: `/projects/${contact.projectId}`,
+        project_id: contact.projectId,
+      });
+      if (error) {
+        setBusy(false);
+        return toastError("יצירת ההתראה בממשק נכשלה.");
+      }
+    }
     setBusy(false);
-    window.open(waLink(contact.clientPhone, message), "_blank", "noopener");
-    onClose();
-  }
 
-  async function sendEmail() {
-    if (!contact.clientEmail) return;
-    setBusy(true);
-    await ensureInApp();
-    setBusy(false);
-    window.open(
-      gmailLink(contact.clientEmail, payload?.title ?? "עדכון מהסטודיו", message),
-      "_blank",
-      "noopener"
-    );
-    onClose();
-  }
+    // 2) External channels open in a new tab (admin-driven, may need a click).
+    const subject = custom ? "הודעה מהסטודיו" : payload.title;
+    if (chEmail && contact.clientEmail) {
+      window.open(gmailLink(contact.clientEmail, subject, messageText), "_blank", "noopener");
+    }
+    if (chWhats && contact.clientPhone) {
+      window.open(waLink(contact.clientPhone, messageText), "_blank", "noopener");
+    }
 
-  async function saveInAppOnly() {
-    if (!showInApp) return onClose();
-    setBusy(true);
-    await ensureInApp();
-    setBusy(false);
-    toast({ title: "התראה נשלחה ללקוח", variant: "success" });
+    toast({ title: "ההודעה נשלחה ללקוח", variant: "success" });
     onClose();
   }
 
@@ -182,58 +190,86 @@ function NotifyDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <span className="text-sm text-muted-foreground">לאן לשלוח?</span>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={chInApp}
+                  onChange={(e) => setChInApp(e.target.checked)}
+                  className="size-4 accent-[var(--primary)]"
+                />
+                <BellRing className="size-4 text-muted-foreground" /> ממשק (פעמון)
+              </label>
+              <label
+                className="flex cursor-pointer items-center gap-2 text-sm text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                aria-disabled={!contact.clientEmail}
+                title={contact.clientEmail ? undefined : "אין מייל ללקוח"}
+              >
+                <input
+                  type="checkbox"
+                  checked={chEmail}
+                  disabled={!contact.clientEmail}
+                  onChange={(e) => setChEmail(e.target.checked)}
+                  className="size-4 accent-[var(--primary)]"
+                />
+                <Mail className="size-4 text-muted-foreground" /> מייל
+              </label>
+              <label
+                className="flex cursor-pointer items-center gap-2 text-sm text-foreground aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                aria-disabled={!contact.clientPhone}
+                title={contact.clientPhone ? undefined : "אין טלפון ללקוח"}
+              >
+                <input
+                  type="checkbox"
+                  checked={chWhats}
+                  disabled={!contact.clientPhone}
+                  onChange={(e) => setChWhats(e.target.checked)}
+                  className="size-4 accent-[var(--primary)]"
+                />
+                <MessageCircle className="size-4 text-muted-foreground" /> וואטסאפ
+              </label>
+            </div>
+          </div>
+
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
             <input
               type="checkbox"
-              checked={showInApp}
-              onChange={(e) => setShowInApp(e.target.checked)}
+              checked={custom}
+              onChange={(e) => setCustom(e.target.checked)}
               className="size-4 accent-[var(--primary)]"
             />
-            הצג התראה בממשק הלקוח (פעמון)
+            הערה מותאמת אישית
           </label>
 
-          <div className="space-y-1.5">
-            <span className="text-sm text-muted-foreground">
-              ההודעה שתישלח בוואטסאפ / מייל:
-            </span>
-            <Textarea
-              value={message}
-              maxLength={1000}
-              rows={5}
-              onChange={(e) => setMessage(e.target.value)}
-            />
-          </div>
+          {custom ? (
+            <div className="space-y-1.5">
+              <span className="text-sm text-muted-foreground">
+                ההערה שתישלח לערוצים שבחרת (גם לפעמון בממשק):
+              </span>
+              <Textarea
+                value={note}
+                maxLength={1000}
+                rows={5}
+                placeholder="כתוב כאן הודעה אישית ללקוח…"
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+          ) : (
+            <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
+              תישלח הודעת עדכון כללית. להוספת טקסט משלך, הפעל "הערה מותאמת אישית".
+            </p>
+          )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={sendWhatsApp}
-              disabled={busy || !contact.clientPhone}
-              title={contact.clientPhone ? undefined : "אין מספר טלפון ללקוח"}
-            >
-              <MessageCircle className="size-4" /> וואטסאפ
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={sendEmail}
-              disabled={busy || !contact.clientEmail}
-            >
-              <Mail className="size-4" /> מייל
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={saveInAppOnly}
-              disabled={busy}
-            >
-              <Send className="size-4" /> {showInApp ? "התראה בממשק בלבד" : "סגירה"}
-            </Button>
-          </div>
+        <DialogFooter className="gap-2">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
+            ביטול
+          </Button>
+          <Button type="button" onClick={send} disabled={busy}>
+            <Send className="size-4" /> שליחה
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
