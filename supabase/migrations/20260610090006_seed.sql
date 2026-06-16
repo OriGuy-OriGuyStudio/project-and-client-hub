@@ -15,7 +15,7 @@ on conflict (email) do update set role = 'admin';
 insert into public.rewards (name, description, credit_cost, reward_type, is_active)
 values (
   'Studio Pro חודש חינם',
-  'חודש ליווי Studio Pro ללא תשלום — תחזוקה, עדכונים ותמיכה.',
+  'חודש ליווי Studio Pro ללא תשלום, תחזוקה, עדכונים ותמיכה.',
   100,
   'studio_pro',
   true
