@@ -36,3 +36,6 @@ supabase/.temp
 # Installed marketing skill packs (local tooling, not app code)
 .claude/skills/
 skills-lock.json
+
+# Local dev helper (machine-specific path)
+start-dev.bat

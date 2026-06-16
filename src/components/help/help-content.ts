@@ -138,6 +138,28 @@ export const clientTourSteps: TourStep[] = [
   },
 ];
 
+/** Tour for the client "תוכנית שותפים" / rewards-store page (its own first visit). */
+export const clientStoreTourSteps: TourStep[] = [
+  {
+    selector: '[data-tour="store-credits"]',
+    title: "הקרדיטים שלך",
+    description:
+      "כל הפניה מזכה אותך בקרדיט, ועסקה שנסגרת בעוד 5. את היתרה ממירים בפרסים שבחנות.",
+  },
+  {
+    selector: '[data-tour="store-referral"]',
+    title: "הגשת הפניה",
+    description:
+      "ממלאים שם ופרטי קשר של עסק שיכול להתאים — מקבלים קרדיט מיידי, ועוד קרדיטים כשהעסקה נסגרת.",
+  },
+  {
+    selector: '[data-tour="store-rewards"]',
+    title: "חנות הפרסים",
+    description:
+      "ממירים קרדיטים בפרסים. לכל פרס מוצג השווי בש״ח ובר התקדמות (\"עוד X ואתה משחרר\"), ופרסים מודגשים או מוגבלים בזמן קופצים בראש.",
+  },
+];
+
 /* ───────────────────────── Partner portal ───────────────────────── */
 
 /** What each part of the partner portal does. */
