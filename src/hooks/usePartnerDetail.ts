@@ -22,6 +22,7 @@ export interface PartnerDetailData {
   coins: number;
   redemptions: PartnerRedemptionRow[];
   grants: CoinGrant[];
+  curious: boolean; // discovered the warp easter egg ("curious" badge)
 }
 
 /** Everything the admin needs on one partner's detail page. */
@@ -38,6 +39,7 @@ export function usePartnerDetail(partnerId: string | undefined) {
         { data: coins },
         { data: redemptions },
         { data: grants },
+        { data: egg },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("partner_profiles").select("*").eq("id", id).maybeSingle(),
@@ -53,6 +55,7 @@ export function usePartnerDetail(partnerId: string | undefined) {
           .eq("partner_id", id)
           .order("created_at", { ascending: false }),
         supabase.from("coin_grants").select("*").eq("user_id", id).order("created_at", { ascending: false }),
+        supabase.from("easter_egg_claims").select("client_id").eq("client_id", id).maybeSingle(),
       ]);
 
       const rows = leads ?? [];
@@ -70,6 +73,7 @@ export function usePartnerDetail(partnerId: string | undefined) {
         coins: (coins as number | null) ?? 0,
         redemptions: (redemptions as unknown as PartnerRedemptionRow[] | null) ?? [],
         grants: grants ?? [],
+        curious: !!egg,
       };
     },
   });

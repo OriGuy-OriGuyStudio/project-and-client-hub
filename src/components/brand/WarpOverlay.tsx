@@ -130,11 +130,12 @@ export function WarpOverlay() {
   }, [active]);
 
   async function claimReward() {
-    if (profile?.role !== "client") return;
+    if (profile?.role !== "client" && profile?.role !== "partner") return;
     const { data, error } = await supabase.rpc("claim_easter_egg");
-    if (error || !data?.granted) return; // already claimed → no popup
+    if (error || !data?.granted) return; // already claimed / not eligible → no popup
     setReward({ coins: data.coins ?? 5, enrolled: !!data.enrolled });
-    qc.invalidateQueries({ queryKey: ["client-partner"] });
+    // Refresh the relevant coin balance + the badge for whichever role claimed.
+    qc.invalidateQueries({ queryKey: profile.role === "partner" ? ["partner-me"] : ["client-partner"] });
     qc.invalidateQueries({ queryKey: ["curious-badge"] });
   }
 

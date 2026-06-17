@@ -127,7 +127,7 @@ export default function PartnerDetail() {
     return <EmptyState icon={Handshake} title="השותף לא נמצא" />;
   }
 
-  const { profile, partner, leads, totalLeads, closedDeals, paidCommission, coins, redemptions, grants } = data;
+  const { profile, partner, leads, totalLeads, closedDeals, paidCommission, coins, redemptions, grants, curious } = data;
 
   return (
     <div className="space-y-6">
@@ -142,6 +142,11 @@ export default function PartnerDetail() {
           <span className="inline-flex flex-wrap items-center gap-2">
             {profile.full_name || "שותף"}
             {partner && !partner.is_active && <Badge variant="secondary">מושהה</Badge>}
+            {curious && (
+              <Badge variant="success" title="גילה את ה-Easter Egg והרוויח 5 מטבעות">
+                🔭 סקרן
+              </Badge>
+            )}
           </span>
         }
         subtitle={profile.email}
