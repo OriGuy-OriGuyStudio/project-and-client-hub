@@ -64,6 +64,13 @@ function FeedbackRow({ item }: { item: AdminFeedback }) {
   const [status, setStatus] = useState<ClientFeedback["status"]>(item.status);
   const [saving, setSaving] = useState(false);
 
+  // Re-sync local state when the row's data changes (e.g. after replying from the
+  // dashboard), so the dropdown never gets stuck out of sync with the badge.
+  useEffect(() => {
+    setReply(item.admin_reply ?? "");
+    setStatus(item.status);
+  }, [item.id, item.admin_reply, item.status]);
+
   async function save() {
     setSaving(true);
     const { error } = await supabase

@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
+import { feedbackStatusHe } from "@/hooks/useClientFeedback";
 import { sendRedemptionNotice } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +28,7 @@ export function AdminTasksPanel() {
   const { data, isLoading } = useAdminTasks(profile?.id);
   const [busy, setBusy] = useState<string | null>(null);
   const [replies, setReplies] = useState<Record<string, string>>({});
+  const [fbStatus, setFbStatus] = useState<Record<string, "open" | "in_progress" | "resolved">>({});
 
   const redemptions = data?.redemptions ?? [];
   const messages = data?.messages ?? [];
@@ -94,7 +97,7 @@ export function AdminTasksPanel() {
     setBusy(id);
     const { error } = await supabase
       .from("client_feedback")
-      .update({ admin_reply: content.slice(0, 2000), status: "in_progress" })
+      .update({ admin_reply: content.slice(0, 2000), status: fbStatus[id] ?? "in_progress" })
       .eq("id", id);
     if (error) {
       setBusy(null);
@@ -233,13 +236,27 @@ export function AdminTasksPanel() {
                   onChange={(e) => setReplies((r) => ({ ...r, [f.id]: e.target.value }))}
                   className="min-h-[40px] flex-1"
                 />
-                <Button
-                  size="sm"
-                  disabled={busy === f.id || !(replies[f.id] || "").trim()}
-                  onClick={() => sendFeedbackReply(f.id)}
-                >
-                  <Send className="size-4" /> שליחה
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <SelectMenu
+                    ariaLabel="סטטוס"
+                    className="h-9 text-sm"
+                    value={fbStatus[f.id] ?? "in_progress"}
+                    onChange={(v) =>
+                      setFbStatus((s) => ({ ...s, [f.id]: v as "open" | "in_progress" | "resolved" }))
+                    }
+                    options={(["open", "in_progress", "resolved"] as const).map((s) => ({
+                      value: s,
+                      label: feedbackStatusHe[s],
+                    }))}
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busy === f.id || !(replies[f.id] || "").trim()}
+                    onClick={() => sendFeedbackReply(f.id)}
+                  >
+                    <Send className="size-4" /> שליחה
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
