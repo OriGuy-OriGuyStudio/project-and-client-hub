@@ -36,11 +36,18 @@ export interface AdminTaskLead {
   projectType: string | null;
 }
 
+export interface AdminTaskFeedback {
+  id: string;
+  clientName: string;
+  message: string;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
   accessRequests: AdminTaskAccessRequest[];
   leads: AdminTaskLead[];
+  feedback: AdminTaskFeedback[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -51,7 +58,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar, ld, pp] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp, fb] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -77,7 +84,12 @@ export function useAdminTasks(adminId?: string) {
           .select("id, lead_name, lead_phone, lead_email, project_type, partner_id")
           .eq("status", "submitted")
           .order("created_at", { ascending: true }),
-        supabase.from("profiles").select("id, full_name").eq("role", "partner"),
+        supabase.from("profiles").select("id, full_name"),
+        supabase
+          .from("client_feedback")
+          .select("id, message, client_id")
+          .eq("status", "open")
+          .order("created_at", { ascending: true }),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -124,18 +136,24 @@ export function useAdminTasks(adminId?: string) {
         message: r.message,
       })));
 
-      const partnerNames = new Map<string, string>();
-      for (const p of (pp.data as any[]) ?? []) partnerNames.set(p.id, p.full_name ?? "שותף");
+      const nameById = new Map<string, string>();
+      for (const p of (pp.data as any[]) ?? []) nameById.set(p.id, p.full_name ?? "");
       const leads: AdminTaskLead[] = (((ld.data as any[]) ?? []).map((r) => ({
         id: r.id,
-        partnerName: partnerNames.get(r.partner_id) ?? "שותף",
+        partnerName: nameById.get(r.partner_id) || "שותף",
         leadName: r.lead_name,
         leadPhone: r.lead_phone,
         leadEmail: r.lead_email,
         projectType: r.project_type,
       })));
 
-      return { redemptions, messages, accessRequests, leads };
+      const feedback: AdminTaskFeedback[] = (((fb.data as any[]) ?? []).map((r) => ({
+        id: r.id,
+        clientName: nameById.get(r.client_id) || "לקוח",
+        message: r.message,
+      })));
+
+      return { redemptions, messages, accessRequests, leads, feedback };
     },
   });
 }

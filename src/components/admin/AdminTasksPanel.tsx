@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,9 @@ export function AdminTasksPanel() {
   const messages = data?.messages ?? [];
   const accessRequests = data?.accessRequests ?? [];
   const leads = data?.leads ?? [];
-  const total = redemptions.length + messages.length + accessRequests.length + leads.length;
+  const feedback = data?.feedback ?? [];
+  const total =
+    redemptions.length + messages.length + accessRequests.length + leads.length + feedback.length;
 
   async function decideAccess(id: string, approve: boolean) {
     setBusy(id);
@@ -70,12 +72,20 @@ export function AdminTasksPanel() {
     const { error } = await supabase
       .from("messages")
       .insert({ project_id: projectId, sender_id: profile.id, content });
+    if (error) {
+      setBusy(null);
+      return toastError("שליחת ההודעה נכשלה.");
+    }
+    // The client's message is handled now — clear that project's admin
+    // notifications so the bell + project badge stop showing it (replying from
+    // the dashboard used to leave the badge on until the project was opened).
+    await supabase.rpc("mark_project_notifications_read", { p_project_id: projectId });
     setBusy(null);
-    if (error) return toastError("שליחת ההודעה נכשלה.");
     setReplies((r) => ({ ...r, [projectId]: "" }));
     toast({ title: "התשובה נשלחה ✓", variant: "success" });
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
     qc.invalidateQueries({ queryKey: ["messages", projectId] });
+    qc.invalidateQueries({ queryKey: ["notifications"] });
   }
 
   if (isLoading) {
@@ -164,6 +174,30 @@ export function AdminTasksPanel() {
                 <Button asChild size="sm" variant="secondary">
                   <Link to="/admin/partners">
                     טיפול בליד <ExternalLink className="size-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* New client feedback notes */}
+          {feedback.map((f) => (
+            <div key={f.id} className="rounded-xl border border-border bg-background/30 p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <MessageSquareHeart className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      הערה מ<span className="font-semibold">{f.clientName}</span>
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">
+                      {f.message}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/feedback">
+                    מענה <ExternalLink className="size-3.5" />
                   </Link>
                 </Button>
               </div>

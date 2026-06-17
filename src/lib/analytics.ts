@@ -15,13 +15,16 @@ export function track(
   meta: Record<string, unknown> = {},
   path?: string
 ): void {
-  try {
-    void supabase.rpc("log_usage_event", {
+  // NOTE: supabase/PostgREST builders are LAZY — the request is only sent when
+  // .then() (or await) is called. A bare `supabase.rpc(...)` never fires. We call
+  // .then() to trigger it and swallow any error so analytics can't break the app.
+  supabase
+    .rpc("log_usage_event", {
       p_event: event,
       p_path: path ?? (typeof window !== "undefined" ? window.location.pathname : null),
       p_meta: { device: deviceKind(), ...meta },
+    })
+    .then(undefined, () => {
+      /* swallow — never throw from tracking */
     });
-  } catch {
-    /* swallow */
-  }
 }
