@@ -176,6 +176,7 @@ export default function RefLanding() {
       <FallingEasterEgg active={egg} onClose={() => setEgg(false)} />
       <ScrollProgressBar />
       <GlassNav onCta={scrollToForm} />
+      <MobileNavFab />
 
       <Hero partnerName={partnerName} onCta={scrollToForm} onEgg={() => setEgg(true)} />
       <VelocityMarquee />
@@ -317,24 +318,34 @@ function GlassNav({ onCta }: { onCta: () => void }) {
   return (
     <header
       className={
-        "fixed inset-x-0 top-0 z-40 flex items-center justify-between px-4 py-3 transition-all sm:px-6 " +
-        (solid ? "ref-glass" : "")
+        "fixed inset-x-0 top-0 z-40 flex items-center justify-between transition-all duration-300 sm:px-6 " +
+        (solid ? "ref-glass px-4 py-1.5" : "px-4 py-3")
       }
     >
       <button
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="font-heading text-lg font-black tracking-tight text-foreground"
+        className={
+          "font-heading font-black tracking-tight text-foreground transition-all " +
+          (solid ? "text-base" : "text-lg")
+        }
       >
         Studio Ori Guy
       </button>
 
-      <nav className="ref-glass hidden items-center gap-1 rounded-2xl px-1.5 py-1.5 sm:flex">
+      <nav
+        className={
+          "ref-glass hidden items-center gap-1 rounded-2xl transition-all sm:flex " +
+          (solid ? "px-1 py-1" : "px-1.5 py-1.5")
+        }
+      >
         {NAV.map((n) => (
           <button
             key={n.id}
             onClick={() => go(n.id)}
             className={
-              "rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors " +
+              "rounded-xl text-sm font-medium transition-colors " +
+              (solid ? "px-3 py-1" : "px-3.5 py-1.5") +
+              " " +
               (active === n.id
                 ? "bg-primary text-primary-foreground"
                 : "text-foreground/80 hover:text-foreground")
@@ -347,11 +358,60 @@ function GlassNav({ onCta }: { onCta: () => void }) {
 
       <button
         onClick={onCta}
-        className="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lift transition-transform hover:scale-[1.03] active:scale-95"
+        className={
+          "rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-lift transition-all hover:scale-[1.03] active:scale-95 " +
+          (solid ? "px-3.5 py-1.5" : "px-4 py-2")
+        }
       >
         בוא נדבר
       </button>
     </header>
+  );
+}
+
+/* Mobile-only floating menu (bottom-right). Scaling-hamburger pattern adapted from
+   Osmo to the brand (green panel) + RTL; CSS lives under `.ham-nav` in index.css. */
+function MobileNavFab() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  function go(id: string) {
+    setOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  }
+  return (
+    <div className="ham-nav sm:hidden" data-status={open ? "active" : "not-active"}>
+      <div className="ham-nav__bg-dark" onClick={() => setOpen(false)} />
+      <div className="ham-nav__box">
+        <div className="ham-nav__bg" />
+        <div className="ham-nav__group">
+          <p className="ham-nav__title">תפריט</p>
+          <ul className="ham-nav__ul">
+            {NAV.map((n) => (
+              <li key={n.id}>
+                <button type="button" className="ham-nav__a" onClick={() => go(n.id)}>
+                  <span className="ham-nav__label">{n.label}</span>
+                  <span className="ham-nav__dot" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <button
+          type="button"
+          className="ham-nav__toggle"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="תפריט"
+          aria-expanded={open}
+        >
+          <span className="ham-nav__bar" />
+          <span className="ham-nav__bar" />
+        </button>
+      </div>
+    </div>
   );
 }
 

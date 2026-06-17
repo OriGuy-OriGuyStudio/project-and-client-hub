@@ -843,3 +843,56 @@
   .ref-spin,
   .ref-gradient-text { animation: none; }
 }
+
+/* Mobile scaling hamburger menu (RefLanding) — adapted from Osmo to brand + RTL,
+   anchored bottom-right. Closed = green circle; opens into a green panel. */
+.ham-nav { position: fixed; inset: 0; z-index: 500; pointer-events: none; font-size: 15px; }
+.ham-nav__bg-dark {
+  position: absolute; inset: 0; background: #000; opacity: 0; visibility: hidden;
+  pointer-events: none; transition: opacity .6s cubic-bezier(.5,.5,0,1), visibility .6s;
+}
+.ham-nav[data-status="active"] .ham-nav__bg-dark { opacity: .5; visibility: visible; pointer-events: auto; }
+.ham-nav__box { position: absolute; bottom: 1.25em; right: 1.25em; }
+.ham-nav__bg {
+  position: absolute; bottom: 0; right: 0; width: 3.5em; height: 3.5em;
+  background: #b4d670; border-radius: 1.75em; box-shadow: 0 12px 32px rgba(0,0,0,.4);
+  transition: width .7s cubic-bezier(.5,.5,0,1), height .7s cubic-bezier(.5,.5,0,1), border-radius .7s cubic-bezier(.5,.5,0,1);
+}
+.ham-nav[data-status="active"] .ham-nav__bg { width: 100%; height: 100%; border-radius: 1.5em; }
+.ham-nav__group {
+  position: relative; pointer-events: auto; display: flex; flex-direction: column; gap: 1em;
+  padding: 1.9em 1.9em 2.2em; transform-origin: 100% 100%; transform: scale(.12);
+  opacity: 0; visibility: hidden;
+  transition: transform .7s cubic-bezier(.5,.5,0,1), opacity .5s cubic-bezier(.5,.5,0,1), visibility .5s;
+}
+.ham-nav[data-status="active"] .ham-nav__group { transform: scale(1); opacity: 1; visibility: visible; }
+.ham-nav__title { margin: 0; font-size: .8em; letter-spacing: .06em; color: rgba(19,19,19,.55); }
+.ham-nav__ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3em; }
+.ham-nav__a {
+  display: flex; align-items: center; justify-content: space-between; gap: 1.4em;
+  width: 100%; padding: 0; background: none; border: 0; cursor: pointer; color: #131313;
+}
+.ham-nav__label { font-size: 1.6em; font-weight: 700; white-space: nowrap; }
+.ham-nav__dot {
+  width: .5em; height: .5em; border-radius: 50%; background: currentColor; opacity: .45;
+  transform: scale(0); transition: transform .5s cubic-bezier(.5,.5,0,1);
+}
+.ham-nav__a:active .ham-nav__dot { transform: scale(1); }
+.ham-nav__toggle {
+  position: absolute; bottom: 0; right: 0; width: 3.5em; height: 3.5em;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  background: none; border: 0; border-radius: 50%; cursor: pointer; pointer-events: auto;
+  transition: transform .7s cubic-bezier(.5,.5,0,1);
+}
+.ham-nav[data-status="active"] .ham-nav__toggle { transform: translate(-0.9em, -0.9em); }
+.ham-nav__bar {
+  position: absolute; width: 38%; height: 2px; border-radius: 2px; background: #131313;
+  transform: translateY(-.18em); transition: transform .7s cubic-bezier(.5,.5,0,1);
+}
+.ham-nav__bar:nth-child(2) { transform: translateY(.18em); }
+.ham-nav[data-status="active"] .ham-nav__bar { transform: translateY(0) rotate(45deg); }
+.ham-nav[data-status="active"] .ham-nav__bar:nth-child(2) { transform: translateY(0) rotate(-45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ham-nav__bg, .ham-nav__group, .ham-nav__toggle, .ham-nav__bar, .ham-nav__bg-dark { transition-duration: .01ms; }
+}
