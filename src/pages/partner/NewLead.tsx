@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { clampText } from "@/lib/sanitize";
+import { isEmail, isPhone } from "@/lib/validation";
 import { projectTypeHe } from "@/lib/status";
 import type { PartnerProjectType } from "@/types/database";
 
@@ -39,16 +40,19 @@ export default function NewLead() {
 
   async function submit() {
     const name = clampText(form.lead_name.trim(), 120);
+    const phone = form.lead_phone.trim();
+    const email = form.lead_email.trim();
     if (!name) return toastError("צריך שם של הליד.");
-    if (!form.lead_phone.trim() && !form.lead_email.trim())
-      return toastError("צריך טלפון או מייל ליצירת קשר.");
+    if (!phone && !email) return toastError("צריך טלפון או מייל ליצירת קשר.");
+    if (phone && !isPhone(phone)) return toastError("מספר הטלפון לא תקין.");
+    if (email && !isEmail(email)) return toastError("כתובת המייל לא תקינה.");
 
     setSaving(true);
     const { error } = await supabase.from("partner_leads").insert({
       partner_id: user!.id,
       lead_name: name,
-      lead_phone: clampText(form.lead_phone.trim(), 40) || null,
-      lead_email: clampText(form.lead_email.trim(), 160) || null,
+      lead_phone: clampText(phone, 40) || null,
+      lead_email: clampText(email, 160) || null,
       project_type: form.project_type,
       notes: clampText(form.notes.trim(), 2000) || null,
       quote_requested: form.quote_requested,

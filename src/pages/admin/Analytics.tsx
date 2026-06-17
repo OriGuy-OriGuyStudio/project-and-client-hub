@@ -17,10 +17,10 @@ import { Activity, Users, Eye, UserX, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
+import { useTheme } from "@/hooks/useTheme";
 
 const GREEN = "#B4D670";
 const CYAN = "#77becf";
-const AXIS = "#8b8b93";
 
 type EventRow = {
   event: string;
@@ -70,6 +70,10 @@ function useAnalytics() {
 
 export default function Analytics() {
   const { data, isLoading, isFetching, refetch } = useAnalytics();
+  const { theme } = useTheme();
+  // Chart text must read on whichever theme the admin uses (canvas/SVG can't use
+  // CSS vars): near-white on dark, near-black on light.
+  const axis = theme === "dark" ? "#e4e4e7" : "#27272a";
 
   const agg = useMemo(() => {
     const events = data?.events ?? [];
@@ -184,8 +188,8 @@ export default function Analytics() {
                     <stop offset="100%" stopColor={GREEN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                <XAxis dataKey="day" tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
                 <Tooltip
                   contentStyle={{ background: "#16151D", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff" }}
                   cursor={{ stroke: GREEN, strokeOpacity: 0.3 }}
@@ -198,10 +202,11 @@ export default function Analytics() {
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-2xl border bg-card p-4 lg:col-span-2">
               <h2 className="mb-4 text-sm font-medium text-muted-foreground">עמודים בשימוש (צפיות)</h2>
+              <div dir="ltr">
               <ResponsiveContainer width="100%" height={Math.max(180, agg.topPages.length * 38)}>
                 <BarChart data={agg.topPages} layout="vertical" margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fill: AXIS, fontSize: 11 }} axisLine={false} tickLine={false} width={120} />
+                  <XAxis type="number" tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} width={120} />
                   <Tooltip
                     contentStyle={{ background: "#16151D", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff" }}
                     cursor={{ fill: "rgba(180,214,112,0.08)" }}
@@ -209,6 +214,7 @@ export default function Analytics() {
                   <Bar dataKey="count" fill={GREEN} radius={[0, 5, 5, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </div>
 
             <div className="rounded-2xl border bg-card p-4">

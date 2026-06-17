@@ -88,6 +88,33 @@ export function AdminTasksPanel() {
     qc.invalidateQueries({ queryKey: ["notifications"] });
   }
 
+  async function sendFeedbackReply(id: string) {
+    const content = (replies[id] || "").trim();
+    if (!content) return;
+    setBusy(id);
+    const { error } = await supabase
+      .from("client_feedback")
+      .update({ admin_reply: content.slice(0, 2000), status: "in_progress" })
+      .eq("id", id);
+    if (error) {
+      setBusy(null);
+      return toastError("שליחת התשובה נכשלה.");
+    }
+    // The note is handled — clear its admin notification (the notify_feedback
+    // trigger already sent the reply to the client).
+    await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("type", "feedback")
+      .eq("is_read", false);
+    setBusy(null);
+    setReplies((r) => ({ ...r, [id]: "" }));
+    toast({ title: "התשובה נשלחה ללקוח ✓", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["admin-tasks"] });
+    qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+  }
+
   if (isLoading) {
     return <Skeleton className="h-32 w-full rounded-2xl" />;
   }
@@ -180,25 +207,38 @@ export function AdminTasksPanel() {
             </div>
           ))}
 
-          {/* New client feedback notes */}
+          {/* New client feedback notes — quick-reply inline */}
           {feedback.map((f) => (
             <div key={f.id} className="rounded-xl border border-border bg-background/30 p-3.5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-2">
-                  <MessageSquareHeart className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div className="min-w-0">
-                    <p className="text-sm text-foreground">
-                      הערה מ<span className="font-semibold">{f.clientName}</span>
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">
-                      {f.message}
-                    </p>
-                  </div>
-                </div>
-                <Button asChild size="sm" variant="secondary">
+              <div className="flex items-center gap-2">
+                <MessageSquareHeart className="size-4 shrink-0 text-primary" />
+                <p className="min-w-0 truncate text-sm text-foreground">
+                  הערה מ<span className="font-semibold">{f.clientName}</span>
+                </p>
+                <Button asChild size="sm" variant="ghost" className="ms-auto">
                   <Link to="/admin/feedback">
-                    מענה <ExternalLink className="size-3.5" />
+                    פתח <ExternalLink className="size-3.5" />
                   </Link>
+                </Button>
+              </div>
+              <p className="mt-1.5 line-clamp-2 rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">
+                {f.message}
+              </p>
+              <div className="mt-2 flex items-end gap-2">
+                <Textarea
+                  rows={1}
+                  maxLength={2000}
+                  placeholder="תשובה מהירה ללקוח…"
+                  value={replies[f.id] || ""}
+                  onChange={(e) => setReplies((r) => ({ ...r, [f.id]: e.target.value }))}
+                  className="min-h-[40px] flex-1"
+                />
+                <Button
+                  size="sm"
+                  disabled={busy === f.id || !(replies[f.id] || "").trim()}
+                  onClick={() => sendFeedbackReply(f.id)}
+                >
+                  <Send className="size-4" /> שליחה
                 </Button>
               </div>
             </div>
