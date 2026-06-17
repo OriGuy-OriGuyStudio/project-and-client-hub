@@ -63,8 +63,18 @@ export function SectionNav({ className }: { className?: string }) {
 
   // Scroll-spy — tracks the section nearest the nav line (released by user scroll).
   useEffect(() => {
+    let raf = 0;
     const onScroll = () => {
-      if (pinned.current) return;
+      if (raf || pinned.current) return;
+      // rAF-throttle: one measure per frame, not per scroll event (avoids layout
+      // thrash + the resulting jitter on mobile).
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (pinned.current) return;
+        measure();
+      });
+    };
+    const measure = () => {
       const line = NAV_OFFSET + 12;
       const atBottom =
         window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
@@ -104,12 +114,13 @@ export function SectionNav({ className }: { className?: string }) {
         release();
     };
 
-    onScroll();
+    measure();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("wheel", release, { passive: true });
     window.addEventListener("touchmove", release, { passive: true });
     window.addEventListener("keydown", onKey);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("wheel", release);
       window.removeEventListener("touchmove", release);
@@ -137,7 +148,7 @@ export function SectionNav({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "sticky top-0 z-30 -mx-4 border-b border-border bg-background/85 px-4 backdrop-blur sm:-mx-6 sm:px-6",
+        "sticky top-0 z-30 -mx-4 border-b border-border bg-background px-4 sm:-mx-6 sm:bg-background/85 sm:px-6 sm:backdrop-blur",
         className
       )}
     >

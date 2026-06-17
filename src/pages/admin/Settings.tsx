@@ -184,8 +184,12 @@ function StudioDetailsSection() {
         <ShieldAlert className="mt-0.5 size-4 shrink-0" />
         <div className="space-y-0.5">
           <p>מזהים נעולים (מוגדרים בסביבת המערכת, לא לעריכה כאן):</p>
-          <p dir="ltr" className="font-mono-code">אדמין: {ADMIN_EMAIL || "-"}</p>
-          <p dir="ltr" className="font-mono-code">WhatsApp: {WHATSAPP || "-"}</p>
+          <p className="font-mono-code">
+            אדמין: <span dir="ltr" className="inline-block align-middle">{ADMIN_EMAIL || "-"}</span>
+          </p>
+          <p className="font-mono-code">
+            WhatsApp: <span dir="ltr" className="inline-block align-middle">{WHATSAPP || "-"}</span>
+          </p>
         </div>
       </div>
 
