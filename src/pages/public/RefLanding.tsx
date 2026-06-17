@@ -61,12 +61,14 @@ const PROJECTS: {
   desc: string;
   videos: { src: string; caption?: string }[];
   link?: { href: string; label: string };
+  centerMobile?: boolean;
 }[] = [
   {
     name: "יולי מסטרמן",
     client: "מעצבת פנים",
     desc: "איפיון, עיצוב ופיתוח אתר תדמית.",
     videos: [{ src: `${BUCKET}/yuli.mp4` }],
+    centerMobile: true,
   },
   {
     name: "ישראל ברכץ",
@@ -76,6 +78,7 @@ const PROJECTS: {
       { src: `${BUCKET}/israel-home.mp4`, caption: "דף הבית" },
       { src: `${BUCKET}/israel-checkout.mp4`, caption: "תהליך הרכישה" },
     ],
+    centerMobile: true,
   },
   {
     name: "ליאור שדה",
@@ -1479,16 +1482,21 @@ function OrionShowreel() {
 
 function MockupVideo({ src, caption }: { src: string; caption?: string }) {
   const ref = useRef<HTMLVideoElement>(null);
-  // Play only while in view (4 videos on the page — keep it light).
+  // Start from the beginning only when the laptop reaches the MIDDLE of the
+  // viewport, so the visitor never misses the intro. Pause when it leaves.
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) v.play().catch(() => {});
-        else v.pause();
+        if (e.isIntersecting) {
+          v.currentTime = 0;
+          v.play().catch(() => {});
+        } else {
+          v.pause();
+        }
       },
-      { threshold: 0.25 }
+      { rootMargin: "-35% 0px -35% 0px", threshold: 0 }
     );
     io.observe(v);
     return () => io.disconnect();
@@ -1527,11 +1535,17 @@ function MockupVideo({ src, caption }: { src: string; caption?: string }) {
 }
 
 function ProjectShowcase({ project, flip }: { project: (typeof PROJECTS)[number]; flip: boolean }) {
+  const center = project.centerMobile;
   return (
-    <div className="reveal-up grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
-      <div className={flip ? "lg:order-2" : ""}>
+    <div
+      className={`reveal-up flex flex-col items-center gap-8 lg:gap-12 ${
+        flip ? "lg:flex-row-reverse" : "lg:flex-row"
+      }`}
+    >
+      {/* Bigger mockup column (58%); multi-video projects stack so each laptop stays large */}
+      <div className="w-full lg:w-[58%]">
         {project.videos.length > 1 ? (
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-6">
             {project.videos.map((v) => (
               <MockupVideo key={v.src} src={v.src} caption={v.caption} />
             ))}
@@ -1540,7 +1554,7 @@ function ProjectShowcase({ project, flip }: { project: (typeof PROJECTS)[number]
           <MockupVideo src={project.videos[0].src} />
         )}
       </div>
-      <div className={flip ? "lg:order-1" : ""}>
+      <div className={`w-full lg:w-[42%] ${center ? "text-center lg:text-start" : "text-start"}`}>
         <h3 className="font-heading text-2xl font-black text-foreground sm:text-3xl">{project.name}</h3>
         <p className="mt-1 text-sm font-medium text-primary">{project.client}</p>
         <p className="mt-4 leading-relaxed text-muted-foreground">{project.desc}</p>
@@ -1562,7 +1576,7 @@ function ProjectShowcase({ project, flip }: { project: (typeof PROJECTS)[number]
 function Portfolio() {
   return (
     <section className="reveal-up overflow-hidden px-5 py-20 sm:px-6 sm:py-28">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <h2 className="mb-3 text-center font-heading text-3xl font-black tracking-tight text-foreground sm:text-5xl">
           כמה דברים שעשיתי לאחרונה
         </h2>
