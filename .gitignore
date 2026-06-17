@@ -39,3 +39,6 @@ skills-lock.json
 
 # Local dev helper (machine-specific path)
 start-dev.bat
+
+# Raw + compressed portfolio videos (uploaded to Supabase bucket, not git)
+public/raw/

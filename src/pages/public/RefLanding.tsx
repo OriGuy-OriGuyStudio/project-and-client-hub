@@ -25,7 +25,6 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { AutoScrollShot } from "@/components/ui/auto-scroll-shot";
 import Aurora from "@/components/ui/aurora";
 import SpotlightCard from "@/components/ui/spotlight-card";
 import ClickSpark from "@/components/ui/click-spark";
@@ -52,22 +51,42 @@ const IMG = {
   oriSocial: encodeURI(`${BUCKET}/Social story 1.png`),
 };
 
-const PORTFOLIO: {
-  title: string;
-  subtitle?: string;
-  status?: string;
-  webm?: string;
-  mp4?: string;
-  poster?: string;
+// Laptop mockup frame (transparent screen). Each project's screen-recording video
+// is layered behind it and shows through the screen cut-out.
+const MACBOOK = "/macbook-mockup.png";
+
+const PROJECTS: {
+  name: string;
+  client: string;
+  desc: string;
+  videos: { src: string; caption?: string }[];
+  link?: { href: string; label: string };
 }[] = [
   {
-    title: "יולי מסטרמן",
-    subtitle: "עיצוב פנים · חידוש אתר (WordPress + קוד מותאם)",
-    status: "באוויר",
-    webm: `${BUCKET}/yuli.webm`,
+    name: "יולי מסטרמן",
+    client: "מעצבת פנים",
+    desc: "איפיון, עיצוב ופיתוח אתר תדמית.",
+    videos: [{ src: `${BUCKET}/yuli.mp4` }],
   },
-  { title: "פרויקט שני", subtitle: "עולה לאוויר בקרוב", status: "בעבודה" },
-  { title: "פרויקט שלישי", subtitle: "בקרוב", status: "בקרוב" },
+  {
+    name: "ישראל ברכץ",
+    client: "אנעים זמירות",
+    desc: "איפיון, עיצוב ופיתוח אתר חנות אונליין.",
+    videos: [
+      { src: `${BUCKET}/israel-home.mp4`, caption: "דף הבית" },
+      { src: `${BUCKET}/israel-checkout.mp4`, caption: "תהליך הרכישה" },
+    ],
+  },
+  {
+    name: "ליאור שדה",
+    client: "Moving Art",
+    desc: 'כאן לא עיצבתי, אלא שדרגתי אתר קיים: הוספת שפה עברית (האתר היה אנגלית בלבד), הקמת מערך בלוג ל-SEO (בשיתוף השת"פ יבגני סיני), שיפור ביצועים אגרסיבי תוך שמירה מלאה על העיצוב, מחיקת פלאגינים והחלפתם בקוד מותאם אישית, ושיפור נגישות.',
+    videos: [{ src: `${BUCKET}/lior.mp4` }],
+    link: {
+      href: "https://insights.origuystudio.com/%d7%9e%d7%94-%d7%a7%d7%95%d7%a8%d7%94-%d7%9b%d7%a9%d7%9e%d7%a9%d7%a7%d7%99%d7%a2%d7%99%d7%9d-%d7%a8%d7%91%d7%a2%d7%95%d7%9f-%d7%91%d7%90%d7%aa%d7%a8-%d7%9e%d7%94-%d7%a9%d7%a7%d7%a8%d7%94-%d7%a2%d7%9d/",
+      label: "קרא על העבודה",
+    },
+  },
 ];
 
 // Designed Orion product video (Remotion render, hosted in the public bucket).
@@ -1458,24 +1477,100 @@ function OrionShowreel() {
 
 /* ───────────────────────── Portfolio ───────────────────────── */
 
+function MockupVideo({ src, caption }: { src: string; caption?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  // Play only while in view (4 videos on the page — keep it light).
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) v.play().catch(() => {});
+        else v.pause();
+      },
+      { threshold: 0.25 }
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <figure className="w-full">
+      <div className="relative w-full">
+        {/* Video behind the laptop PNG, positioned to the transparent screen
+            cut-out (rect measured from the mockup). Black bg = screen "on". */}
+        <div
+          className="absolute overflow-hidden rounded-md bg-black"
+          style={{ top: "15.8%", left: "11.05%", width: "77.9%", height: "67.2%" }}
+        >
+          <video
+            ref={ref}
+            src={src}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="h-full w-full object-cover"
+          />
+        </div>
+        <img
+          src={MACBOOK}
+          alt=""
+          draggable={false}
+          className="pointer-events-none relative z-10 block w-full select-none"
+        />
+      </div>
+      {caption && (
+        <figcaption className="mt-2 text-center text-xs text-muted-foreground">{caption}</figcaption>
+      )}
+    </figure>
+  );
+}
+
+function ProjectShowcase({ project, flip }: { project: (typeof PROJECTS)[number]; flip: boolean }) {
+  return (
+    <div className="reveal-up grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
+      <div className={flip ? "lg:order-2" : ""}>
+        {project.videos.length > 1 ? (
+          <div className="grid gap-5 sm:grid-cols-2">
+            {project.videos.map((v) => (
+              <MockupVideo key={v.src} src={v.src} caption={v.caption} />
+            ))}
+          </div>
+        ) : (
+          <MockupVideo src={project.videos[0].src} />
+        )}
+      </div>
+      <div className={flip ? "lg:order-1" : ""}>
+        <h3 className="font-heading text-2xl font-black text-foreground sm:text-3xl">{project.name}</h3>
+        <p className="mt-1 text-sm font-medium text-primary">{project.client}</p>
+        <p className="mt-4 leading-relaxed text-muted-foreground">{project.desc}</p>
+        {project.link && (
+          <a
+            href={project.link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-2xl border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/50"
+          >
+            {project.link.label} <ArrowLeft className="size-4" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Portfolio() {
-  const featured = PORTFOLIO[0];
-  const rest = PORTFOLIO.slice(1);
   return (
     <section className="reveal-up overflow-hidden px-5 py-20 sm:px-6 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <h2 className="mb-10 text-center font-heading text-3xl font-black tracking-tight text-foreground sm:text-5xl">
+        <h2 className="mb-3 text-center font-heading text-3xl font-black tracking-tight text-foreground sm:text-5xl">
           כמה דברים שעשיתי לאחרונה
         </h2>
-        <div className="grid items-stretch gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <div className="flex">
-            <AutoScrollShot {...featured} fill />
-          </div>
-          <div className="grid content-center gap-6">
-            {rest.map((p) => (
-              <AutoScrollShot key={p.title} {...p} />
-            ))}
-          </div>
+        <p className="mb-14 text-center text-muted-foreground">פרויקטים אמיתיים, רצים בתוך הדפדפן.</p>
+        <div className="space-y-20 sm:space-y-28">
+          {PROJECTS.map((p, i) => (
+            <ProjectShowcase key={p.name} project={p} flip={i % 2 === 1} />
+          ))}
         </div>
       </div>
     </section>
