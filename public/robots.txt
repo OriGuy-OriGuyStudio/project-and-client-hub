@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Social link-preview crawlers (Open Graph) are explicitly welcome.
+User-agent: facebookexternalhit
+Allow: /
+User-agent: Twitterbot
+Allow: /
