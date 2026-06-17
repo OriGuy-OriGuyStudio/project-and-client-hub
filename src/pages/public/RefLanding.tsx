@@ -2124,8 +2124,8 @@ function LeadForm({
       <div className="reveal-up rounded-3xl border border-border bg-card px-6 py-8 shadow-lift sm:p-9">
         <div className="space-y-3.5">
           <Field placeholder="שם מלא *" value={form.name} maxLength={160} onChange={(v) => update("name", v)} />
-          <Field placeholder="טלפון *" dir="ltr" value={form.phone} maxLength={40} onChange={(v) => update("phone", v)} />
-          <Field placeholder="מייל (לא חובה)" dir="ltr" type="email" value={form.email} maxLength={160} onChange={(v) => update("email", v)} />
+          <Field placeholder="טלפון *" dir="auto" value={form.phone} maxLength={40} onChange={(v) => update("phone", v)} />
+          <Field placeholder="מייל (לא חובה)" dir="auto" type="email" value={form.email} maxLength={160} onChange={(v) => update("email", v)} />
           <select
             className="h-12 w-full rounded-xl border border-border bg-field px-4 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/30"
             value={form.type}
@@ -2206,7 +2206,7 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   maxLength?: number;
-  dir?: "ltr" | "rtl";
+  dir?: "ltr" | "rtl" | "auto";
   type?: string;
 }) {
   return (
