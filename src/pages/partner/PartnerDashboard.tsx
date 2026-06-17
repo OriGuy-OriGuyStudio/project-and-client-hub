@@ -16,9 +16,11 @@ import { PARTNER_TOUR_VERSION } from "@/components/help/help-content";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { GiftPopup } from "@/components/layout/GiftPopup";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
+import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { SparklesText } from "@/components/ui/sparkles-text";
 import { WavePath } from "@/components/ui/wave-path";
 import { usePartner } from "@/hooks/usePartner";
+import { useCuriousBadge } from "@/hooks/useCuriousBadge";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
@@ -40,6 +42,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
 export default function PartnerDashboard() {
   const { profile, user } = useAuth();
   const { data, isLoading, isError } = usePartner();
+  const { data: isCurious } = useCuriousBadge();
 
   useEffect(() => {
     if (isError) toastError("טעינת הנתונים נכשלה.");
@@ -74,8 +77,18 @@ export default function PartnerDashboard() {
       <GiftPopup />
       <WhatsNew audience="partner" />
       <PendingRedemptionsBanner />
+      <AnnouncementBanner />
       <PageHeader
-        title={<SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <SparklesText text={`שלום${firstName ? `, ${firstName}` : ""} 👋`} />
+            {isCurious && (
+              <Badge variant="success" title="גילית את הסוד הנסתר בפורטל">
+                🔭 סקרן
+              </Badge>
+            )}
+          </span>
+        }
         subtitle="הלידים שהגשת והעמלות שלך, במבט אחד."
         actions={
           <Button asChild data-tour="new-lead">

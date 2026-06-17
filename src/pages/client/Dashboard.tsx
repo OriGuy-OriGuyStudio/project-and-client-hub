@@ -11,6 +11,7 @@ import { CLIENT_TOUR_VERSION } from "@/components/help/help-content";
 import { GiftPopup } from "@/components/layout/GiftPopup";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
+import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -48,6 +49,7 @@ export default function Dashboard() {
         subtitle="הפרויקטים שלך במבט אחד"
       />
       <PendingRedemptionsBanner />
+      <AnnouncementBanner />
 
       <div data-tour="projects">
         {isLoading ? (

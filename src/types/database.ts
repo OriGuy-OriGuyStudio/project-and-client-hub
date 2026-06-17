@@ -517,6 +517,43 @@ export type UsageEvent = {
   created_at: string;
 };
 
+export type AnnouncementAudience = "client" | "partner" | "both";
+
+export type Announcement = {
+  id: string;
+  title: string;
+  badge: string;
+  body: string | null;
+  audience: AnnouncementAudience;
+  link_url: string | null;
+  link_label: string | null;
+  is_external: boolean;
+  is_active: boolean;
+  feature_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FeatureArea = "client" | "partner" | "both" | "admin" | "general";
+
+export type SiteFeature = {
+  id: string;
+  title: string;
+  description: string | null;
+  area: FeatureArea;
+  is_new: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AnnouncementDismissal = {
+  announcement_id: string;
+  user_id: string;
+  dismissed_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -557,6 +594,9 @@ export interface Database {
       easter_egg_claims: TableShape<EasterEggClaim>;
       access_requests: TableShape<AccessRequest>;
       usage_events: TableShape<UsageEvent>;
+      announcements: TableShape<Announcement>;
+      announcement_dismissals: TableShape<AnnouncementDismissal>;
+      site_features: TableShape<SiteFeature>;
     };
     Views: Record<string, never>;
     Functions: {

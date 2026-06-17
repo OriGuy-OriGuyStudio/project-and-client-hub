@@ -10,6 +10,7 @@ import {
   UserPlus,
   FileText,
   MessageSquareHeart,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ export const adminNav: NavItem[] = [
     icon: MessageSquareHeart,
     badgeTypes: ["feedback"],
   },
+  { to: "/admin/announcements", label: "הכרזות", icon: Megaphone },
   { to: "/admin/analytics", label: "אנליטיקות", icon: BarChart3 },
   { to: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
