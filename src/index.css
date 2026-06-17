@@ -872,7 +872,7 @@
   display: flex; align-items: center; justify-content: space-between; gap: 1.4em;
   width: 100%; padding: 0; background: none; border: 0; cursor: pointer; color: #131313;
 }
-.ham-nav__label { font-size: 1.6em; font-weight: 700; white-space: nowrap; }
+.ham-nav__label { font-size: 1.3em; white-space: nowrap; }
 .ham-nav__dot {
   width: .5em; height: .5em; border-radius: 50%; background: currentColor; opacity: .45;
   transform: scale(0); transition: transform .5s cubic-bezier(.5,.5,0,1);
@@ -884,14 +884,21 @@
   background: none; border: 0; border-radius: 50%; cursor: pointer; pointer-events: auto;
   transition: transform .7s cubic-bezier(.5,.5,0,1);
 }
-.ham-nav[data-status="active"] .ham-nav__toggle { transform: translate(-0.9em, -0.9em); }
-.ham-nav__bar {
-  position: absolute; width: 38%; height: 2px; border-radius: 2px; background: #131313;
-  transform: translateY(-.18em); transition: transform .7s cubic-bezier(.5,.5,0,1);
+.ham-nav[data-status="active"] .ham-nav__toggle { opacity: 0; pointer-events: none; }
+.ham-nav__bar { position: absolute; width: 38%; height: 2px; border-radius: 2px; background: #131313; }
+.ham-nav__bar:nth-child(1) { transform: translateY(-.22em); }
+.ham-nav__bar:nth-child(2) { transform: translateY(.22em); }
+/* Close (X) — top-left of the open panel */
+.ham-nav__close {
+  position: absolute; top: .6em; left: .6em; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  width: 2.4em; height: 2.4em; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: #131313; cursor: pointer; pointer-events: none;
+  opacity: 0; transform: scale(.6);
+  transition: opacity .35s ease .15s, transform .35s ease .15s;
 }
-.ham-nav__bar:nth-child(2) { transform: translateY(.18em); }
-.ham-nav[data-status="active"] .ham-nav__bar { transform: translateY(0) rotate(45deg); }
-.ham-nav[data-status="active"] .ham-nav__bar:nth-child(2) { transform: translateY(0) rotate(-45deg); }
+.ham-nav[data-status="active"] .ham-nav__close { opacity: .75; transform: scale(1); pointer-events: auto; }
+.ham-nav__close:hover { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .ham-nav__bg, .ham-nav__group, .ham-nav__toggle, .ham-nav__bar, .ham-nav__bg-dark { transition-duration: .01ms; }

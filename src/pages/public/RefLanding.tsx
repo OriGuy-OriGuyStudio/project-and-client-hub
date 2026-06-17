@@ -316,55 +316,46 @@ function GlassNav({ onCta }: { onCta: () => void }) {
   }
 
   return (
-    <header
-      className={
-        "fixed inset-x-0 top-0 z-40 flex items-center justify-between transition-all duration-300 sm:px-6 " +
-        (solid ? "ref-glass px-4 py-1.5" : "px-4 py-3")
-      }
-    >
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+    <header className="fixed inset-x-0 top-0 z-40 px-4 py-3 transition-all sm:px-6">
+      {/* On scroll the bar narrows (width), height stays — content pulls into a
+          centered glass pill. */}
+      <div
         className={
-          "font-heading font-black tracking-tight text-foreground transition-all " +
-          (solid ? "text-base" : "text-lg")
+          "mx-auto flex items-center justify-between gap-3 transition-all duration-300 " +
+          (solid ? "max-w-4xl rounded-2xl ref-glass px-3 py-1.5" : "max-w-7xl")
         }
       >
-        Studio Ori Guy
-      </button>
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="font-heading text-lg font-black tracking-tight text-foreground"
+        >
+          Studio Ori Guy
+        </button>
 
-      <nav
-        className={
-          "ref-glass hidden items-center gap-1 rounded-2xl transition-all sm:flex " +
-          (solid ? "px-1 py-1" : "px-1.5 py-1.5")
-        }
-      >
-        {NAV.map((n) => (
-          <button
-            key={n.id}
-            onClick={() => go(n.id)}
-            className={
-              "rounded-xl text-sm font-medium transition-colors " +
-              (solid ? "px-3 py-1" : "px-3.5 py-1.5") +
-              " " +
-              (active === n.id
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground/80 hover:text-foreground")
-            }
-          >
-            {n.label}
-          </button>
-        ))}
-      </nav>
+        <nav className="ref-glass hidden items-center gap-1 rounded-2xl px-1.5 py-1.5 sm:flex">
+          {NAV.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => go(n.id)}
+              className={
+                "rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors " +
+                (active === n.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground/80 hover:text-foreground")
+              }
+            >
+              {n.label}
+            </button>
+          ))}
+        </nav>
 
-      <button
-        onClick={onCta}
-        className={
-          "rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-lift transition-all hover:scale-[1.03] active:scale-95 " +
-          (solid ? "px-3.5 py-1.5" : "px-4 py-2")
-        }
-      >
-        בוא נדבר
-      </button>
+        <button
+          onClick={onCta}
+          className="rounded-2xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lift transition-transform hover:scale-[1.03] active:scale-95"
+        >
+          בוא נדבר
+        </button>
+      </div>
     </header>
   );
 }
@@ -373,10 +364,22 @@ function GlassNav({ onCta }: { onCta: () => void }) {
    Osmo to the brand (green panel) + RTL; CSS lives under `.ham-nav` in index.css. */
 function MobileNavFab() {
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState("");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+      { rootMargin: "-45% 0px -45% 0px" }
+    );
+    NAV.forEach((n) => {
+      const el = document.getElementById(n.id);
+      if (el) io.observe(el);
+    });
+    return () => io.disconnect();
   }, []);
   function go(id: string) {
     setOpen(false);
@@ -387,13 +390,18 @@ function MobileNavFab() {
       <div className="ham-nav__bg-dark" onClick={() => setOpen(false)} />
       <div className="ham-nav__box">
         <div className="ham-nav__bg" />
+        <button type="button" className="ham-nav__close" onClick={() => setOpen(false)} aria-label="סגירה">
+          <X className="size-5" />
+        </button>
         <div className="ham-nav__group">
           <p className="ham-nav__title">תפריט</p>
           <ul className="ham-nav__ul">
             {NAV.map((n) => (
               <li key={n.id}>
                 <button type="button" className="ham-nav__a" onClick={() => go(n.id)}>
-                  <span className="ham-nav__label">{n.label}</span>
+                  <span className={"ham-nav__label " + (active === n.id ? "font-bold" : "font-light")}>
+                    {n.label}
+                  </span>
                   <span className="ham-nav__dot" />
                 </button>
               </li>
@@ -403,7 +411,7 @@ function MobileNavFab() {
         <button
           type="button"
           className="ham-nav__toggle"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(true)}
           aria-label="תפריט"
           aria-expanded={open}
         >
