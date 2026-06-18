@@ -25,17 +25,18 @@ const FADE = 12; // frames for scene in/out fades
 
 const Stars: React.FC<{ count?: number }> = ({ count = 90 }) => {
   const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
   const stars = useMemo(
     () =>
       new Array(count).fill(0).map((_, i) => ({
-        x: random(`x${i}`) * 1920,
-        y: random(`y${i}`) * 1080,
+        x: random(`x${i}`) * width,
+        y: random(`y${i}`) * height,
         r: random(`r${i}`) * 1.7 + 0.4,
         ph: random(`p${i}`) * Math.PI * 2,
         sp: random(`s${i}`) * 0.06 + 0.01,
         tint: random(`t${i}`) > 0.82 ? C.green : "#ffffff",
       })),
-    [count],
+    [count, width, height],
   );
   return (
     <AbsoluteFill>

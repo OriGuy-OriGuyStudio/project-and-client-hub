@@ -17,6 +17,16 @@ export const RemotionRoot: React.FC = () => {
         height={1080}
         defaultProps={{ track: "audio/orion-upbeat-claps.mp3" }}
       />
+      {/* 9:16 vertical cut for Instagram / Reels / TikTok (same scenes, portrait). */}
+      <Composition
+        id="OrionMarketingVertical"
+        component={OrionMarketing}
+        durationInFrames={MARKETING_DURATION}
+        fps={FPS}
+        width={1080}
+        height={1920}
+        defaultProps={{ track: "audio/orion-upbeat-claps.mp3" }}
+      />
       <Composition
         id="OrionHybrid"
         component={OrionHybrid}

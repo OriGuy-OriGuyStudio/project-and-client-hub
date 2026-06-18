@@ -81,7 +81,10 @@ const SkewScene: React.FC<{
   punch?: [number, number];
 }> = ({ eyebrow, title, src, trimBefore, dur, accent, skew, playbackRate = 1, punch }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width } = useVideoConfig();
+  // Window scales to the canvas so the 16:9 recording fits portrait (9:16) too.
+  const winW = Math.min(1180, width - 100);
+  const winH = Math.round((winW * 737) / 1180);
 
   const s = spring({ frame, fps, config: { damping: 16, mass: 0.7 } });
   // start strongly skewed/tilted, settle toward a gentle readable angle
@@ -157,7 +160,7 @@ const SkewScene: React.FC<{
         <div
           style={{
             position: "relative",
-            width: 1180,
+            width: winW,
             transform: `translateY(${floatY}px) rotateY(${rotY}deg) rotateZ(${rotZ}deg) scale(${entScale})`,
             transformStyle: "preserve-3d",
           }}
@@ -212,7 +215,7 @@ const SkewScene: React.FC<{
                 orion.origuystudio.com
               </div>
             </div>
-            <div style={{ width: 1180, height: 737, overflow: "hidden", background: "#0d0c12" }}>
+            <div style={{ width: winW, height: winH, overflow: "hidden", background: "#0d0c12" }}>
               <OffthreadVideo
                 src={staticFile(src)}
                 trimBefore={trimBefore}
@@ -242,7 +245,8 @@ const SkewScene: React.FC<{
 
 const MarketingTitle: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width } = useVideoConfig();
+  const titleSize = width < 1300 ? 112 : 150; // shrink the giant wordmark for portrait
 
   const ebO = interpolate(frame, [2, 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const hs = spring({ frame: frame - 6, fps, config: { damping: 13, mass: 0.7 } });
@@ -281,7 +285,7 @@ const MarketingTitle: React.FC = () => {
             marginTop: 22,
             fontFamily: HEAD,
             fontWeight: 900,
-            fontSize: 150,
+            fontSize: titleSize,
             lineHeight: 1,
             color: C.text,
             opacity: hO,
