@@ -558,6 +558,9 @@ function RewardSheet({
               maxLength={300}
               onChange={(e) => set("description", e.target.value)}
             />
+            <p className="text-[11px] text-muted-foreground">
+              להתאמת מין אפשר לכתוב {"{זכר|נקבה}"}, למשל: אורי ו{"{אתה תורם|את תורמת}"} לעמותה.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

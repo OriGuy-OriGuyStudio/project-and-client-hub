@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { rewardAvailability, monetaryValue, type RewardAvailability } from "@/lib/rewards";
 import { rewardIconFor } from "@/components/rewards/reward-icons";
 import { useAuth } from "@/hooks/useAuth";
-import { gendered } from "@/lib/gender";
+import { gendered, applyGender } from "@/lib/gender";
 import type { Reward } from "@/types/database";
 
 type RedemptionLike = { reward_id: string; status: string; fulfilled_at: string | null };
@@ -60,7 +60,7 @@ export function RewardStoreCard({
           <Icon className="size-[22px]" />
         </div>
         <p className="min-w-0 flex-1 truncate font-heading text-[15px] font-bold leading-tight text-foreground">
-          {reward.name}
+          {applyGender(reward.name, profile?.gender)}
         </p>
       </div>
 
@@ -86,7 +86,9 @@ export function RewardStoreCard({
       )}
 
       {reward.description && (
-        <p className="flex-1 text-xs leading-relaxed text-muted-foreground">{reward.description}</p>
+        <p className="flex-1 text-xs leading-relaxed text-muted-foreground">
+          {applyGender(reward.description, profile?.gender)}
+        </p>
       )}
 
       {/* Motivation: progress + a prominent status line (RTL fills from the right) */}
@@ -158,7 +160,7 @@ export function NextRewardNudge({
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">
           עוד <span className="font-bold text-primary">{remaining}</span> {currencyLabel} ו{gendered(profile?.gender, "אתה משחרר", "את משחררת")}:{" "}
-          <span className="font-semibold">{target.name}</span>
+          <span className="font-semibold">{applyGender(target.name, profile?.gender)}</span>
         </p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />

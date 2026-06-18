@@ -8,7 +8,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rewards/StoreUI";
 import { usePartner } from "@/hooks/usePartner";
 import { useAuth } from "@/hooks/useAuth";
-import { gendered } from "@/lib/gender";
+import { gendered, applyGender } from "@/lib/gender";
 import { supabase } from "@/lib/supabase";
 import { celebrate, celebrateBig } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
@@ -177,7 +177,7 @@ export function PartnerRewards() {
                 <Card key={red.id} className="flex items-center justify-between gap-3 p-4">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">
-                      {reward?.name ?? "פרס"}
+                      {reward ? applyGender(reward.name, profile?.gender) : "פרס"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(red.created_at).toLocaleDateString("he-IL")} · {red.coins_spent} מטבעות
@@ -196,7 +196,7 @@ export function PartnerRewards() {
       <ConfirmDialog
         open={!!confirm}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={confirm ? `לממש "${confirm.name}"?` : ""}
+        title={confirm ? `לממש "${applyGender(confirm.name, profile?.gender)}"?` : ""}
         description={
           confirm
             ? `זה ינכה ${confirm.credit_cost} מטבעות מהיתרה שלך (${coins}). אטפל בפרס בהקדם.`
