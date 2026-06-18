@@ -32,6 +32,7 @@ type EventRow = {
 };
 type Person = { id: string; full_name: string | null; email: string; role: string };
 type ActivityRow = { id: string; last_sign_in_at: string | null; created_at: string };
+type AllowedRow = { email: string; full_name: string | null; role: string };
 
 const PAGE_LABELS: Record<string, string> = {
   "/": "לוח בקרה (לקוח)",
@@ -55,7 +56,7 @@ function useAnalytics() {
     queryKey: ["usage-analytics"],
     queryFn: async () => {
       const since = new Date(Date.now() - 30 * DAY).toISOString();
-      const [{ data: events }, { data: people }, { data: activity }] = await Promise.all([
+      const [{ data: events }, { data: people }, { data: activity }, { data: allowed }] = await Promise.all([
         supabase
           .from("usage_events")
           .select("event, role, path, meta, user_id, created_at")
@@ -65,11 +66,14 @@ function useAnalytics() {
         supabase.from("profiles").select("id, full_name, email, role").in("role", ["client", "partner"]),
         // Authoritative last-login from auth.users (usage_events can miss a session).
         supabase.rpc("admin_user_activity"),
+        // The full invited roster — includes people who haven't logged in yet (no profile).
+        supabase.from("allowed_emails").select("email, full_name, role").in("role", ["client", "partner"]),
       ]);
       return {
         events: (events ?? []) as EventRow[],
         people: (people ?? []) as Person[],
         activity: (activity ?? []) as ActivityRow[],
+        allowed: (allowed ?? []) as AllowedRow[],
       };
     },
   });
@@ -93,11 +97,35 @@ export default function Analytics() {
     const views = events.filter((e) => e.event === "page_view");
     const inWeek = (e: EventRow) => new Date(e.created_at).getTime() >= weekAgo;
 
-    // Authoritative last-login per user (from auth.users).
+    const allowed = data?.allowed ?? [];
+
+    // Authoritative last-login per user (from auth.users), keyed by profile id.
     const lastSignIn = new Map<string, number>();
     for (const a of activity) {
       if (a.last_sign_in_at) lastSignIn.set(a.id, new Date(a.last_sign_in_at).getTime());
     }
+
+    // The full roster = everyone invited (allowed_emails) + any profile, keyed by
+    // email. Invited-but-not-logged-in people have no profile, so they'd be missing
+    // if we only looked at profiles — include them here so the counts are real.
+    type Roster = { id: string; full_name: string | null; email: string; role: string; seen?: number };
+    const rosterMap = new Map<string, Roster>();
+    for (const e of allowed) {
+      rosterMap.set(e.email.toLowerCase(), { id: e.email, full_name: e.full_name, email: e.email, role: e.role });
+    }
+    for (const p of people) {
+      const key = p.email.toLowerCase();
+      const existing = rosterMap.get(key);
+      const seen = lastSignIn.get(p.id);
+      if (existing) {
+        existing.id = p.id;
+        existing.seen = seen;
+        existing.full_name = existing.full_name ?? p.full_name;
+      } else {
+        rosterMap.set(key, { id: p.id, full_name: p.full_name, email: p.email, role: p.role, seen });
+      }
+    }
+    const roster = [...rosterMap.values()];
 
     // Logins per day, last 14 days (best-effort, from in-app session events).
     const today = startOfDay(new Date());
@@ -108,7 +136,7 @@ export default function Analytics() {
     });
 
     // Active this week = signed in within 7 days (reliable). Page views from events.
-    const activeUsers = people.filter((p) => (lastSignIn.get(p.id) ?? 0) >= weekAgo).length;
+    const activeUsers = roster.filter((r) => (r.seen ?? 0) >= weekAgo).length;
     const views7d = views.filter(inWeek).length;
 
     // Device split (from sessions).
@@ -133,13 +161,12 @@ export default function Analytics() {
     // Dormant = logged in at least once but not in the last 14 days (by real
     // sign-in). Never-logged-in users are tracked separately (invited, not yet
     // onboarded) so a freshly-invited person isn't flagged as "disconnected".
-    const dormant = people
-      .map((p) => ({ ...p, seen: lastSignIn.get(p.id) }))
-      .filter((p) => p.seen && now - p.seen > 14 * DAY)
-      .map((p) => ({ ...p, days: Math.floor((now - p.seen!) / DAY) }))
+    const dormant = roster
+      .filter((r) => r.seen && now - r.seen > 14 * DAY)
+      .map((r) => ({ ...r, days: Math.floor((now - r.seen!) / DAY) }))
       .sort((a, b) => b.days - a.days);
 
-    const neverLoggedIn = people.filter((p) => !lastSignIn.get(p.id));
+    const neverLoggedIn = roster.filter((r) => !r.seen);
 
     return {
       activeUsers,
@@ -149,7 +176,7 @@ export default function Analytics() {
       topPages,
       dormant,
       neverLoggedIn,
-      total: events.length + activity.length,
+      total: events.length + roster.length,
     };
   }, [data]);
 

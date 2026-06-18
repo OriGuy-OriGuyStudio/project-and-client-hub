@@ -245,7 +245,7 @@ function ClientRow({
           {item.kind === "active" && (
             <p className="mt-0.5 text-[11px] text-muted-foreground">
               {item.lastSeen
-                ? `כניסה אחרונה: ${new Date(item.lastSeen).toLocaleDateString("he-IL")}`
+                ? `כניסה אחרונה: ${new Date(item.lastSeen).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
                 : "טרם נכנס"}
             </p>
           )}

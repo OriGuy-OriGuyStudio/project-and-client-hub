@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Eye, Handshake, Mail, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -67,6 +67,19 @@ export default function Partners() {
   const [editTarget, setEditTarget] = useState<PartnerTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PartnerTarget | null>(null);
 
+  // Authoritative last-login per partner (from auth.users), for "כניסה אחרונה".
+  const { data: lastSeen } = useQuery({
+    queryKey: ["admin-user-activity"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("admin_user_activity");
+      const m = new Map<string, string>();
+      for (const a of (data ?? []) as { id: string; last_sign_in_at: string | null }[]) {
+        if (a.last_sign_in_at) m.set(a.id, a.last_sign_in_at);
+      }
+      return m;
+    },
+  });
+
   return (
     <div>
       <PageHeader
@@ -128,6 +141,11 @@ export default function Partners() {
                             />
                           </>
                         )}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {lastSeen?.get(p.id)
+                          ? `כניסה אחרונה: ${new Date(lastSeen.get(p.id)!).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
+                          : "טרם נכנס"}
                       </p>
                     </div>
                   </div>
