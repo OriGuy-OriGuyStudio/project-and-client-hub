@@ -563,8 +563,8 @@ function AddPartnerDialog() {
         <DialogHeader>
           <DialogTitle>הוספת שותף חדש</DialogTitle>
           <DialogDescription>
-            הגדר את אחוז העמלה. ברגע שהשותף יתחבר עם Google, ייווצר לו לינק הפניה
-            אישי.
+            הגדר את אחוז העמלה. ברגע שהשותף יתחבר (עם Google או קישור למייל), ייווצר
+            לו לינק הפניה אישי.
           </DialogDescription>
         </DialogHeader>
 
@@ -575,9 +575,9 @@ function AddPartnerDialog() {
               onChange={(e) => update("full_name", e.target.value)} placeholder="שם השותף" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pt-email">אימייל (Google)</Label>
+            <Label htmlFor="pt-email">אימייל (Google או כל מייל)</Label>
             <Input id="pt-email" dir="ltr" type="email" value={form.email}
-              onChange={(e) => update("email", e.target.value)} placeholder="partner@gmail.com" />
+              onChange={(e) => update("email", e.target.value)} placeholder="partner@example.com" />
           </div>
           <div className="space-y-2">
             <Label>אחוז עמלה</Label>

@@ -86,7 +86,7 @@ export default function Clients() {
         <EmptyState
           icon={Users}
           title="אין עדיין לקוחות"
-          description="הוסף לקוח ראשון, וברגע שהוא יתחבר עם Google הוא יופיע כאן."
+          description="הוסף לקוח ראשון, וברגע שהוא יתחבר הוא יופיע כאן."
           action={<AddClientDialog />}
         />
       ) : (
@@ -413,7 +413,7 @@ function EditClientDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="e-email">אימייל (Google)</Label>
+            <Label htmlFor="e-email">אימייל (Google או כל מייל)</Label>
             <Input
               id="e-email"
               dir="ltr"
@@ -727,8 +727,8 @@ function AddClientDialog() {
         <DialogHeader>
           <DialogTitle>הוספת לקוח חדש</DialogTitle>
           <DialogDescription>
-            אשר את כתובת ה-Google של הלקוח. ברגע שהוא מתחבר בפעם הראשונה, הפרופיל
-            שלו נוצר אוטומטית.
+            הזן את כתובת המייל של הלקוח (Google או כל מייל). ברגע שהוא מתחבר בפעם
+            הראשונה, הפרופיל שלו נוצר אוטומטית.
           </DialogDescription>
         </DialogHeader>
 
@@ -744,7 +744,7 @@ function AddClientDialog() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="c-email">אימייל (Google)</Label>
+            <Label htmlFor="c-email">אימייל (Google או כל מייל)</Label>
             <Input
               id="c-email"
               dir="ltr"
