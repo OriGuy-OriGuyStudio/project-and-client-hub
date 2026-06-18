@@ -58,7 +58,13 @@ export default function NewLead() {
       quote_requested: form.quote_requested,
     });
     setSaving(false);
-    if (error) return toastError("שליחת הליד נכשלה.");
+    if (error) {
+      if (error.message?.includes("duplicate_lead"))
+        return toastError("פרטי הלקוח הזה כבר הועברו במערכת.");
+      if (error.message?.includes("invalid_contact"))
+        return toastError("צריך טלפון או מייל תקין ליצירת קשר.");
+      return toastError("שליחת הליד נכשלה.");
+    }
 
     qc.invalidateQueries({ queryKey: ["partner-me"] });
     setDone(true);

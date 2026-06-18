@@ -9,14 +9,22 @@ export function isEmail(v: string): boolean {
 }
 
 /**
- * A plausible phone number: only digits and the usual separators (+ - ( ) space),
- * with 7–15 actual digits. Catches "letters in the phone" and obvious junk.
+ * Normalize an Israeli phone to its local `0XXXXXXXXX` form, or "" if it isn't a
+ * valid Israeli number. Accepts separators (-, spaces, parens) and the +972
+ * international prefix. Valid = mobile / 07x (10 digits, 0(5X|7[2-9])XXXXXXX) or
+ * landline (9 digits, 0[2,3,4,8,9]XXXXXXX).
  */
+export function normalizeIsraeliPhone(v: string): string {
+  let d = (v ?? "").replace(/\D/g, "");
+  if (d.startsWith("972")) d = "0" + d.slice(3);
+  if (/^0(5\d|7[2-9])\d{7}$/.test(d)) return d; // mobile / 07x
+  if (/^0[23489]\d{7}$/.test(d)) return d; // landline
+  return "";
+}
+
+/** A valid Israeli phone number (mobile, 07x, or landline; +972 accepted). */
 export function isPhone(v: string): boolean {
-  const s = v.trim();
-  if (!/^[\d\s+()-]+$/.test(s)) return false;
-  const digits = s.replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15;
+  return normalizeIsraeliPhone(v) !== "";
 }
 
 /** Non-empty after trimming. */

@@ -91,7 +91,15 @@ export type PartnerCoinTransaction = {
   id: string;
   partner_id: string;
   amount: number;
-  reason: "deal_closed" | "reward_redeemed" | "manual_adjustment" | null;
+  reason:
+    | "deal_closed"
+    | "lead_submitted"
+    | "reward_redeemed"
+    | "manual_adjustment"
+    | "gift"
+    | "compensation"
+    | "easter_egg"
+    | null;
   lead_id: string | null;
   note: string | null;
   created_at: string;
@@ -643,6 +651,10 @@ export interface Database {
           p_click_id: string | null;
         };
         Returns: { ok: boolean; attributed?: boolean; error?: string };
+      };
+      request_email_login: {
+        Args: { p_email: string };
+        Returns: { authorized: boolean; error?: string };
       };
     };
     Enums: Record<string, never>;

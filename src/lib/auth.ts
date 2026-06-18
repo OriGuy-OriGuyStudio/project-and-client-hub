@@ -24,6 +24,29 @@ export async function signInWithGoogle() {
   }
 }
 
+/**
+ * Send a passwordless magic-link, but only to a whitelisted email. First asks the
+ * server whether the address is authorized (allowed_emails); if not, no link is
+ * sent and the admin is notified of the attempt. Returns the outcome so the UI
+ * can message accordingly. A real send error (e.g. rate limit) is thrown.
+ */
+export async function signInWithEmail(
+  email: string
+): Promise<{ ok: boolean; reason?: "unauthorized" | "invalid" | "error" }> {
+  const { data, error } = await supabase.rpc("request_email_login", { p_email: email });
+  if (error) return { ok: false, reason: "error" };
+  const res = data as { authorized: boolean; error?: string } | null;
+  if (!res?.authorized) {
+    return { ok: false, reason: res?.error === "invalid" ? "invalid" : "unauthorized" };
+  }
+  const { error: otpError } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: `${window.location.origin}/` },
+  });
+  if (otpError) throw otpError;
+  return { ok: true };
+}
+
 export async function signOut() {
   await supabase.auth.signOut();
 }

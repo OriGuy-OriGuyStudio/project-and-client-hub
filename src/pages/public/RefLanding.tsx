@@ -35,6 +35,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { resolveReferral, trackReferralClick, submitReferralLead } from "@/lib/referral";
 import { projectTypeHe } from "@/lib/status";
 import { celebrate } from "@/lib/confetti";
+import { isPhone, isEmail } from "@/lib/validation";
 import type { PartnerProjectType } from "@/types/database";
 
 const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
@@ -2093,8 +2094,12 @@ function LeadForm({
       setDone(true); // honeypot tripped - silently "succeed"
       return;
     }
-    if (!form.name.trim() || !form.phone.trim()) {
-      setError("צריך שם וטלפון.");
+    if (!form.name.trim()) {
+      setError("צריך שם.");
+      return;
+    }
+    if (!isPhone(form.phone.trim()) && !isEmail(form.email.trim())) {
+      setError("צריך טלפון או מייל תקין כדי שאחזור אליך.");
       return;
     }
     if (!agree) {
@@ -2113,7 +2118,11 @@ function LeadForm({
     });
     setSending(false);
     if (!r.ok) {
-      setError("משהו השתבש. אפשר לנסות שוב או לכתוב לי בוואטסאפ.");
+      if (r.error === "duplicate")
+        setError("כבר קיבלנו את הפרטים האלה, אני אחזור אליך בקרוב.");
+      else if (r.error === "invalid")
+        setError("צריך טלפון או מייל תקין כדי שאחזור אליך.");
+      else setError("משהו השתבש. אפשר לנסות שוב או לכתוב לי בוואטסאפ.");
       return;
     }
     setDone(true);

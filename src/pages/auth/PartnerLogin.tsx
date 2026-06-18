@@ -1,19 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { ArrowLeft, Handshake } from "lucide-react";
-import { signInWithGoogle } from "@/lib/auth";
+import { Handshake } from "lucide-react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AuthMethods } from "@/components/auth/AuthMethods";
 import { DotsGrid } from "@/components/brand/DotsGrid";
 import { DiscoButton } from "@/components/brand/DiscoButton";
 import { Footer } from "@/components/layout/Footer";
 
-/** Partner-facing entry. Same Google OAuth, copy directed at the שת"פ. */
+/** Partner-facing entry. Google OAuth + email magic-link, copy directed at the שת"פ. */
 export default function PartnerLogin() {
   const reduced = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (reduced) return;
@@ -28,17 +26,6 @@ export default function PartnerLogin() {
     }, rootRef);
     return () => ctx.revert();
   }, [reduced]);
-
-  async function handleSignIn() {
-    setError(null);
-    setBusy(true);
-    try {
-      await signInWithGoogle();
-    } catch {
-      setError("ההתחברות נכשלה. נסה שוב.");
-      setBusy(false);
-    }
-  }
 
   return (
     <div
@@ -75,26 +62,7 @@ export default function PartnerLogin() {
           </p>
         </div>
 
-        <button
-          data-anim="item"
-          onClick={handleSignIn}
-          disabled={busy}
-          className="group flex w-full max-w-xs items-center justify-between gap-3 rounded-2xl border border-border bg-card px-5 py-4 text-start transition-colors hover:border-primary/50 disabled:opacity-60"
-        >
-          <span className="flex items-center gap-3">
-            <GoogleIcon />
-            <span className="font-medium text-foreground">
-              {busy ? "מעביר ל-Google…" : "כניסה עם Google"}
-            </span>
-          </span>
-          <ArrowLeft className="size-4 text-muted-foreground transition-transform group-hover:-translate-x-1" />
-        </button>
-
-        {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
+        <AuthMethods googleLabel="כניסה עם Google" />
 
         <p
           data-anim="item"
@@ -109,18 +77,5 @@ export default function PartnerLogin() {
         <Footer className="w-full justify-center border-t-0 bg-transparent pl-4 text-[11px] sm:justify-between sm:pl-6" />
       </div>
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <span className="flex size-9 items-center justify-center rounded-xl bg-white">
-      <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
-        <path fill="#4285F4" d="M23.06 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h6.2a5.3 5.3 0 0 1-2.3 3.48v2.89h3.72c2.18-2 3.44-4.96 3.44-8.38z" />
-        <path fill="#34A853" d="M12 24c3.1 0 5.7-1.03 7.6-2.79l-3.72-2.89c-1.03.69-2.35 1.1-3.88 1.1-2.98 0-5.5-2.01-6.4-4.71H1.76v2.98A11.99 11.99 0 0 0 12 24z" />
-        <path fill="#FBBC05" d="M5.6 14.71A7.2 7.2 0 0 1 5.22 12c0-.94.16-1.86.38-2.71V6.31H1.76A12 12 0 0 0 .49 12c0 1.94.46 3.77 1.27 5.39l3.84-2.68z" />
-        <path fill="#EA4335" d="M12 4.75c1.68 0 3.2.58 4.39 1.71l3.29-3.29C17.7 1.19 15.1 0 12 0 7.31 0 3.26 2.69 1.76 6.31L5.6 9.29C6.5 6.59 9.02 4.75 12 4.75z" />
-      </svg>
-    </span>
   );
 }

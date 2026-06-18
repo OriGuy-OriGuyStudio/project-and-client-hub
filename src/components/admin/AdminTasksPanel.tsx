@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,8 +35,19 @@ export function AdminTasksPanel() {
   const accessRequests = data?.accessRequests ?? [];
   const leads = data?.leads ?? [];
   const feedback = data?.feedback ?? [];
+  const loginAttempts = data?.loginAttempts ?? [];
   const total =
-    redemptions.length + messages.length + accessRequests.length + leads.length + feedback.length;
+    redemptions.length + messages.length + accessRequests.length + leads.length +
+    feedback.length + loginAttempts.length;
+
+  async function dismissLoginAttempt(id: string) {
+    setBusy(id);
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    setBusy(null);
+    if (error) return toastError("הפעולה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["admin-tasks"] });
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+  }
 
   async function decideAccess(id: string, approve: boolean) {
     setBusy(id);
@@ -174,6 +185,32 @@ export function AdminTasksPanel() {
                     <X className="size-4" /> דחייה
                   </Button>
                 </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Unauthorized email login attempts */}
+          {loginAttempts.map((a) => (
+            <div key={a.id} className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">ניסיון כניסה עם מייל לא מורשה</p>
+                    <p className="font-mono-code text-xs text-muted-foreground" dir="ltr">{a.email}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {new Date(a.createdAt).toLocaleString("he-IL")}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={busy === a.id}
+                  onClick={() => dismissLoginAttempt(a.id)}
+                >
+                  <Check className="size-4" /> סמן כטופל
+                </Button>
               </div>
             </div>
           ))}

@@ -42,12 +42,19 @@ export interface AdminTaskFeedback {
   message: string;
 }
 
+export interface AdminTaskLoginAttempt {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
   accessRequests: AdminTaskAccessRequest[];
   leads: AdminTaskLead[];
   feedback: AdminTaskFeedback[];
+  loginAttempts: AdminTaskLoginAttempt[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -58,7 +65,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar, ld, pp, fb] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp, fb, la] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -90,6 +97,13 @@ export function useAdminTasks(adminId?: string) {
           .select("id, message, client_id")
           .eq("status", "open")
           .order("created_at", { ascending: true }),
+        supabase
+          .from("notifications")
+          .select("id, body, created_at")
+          .eq("type", "login_attempt")
+          .eq("is_read", false)
+          .order("created_at", { ascending: false })
+          .limit(20),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -153,7 +167,13 @@ export function useAdminTasks(adminId?: string) {
         message: r.message,
       })));
 
-      return { redemptions, messages, accessRequests, leads, feedback };
+      const loginAttempts: AdminTaskLoginAttempt[] = (((la.data as any[]) ?? []).map((n) => ({
+        id: n.id,
+        email: n.body ?? "",
+        createdAt: n.created_at,
+      })));
+
+      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts };
     },
   });
 }

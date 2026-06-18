@@ -166,9 +166,13 @@ export function NextRewardNudge({
 
 const REASON_LABEL: Record<string, string> = {
   referral_submitted: "הפניה הוגשה",
+  lead_submitted: "ליד הוגש",
   deal_closed: "עסקה נסגרה",
   reward_redeemed: "מימוש פרס",
   manual_adjustment: "התאמה",
+  gift: "מתנה",
+  compensation: "פיצוי",
+  easter_egg: "הפתעה נסתרת 🔭",
 };
 
 /** A coin/credit ledger timeline. */

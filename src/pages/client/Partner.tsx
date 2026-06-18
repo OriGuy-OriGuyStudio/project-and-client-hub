@@ -27,6 +27,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientPartner } from "@/hooks/useClientPartner";
 import { clampText } from "@/lib/sanitize";
+import { isPhone, isEmail } from "@/lib/validation";
 import { celebrate, celebrateBig } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
 import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rewards/StoreUI";
@@ -52,7 +53,9 @@ export default function Partner() {
   async function submitReferral() {
     const name = clampText(form.name.trim(), 120);
     const contact = clampText(form.contact.trim(), 160);
-    if (!name || !contact) return toastError("צריך שם ופרטי יצירת קשר.");
+    if (!name) return toastError("צריך שם.");
+    if (!isPhone(contact) && !isEmail(contact))
+      return toastError("צריך טלפון או מייל תקין ליצירת קשר.");
     setSending(true);
     const { error } = await supabase.from("referrals").insert({
       referrer_id: user!.id,
@@ -61,7 +64,13 @@ export default function Partner() {
       note: clampText(form.note.trim(), 2000) || null,
     });
     setSending(false);
-    if (error) return toastError("שליחת ההפניה נכשלה.");
+    if (error) {
+      if (error.message?.includes("duplicate_lead"))
+        return toastError("פרטי הלקוח הזה כבר הועברו במערכת.");
+      if (error.message?.includes("invalid_contact"))
+        return toastError("צריך טלפון או מייל תקין ליצירת קשר.");
+      return toastError("שליחת ההפניה נכשלה.");
+    }
     celebrate();
     setCoinBurst((k) => k + 1);
     toast({ title: "ההפניה נשלחה, קיבלת קרדיט 🎉", variant: "success" });

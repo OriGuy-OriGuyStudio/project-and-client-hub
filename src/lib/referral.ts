@@ -62,5 +62,5 @@ export async function submitReferralLead(
     p_click_id: i.clickId ?? null,
   });
   if (error) return { ok: false, error: error.message };
-  return (data as { ok: boolean; attributed?: boolean }) ?? { ok: false };
+  return (data as { ok: boolean; attributed?: boolean; error?: string }) ?? { ok: false };
 }

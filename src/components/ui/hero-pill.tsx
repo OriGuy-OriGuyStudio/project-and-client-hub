@@ -41,7 +41,7 @@ export function HeroPill({
       >
         {announcement}
       </span>
-      <span className="text-xs font-medium text-foreground sm:text-sm">{label}</span>
+      <span className="text-xs font-semibold text-foreground sm:text-sm">{label}</span>
       <svg
         width="12"
         height="12"
@@ -61,8 +61,8 @@ export function HeroPill({
 
   const baseClass = cn(
     "flex w-auto items-center gap-2 rounded-full whitespace-pre",
-    "border border-primary/30 bg-primary/10 px-2 py-1",
-    "transition-colors hover:bg-primary/15",
+    "border border-primary/40 bg-primary/15 px-2.5 py-1 shadow-sm",
+    "transition-colors hover:bg-primary/25",
     className
   );
 
