@@ -39,6 +39,8 @@ export type BrandColorRole =
   | "text"
   | "other";
 
+export type Gender = "male" | "female" | "other";
+
 export type Profile = {
   id: string;
   email: string;
@@ -46,6 +48,7 @@ export type Profile = {
   avatar_url: string | null;
   phone: string | null;
   role: UserRole;
+  gender: Gender | null;
   created_at: string;
 }
 
@@ -54,6 +57,7 @@ export type AllowedEmail = {
   role: UserRole;
   full_name: string | null;
   business_name: string | null;
+  gender: Gender | null;
   commission_rate: number | null;
   commission_rate_min: number | null;
   commission_rate_max: number | null;

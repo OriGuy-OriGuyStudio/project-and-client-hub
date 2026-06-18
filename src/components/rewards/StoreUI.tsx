@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { rewardAvailability, monetaryValue, type RewardAvailability } from "@/lib/rewards";
 import { rewardIconFor } from "@/components/rewards/reward-icons";
+import { useAuth } from "@/hooks/useAuth";
+import { gendered } from "@/lib/gender";
 import type { Reward } from "@/types/database";
 
 type RedemptionLike = { reward_id: string; status: string; fulfilled_at: string | null };
@@ -27,6 +29,7 @@ export function RewardStoreCard({
   giftValuePct?: number;
   onRedeem: () => void;
 }) {
+  const { profile } = useAuth();
   const affordable = balance >= reward.credit_cost;
   const pct = Math.min(100, Math.round((balance / Math.max(reward.credit_cost, 1)) * 100));
   const remaining = Math.max(0, reward.credit_cost - balance);
@@ -103,7 +106,7 @@ export function RewardStoreCard({
         ) : (
           <p className="text-xs text-foreground">
             עוד <span className="font-heading text-sm font-black text-primary">{remaining}</span>{" "}
-            {currencyLabel} ואתה משחרר את זה
+            {currencyLabel} ו{gendered(profile?.gender, "אתה משחרר", "את משחררת")} את זה
           </p>
         )}
       </div>
@@ -134,6 +137,7 @@ export function NextRewardNudge({
   currencyLabel: string;
   boostActive?: boolean;
 }) {
+  const { profile } = useAuth();
   const target = rewards
     .filter((r) => {
       const a = rewardAvailability(r, redemptions, { boostActive });
@@ -153,7 +157,7 @@ export function NextRewardNudge({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">
-          עוד <span className="font-bold text-primary">{remaining}</span> {currencyLabel} ואתה משחרר
+          עוד <span className="font-bold text-primary">{remaining}</span> {currencyLabel} ו{gendered(profile?.gender, "אתה משחרר", "את משחררת")}
           את <span className="font-semibold">{target.name}</span>
         </p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

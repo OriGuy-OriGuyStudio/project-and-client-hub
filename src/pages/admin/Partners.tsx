@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
+import { GENDER_OPTIONS } from "@/lib/gender";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,7 @@ import { usePartners, rateLabel, type ActivePartner } from "@/hooks/usePartners"
 import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
 import { sendInvite } from "@/lib/invite";
 import { referralUrl } from "@/lib/referral";
-import type { AllowedEmail } from "@/types/database";
+import type { AllowedEmail, Gender } from "@/types/database";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,6 +41,7 @@ type PartnerTarget = {
   id: string | null;
   email: string;
   full_name: string | null;
+  gender: Gender | null;
   commission_rate: number | null;
   commission_rate_min: number | null;
   commission_rate_max: number | null;
@@ -51,6 +54,7 @@ function toTarget(p: ActivePartner | AllowedEmail, kind: "active" | "pending"): 
     id: "id" in p ? (p as ActivePartner).id : null,
     email: p.email,
     full_name: p.full_name,
+    gender: p.gender,
     commission_rate: p.commission_rate,
     commission_rate_min: p.commission_rate_min,
     commission_rate_max: p.commission_rate_max,
@@ -266,6 +270,7 @@ function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; 
   const [seeded, setSeeded] = useState<string | null>(null);
   const [form, setForm] = useState({
     full_name: "",
+    gender: "" as "" | "male" | "female" | "other",
     mode: "fixed" as "fixed" | "range",
     commission_rate: "5",
     commission_min: "5",
@@ -282,6 +287,7 @@ function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; 
         target.commission_rate_min !== target.commission_rate_max;
       setForm({
         full_name: target.full_name ?? "",
+        gender: (target.gender ?? "") as "" | "male" | "female" | "other",
         mode: isRange ? "range" : "fixed",
         commission_rate: String(target.commission_rate ?? 5),
         commission_min: String(target.commission_rate_min ?? target.commission_rate ?? 5),
@@ -319,7 +325,7 @@ function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; 
       if (target.kind === "active") {
         const { error: pErr } = await supabase
           .from("profiles")
-          .update({ full_name: fullName })
+          .update({ full_name: fullName, gender: form.gender || null })
           .eq("id", target.id!);
         if (pErr) throw pErr;
         const { error: ppErr } = await supabase
@@ -337,6 +343,7 @@ function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; 
           .from("allowed_emails")
           .update({
             full_name: fullName,
+            gender: form.gender || null,
             commission_rate: rate,
             commission_rate_min: min,
             commission_rate_max: max,
@@ -370,6 +377,16 @@ function EditPartnerDialog({ target, onClose }: { target: PartnerTarget | null; 
             <Label htmlFor="ep-name">שם מלא</Label>
             <Input id="ep-name" value={form.full_name} maxLength={120}
               onChange={(e) => update("full_name", e.target.value)} placeholder="שם השותף" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>מין (להתאמת ניסוח)</Label>
+            <SelectMenu
+              variant="field"
+              ariaLabel="מין"
+              value={form.gender}
+              onChange={(v) => update("gender", v)}
+              options={GENDER_OPTIONS}
+            />
           </div>
           <div className="space-y-2">
             <Label>אחוז עמלה</Label>
@@ -476,6 +493,7 @@ function AddPartnerDialog() {
   const [form, setForm] = useState({
     full_name: "",
     email: "",
+    gender: "" as "" | "male" | "female" | "other",
     mode: "fixed" as "fixed" | "range",
     commission_rate: "5",
     commission_min: "5",
@@ -491,6 +509,7 @@ function AddPartnerDialog() {
     setForm({
       full_name: "",
       email: "",
+      gender: "",
       mode: "fixed",
       commission_rate: "5",
       commission_min: "5",
@@ -523,6 +542,7 @@ function AddPartnerDialog() {
       email,
       role: "partner",
       full_name: clampText(form.full_name.trim(), 120) || null,
+      gender: form.gender || null,
       commission_rate: rate,
       commission_rate_min: min,
       commission_rate_max: max,
@@ -578,6 +598,16 @@ function AddPartnerDialog() {
             <Label htmlFor="pt-email">אימייל (Google או כל מייל)</Label>
             <Input id="pt-email" dir="ltr" type="email" value={form.email}
               onChange={(e) => update("email", e.target.value)} placeholder="partner@example.com" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>מין (להתאמת ניסוח)</Label>
+            <SelectMenu
+              variant="field"
+              ariaLabel="מין"
+              value={form.gender}
+              onChange={(v) => update("gender", v)}
+              options={GENDER_OPTIONS}
+            />
           </div>
           <div className="space-y-2">
             <Label>אחוז עמלה</Label>

@@ -38,6 +38,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
+import { GENDER_OPTIONS } from "@/lib/gender";
 import { useClients } from "@/hooks/useClients";
 import { useClientCrm } from "@/hooks/useClientCrm";
 import { useAuth } from "@/hooks/useAuth";
@@ -369,6 +370,14 @@ function EditClientDialog({
           );
         if (nErr) throw nErr;
 
+        // Mirror gender onto the profile so the client-facing copy can be gendered
+        // (admin_client_notes is admin-only and can't be read by the client).
+        const { error: gErr } = await supabase
+          .from("profiles")
+          .update({ gender: form.gender || null })
+          .eq("id", target.id!);
+        if (gErr) throw gErr;
+
         // Approve / revoke the referral program for this client.
         if (form.enrolled && !target.enrolled) {
           await supabase
@@ -672,7 +681,12 @@ function AddClientDialog() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", business_name: "" });
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    business_name: "",
+    gender: "" as "" | "male" | "female" | "other",
+  });
 
   function update(k: keyof typeof form, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -690,6 +704,7 @@ function AddClientDialog() {
       role: "client",
       full_name: clampText(form.full_name.trim(), 120) || null,
       business_name: clampText(form.business_name.trim(), 120) || null,
+      gender: form.gender || null,
     });
     setSaving(false);
 
@@ -706,13 +721,13 @@ function AddClientDialog() {
       toast({ title: "הלקוח נוסף וההזמנה נשלחה למייל ✓", variant: "success" });
     } else {
       toast({
-        title: "הלקוח נוסף — שליחת ההזמנה נכשלה",
+        title: "הלקוח נוסף, שליחת ההזמנה נכשלה",
         description: "אפשר לשלוח שוב מרשימת הממתינים.",
         variant: "destructive",
       });
     }
     qc.invalidateQueries({ queryKey: ["clients"] });
-    setForm({ full_name: "", email: "", business_name: "" });
+    setForm({ full_name: "", email: "", business_name: "", gender: "" });
     setOpen(false);
   }
 
@@ -762,6 +777,16 @@ function AddClientDialog() {
               maxLength={120}
               onChange={(e) => update("business_name", e.target.value)}
               placeholder="שם העסק של הלקוח"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>מין (להתאמת ניסוח)</Label>
+            <SelectMenu
+              variant="field"
+              ariaLabel="מין"
+              value={form.gender}
+              onChange={(v) => update("gender", v)}
+              options={GENDER_OPTIONS}
             />
           </div>
         </div>
