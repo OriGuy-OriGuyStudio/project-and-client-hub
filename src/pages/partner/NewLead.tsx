@@ -14,13 +14,14 @@ import { toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { clampText } from "@/lib/sanitize";
 import { isEmail, isPhone } from "@/lib/validation";
+import { gendered } from "@/lib/gender";
 import { projectTypeHe } from "@/lib/status";
 import type { PartnerProjectType } from "@/types/database";
 
 const TYPES: PartnerProjectType[] = ["business_site", "ecommerce", "system", "other"];
 
 export default function NewLead() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
@@ -108,7 +109,10 @@ export default function NewLead() {
 
   return (
     <div>
-      <PageHeader title="הגשת ליד" subtitle="פרטי הלקוח הפוטנציאלי שאתה מפנה לסטודיו." />
+      <PageHeader
+        title="הגשת ליד"
+        subtitle={`פרטי הלקוח הפוטנציאלי ש${gendered(profile?.gender, "אתה מפנה", "את מפנה")} לסטודיו.`}
+      />
       <Card className="space-y-4 p-6">
         <div className="space-y-1.5">
           <Label htmlFor="l-name">שם הלקוח הפוטנציאלי</Label>

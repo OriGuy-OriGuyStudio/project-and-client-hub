@@ -8,9 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { gendered } from "@/lib/gender";
 import type { PartnerResource } from "@/types/database";
 
 export default function Resources() {
+  const { profile } = useAuth();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["partner-resources"],
     queryFn: async (): Promise<PartnerResource[]> => {
@@ -41,7 +44,7 @@ export default function Resources() {
     <div>
       <PageHeader
         title="חומרי מכירה"
-        subtitle="מצגות, פורטפוליו וטקסטים מוכנים שתוכל להשתמש בהם מול לקוחות."
+        subtitle={`מצגות, פורטפוליו וטקסטים מוכנים ש${gendered(profile?.gender, "תוכל", "תוכלי")} להשתמש בהם מול לקוחות.`}
       />
 
       {isLoading ? (

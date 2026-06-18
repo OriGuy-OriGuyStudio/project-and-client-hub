@@ -157,8 +157,8 @@ export function NextRewardNudge({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">
-          עוד <span className="font-bold text-primary">{remaining}</span> {currencyLabel} ו{gendered(profile?.gender, "אתה משחרר", "את משחררת")}
-          את <span className="font-semibold">{target.name}</span>
+          עוד <span className="font-bold text-primary">{remaining}</span> {currencyLabel} ו{gendered(profile?.gender, "אתה משחרר", "את משחררת")}:{" "}
+          <span className="font-semibold">{target.name}</span>
         </p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />

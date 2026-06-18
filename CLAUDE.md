@@ -53,6 +53,11 @@ npm run build    # tsc -b && vite build  (must stay green)
 
 ## Conventions
 - **Hebrew everywhere** — labels, errors, empty states, toasts. No English UI text.
+- **Gendered copy** — Hebrew UI text addressed to a user must adapt to their gender
+  (male/female), never masculine-only. Use `gendered(profile?.gender, "<m>", "<f>")`
+  from `src/lib/gender.ts` (`profile.gender` from `useAuth`, masculine fallback) for the
+  forms that differ (present-tense verbs, adjectives, אתה/את). Every new screen supports
+  זכר/נקבה from day one. Admin-authored DB content (reward names, etc.) is the exception.
 - **RTL is real** — use logical props; the sidebar is on the right; sheets slide from the
   inline-start; progress fills right→left.
 - **Design tokens** in `src/styles/brand-tokens.css` (light `:root` + dark `.dark`). Use
