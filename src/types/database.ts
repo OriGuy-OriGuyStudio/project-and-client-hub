@@ -660,6 +660,10 @@ export interface Database {
         Args: { p_email: string };
         Returns: { authorized: boolean; error?: string };
       };
+      admin_user_activity: {
+        Args: Record<string, never>;
+        Returns: { id: string; last_sign_in_at: string | null; created_at: string }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -31,6 +31,7 @@ type EventRow = {
   created_at: string;
 };
 type Person = { id: string; full_name: string | null; email: string; role: string };
+type ActivityRow = { id: string; last_sign_in_at: string | null; created_at: string };
 
 const PAGE_LABELS: Record<string, string> = {
   "/": "לוח בקרה (לקוח)",
@@ -54,7 +55,7 @@ function useAnalytics() {
     queryKey: ["usage-analytics"],
     queryFn: async () => {
       const since = new Date(Date.now() - 30 * DAY).toISOString();
-      const [{ data: events }, { data: people }] = await Promise.all([
+      const [{ data: events }, { data: people }, { data: activity }] = await Promise.all([
         supabase
           .from("usage_events")
           .select("event, role, path, meta, user_id, created_at")
@@ -62,8 +63,14 @@ function useAnalytics() {
           .order("created_at", { ascending: false })
           .limit(8000),
         supabase.from("profiles").select("id, full_name, email, role").in("role", ["client", "partner"]),
+        // Authoritative last-login from auth.users (usage_events can miss a session).
+        supabase.rpc("admin_user_activity"),
       ]);
-      return { events: (events ?? []) as EventRow[], people: (people ?? []) as Person[] };
+      return {
+        events: (events ?? []) as EventRow[],
+        people: (people ?? []) as Person[],
+        activity: (activity ?? []) as ActivityRow[],
+      };
     },
   });
 }
@@ -81,11 +88,18 @@ export default function Analytics() {
     const now = Date.now();
     const weekAgo = now - 7 * DAY;
 
+    const activity = data?.activity ?? [];
     const sessions = events.filter((e) => e.event === "session");
     const views = events.filter((e) => e.event === "page_view");
     const inWeek = (e: EventRow) => new Date(e.created_at).getTime() >= weekAgo;
 
-    // Logins per day, last 14 days.
+    // Authoritative last-login per user (from auth.users).
+    const lastSignIn = new Map<string, number>();
+    for (const a of activity) {
+      if (a.last_sign_in_at) lastSignIn.set(a.id, new Date(a.last_sign_in_at).getTime());
+    }
+
+    // Logins per day, last 14 days (best-effort, from in-app session events).
     const today = startOfDay(new Date());
     const loginsByDay = Array.from({ length: 14 }, (_, i) => {
       const day = today - (13 - i) * DAY;
@@ -93,9 +107,8 @@ export default function Analytics() {
       return { day: fmtDay(day), כניסות: count };
     });
 
-    // KPIs (last 7 days).
-    const sessions7d = sessions.filter(inWeek).length;
-    const activeUsers = new Set(events.filter(inWeek).map((e) => e.user_id).filter(Boolean)).size;
+    // Active this week = signed in within 7 days (reliable). Page views from events.
+    const activeUsers = people.filter((p) => (lastSignIn.get(p.id) ?? 0) >= weekAgo).length;
     const views7d = views.filter(inWeek).length;
 
     // Device split (from sessions).
@@ -117,32 +130,36 @@ export default function Analytics() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 7);
 
-    // Last-seen per person -> dormant list.
-    const lastSeen = new Map<string, number>();
-    for (const e of events) {
-      if (!e.user_id) continue;
-      const t = new Date(e.created_at).getTime();
-      if (t > (lastSeen.get(e.user_id) ?? 0)) lastSeen.set(e.user_id, t);
-    }
+    // Dormant = logged in at least once but not in the last 14 days (by real
+    // sign-in). Never-logged-in users are tracked separately (invited, not yet
+    // onboarded) so a freshly-invited person isn't flagged as "disconnected".
     const dormant = people
-      .map((p) => ({ ...p, seen: lastSeen.get(p.id) }))
-      .filter((p) => !p.seen || now - p.seen > 14 * DAY)
-      .map((p) => ({
-        ...p,
-        days: p.seen ? Math.floor((now - p.seen) / DAY) : null,
-      }))
-      .sort((a, b) => (b.days ?? 9999) - (a.days ?? 9999));
+      .map((p) => ({ ...p, seen: lastSignIn.get(p.id) }))
+      .filter((p) => p.seen && now - p.seen > 14 * DAY)
+      .map((p) => ({ ...p, days: Math.floor((now - p.seen!) / DAY) }))
+      .sort((a, b) => b.days - a.days);
 
-    return { sessions7d, activeUsers, views7d, device, loginsByDay, topPages, dormant, total: events.length };
+    const neverLoggedIn = people.filter((p) => !lastSignIn.get(p.id));
+
+    return {
+      activeUsers,
+      views7d,
+      device,
+      loginsByDay,
+      topPages,
+      dormant,
+      neverLoggedIn,
+      total: events.length + activity.length,
+    };
   }, [data]);
 
   if (isLoading) return <CenteredLoader />;
 
   const kpis = [
-    { label: "כניסות (7 ימים)", value: agg.sessions7d, icon: Activity },
-    { label: "משתמשים פעילים", value: agg.activeUsers, icon: Users },
+    { label: "פעילים השבוע", value: agg.activeUsers, icon: Users },
     { label: "צפיות עמוד (7 ימים)", value: agg.views7d, icon: Eye },
-    { label: "מנותקים (14 יום+)", value: agg.dormant.length, icon: UserX },
+    { label: "לא נכנסו 14 יום+", value: agg.dormant.length, icon: UserX },
+    { label: "טרם נכנסו", value: agg.neverLoggedIn.length, icon: Activity },
   ];
 
   return (
@@ -151,7 +168,7 @@ export default function Analytics() {
         <div>
           <h1 className="font-heading text-2xl font-black text-foreground">אנליטיקות</h1>
           <p className="text-sm text-muted-foreground">
-            שימוש בפורטל של לקוחות ושותפים, 14 הימים האחרונים. הנתונים שלך כאדמין לא נמדדים.
+            שימוש בפורטל של לקוחות ושותפים. הכניסה האחרונה מבוססת על התחברות אמיתית. הנתונים שלך כאדמין לא נמדדים.
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => refetch()} disabled={isFetching}>
@@ -246,28 +263,50 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="rounded-2xl border bg-card p-4">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">תשומת לב נדרשת, לא נכנסו לאחרונה</h2>
-            {agg.dormant.length ? (
-              <div className="space-y-2">
-                {agg.dormant.slice(0, 8).map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 text-sm">
-                    <span className="flex size-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-                      <UserX className="size-4" />
-                    </span>
-                    <span className="text-foreground">{p.full_name || p.email}</span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                      {p.role === "partner" ? "שותף" : "לקוח"}
-                    </span>
-                    <span className="ms-auto text-xs text-muted-foreground">
-                      {p.days === null ? "טרם נכנס" : `לפני ${p.days} ימים`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">כולם נכנסו לאחרונה. מצוין.</p>
-            )}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border bg-card p-4">
+              <h2 className="mb-3 text-sm font-medium text-muted-foreground">תשומת לב נדרשת, לא נכנסו 14 יום+</h2>
+              {agg.dormant.length ? (
+                <div className="space-y-2">
+                  {agg.dormant.slice(0, 8).map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 text-sm">
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                        <UserX className="size-4" />
+                      </span>
+                      <span className="min-w-0 truncate text-foreground">{p.full_name || p.email}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {p.role === "partner" ? "שותף" : "לקוח"}
+                      </span>
+                      <span className="ms-auto shrink-0 text-xs text-muted-foreground">לפני {p.days} ימים</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">כולם נכנסו לאחרונה. מצוין.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border bg-card p-4">
+              <h2 className="mb-3 text-sm font-medium text-muted-foreground">הוזמנו, טרם נכנסו</h2>
+              {agg.neverLoggedIn.length ? (
+                <div className="space-y-2">
+                  {agg.neverLoggedIn.slice(0, 8).map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 text-sm">
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Activity className="size-4" />
+                      </span>
+                      <span className="min-w-0 truncate text-foreground">{p.full_name || p.email}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {p.role === "partner" ? "שותף" : "לקוח"}
+                      </span>
+                      <span className="ms-auto shrink-0 text-xs text-muted-foreground">ממתין לכניסה ראשונה</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">כולם כבר נכנסו לפחות פעם אחת.</p>
+              )}
+            </div>
           </div>
         </>
       )}

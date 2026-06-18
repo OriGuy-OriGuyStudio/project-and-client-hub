@@ -7,6 +7,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rewards/StoreUI";
 import { usePartner } from "@/hooks/usePartner";
+import { useAuth } from "@/hooks/useAuth";
+import { gendered } from "@/lib/gender";
 import { supabase } from "@/lib/supabase";
 import { celebrate, celebrateBig } from "@/lib/confetti";
 import { rewardAvailability } from "@/lib/rewards";
@@ -31,6 +33,7 @@ const REDEMPTION_STATUS: Record<string, string> = {
 export function PartnerRewards() {
   const qc = useQueryClient();
   const { data } = usePartner();
+  const { profile } = useAuth();
   const [confirm, setConfirm] = useState<Reward | null>(null);
 
   const coins = data?.coins ?? 0;
@@ -88,7 +91,8 @@ export function PartnerRewards() {
             <AnimatedNumber value={coins} />
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            מרוויחים 20 מטבעות על כל עסקה שנסגרת, וממירים אותם בחנות שלמטה.
+            {gendered(profile?.gender, "מרוויח", "מרוויחה")} 20 מטבעות על כל עסקה שנסגרת,
+            ו{gendered(profile?.gender, "ממיר", "ממירה")} אותם בחנות שלמטה.
           </p>
           {boostLeft > 0 && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">

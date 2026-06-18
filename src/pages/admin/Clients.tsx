@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   Clock,
@@ -60,12 +60,26 @@ type ClientItem = {
   phone: string | null;
   enrolled: boolean; // approved into the referral program
   inviteSentAt: string | null; // last welcome-email send (pending invitees)
+  lastSeen?: string | null; // last real login (active clients)
 };
 
 export default function Clients() {
   const { data, isLoading, isError } = useClients();
   const [editTarget, setEditTarget] = useState<ClientItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClientItem | null>(null);
+
+  // Authoritative last-login per user (from auth.users), for the "כניסה אחרונה" line.
+  const { data: activity } = useQuery({
+    queryKey: ["admin-user-activity"],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("admin_user_activity");
+      const m = new Map<string, string>();
+      for (const a of (data ?? []) as { id: string; last_sign_in_at: string | null }[]) {
+        if (a.last_sign_in_at) m.set(a.id, a.last_sign_in_at);
+      }
+      return m;
+    },
+  });
 
   return (
     <div>
@@ -109,6 +123,7 @@ export default function Clients() {
                     phone: c.phone,
                     enrolled: c.enrolled,
                     inviteSentAt: null,
+                    lastSeen: activity?.get(c.id) ?? null,
                   }}
                   icon={Building2}
                   iconClass="bg-primary/15 text-primary"
@@ -225,6 +240,13 @@ function ClientRow({
               ) : (
                 <span className="text-muted-foreground">טרם נשלחה הזמנה</span>
               )}
+            </p>
+          )}
+          {item.kind === "active" && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {item.lastSeen
+                ? `כניסה אחרונה: ${new Date(item.lastSeen).toLocaleDateString("he-IL")}`
+                : "טרם נכנס"}
             </p>
           )}
         </div>
