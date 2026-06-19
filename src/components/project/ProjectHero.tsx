@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, ExternalLink, Figma, Globe, MousePointerClick, Pencil, Server } from "lucide-react";
+import { Building2, ExternalLink, Figma, Globe, Monitor, Pencil, Server, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import type { BrandColor, ClientBrand, Project } from "@/types/database";
 
 const links = [
   { key: "figma_url" as const, label: "עיצוב Figma", icon: Figma },
-  { key: "figma_prototype_url" as const, label: "אב-טיפוס Figma", icon: MousePointerClick },
+  { key: "figma_prototype_mobile_url" as const, label: "אבטיפוס מובייל", icon: Smartphone },
+  { key: "figma_prototype_desktop_url" as const, label: "אבטיפוס דסקטופ", icon: Monitor },
   { key: "staging_url" as const, label: "סביבת Staging", icon: Server },
   { key: "live_url" as const, label: "אתר Live", icon: Globe },
 ];
@@ -43,7 +44,8 @@ export function ProjectHero({
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
     figma_url: project.figma_url ?? "",
-    figma_prototype_url: project.figma_prototype_url ?? "",
+    figma_prototype_mobile_url: project.figma_prototype_mobile_url ?? "",
+    figma_prototype_desktop_url: project.figma_prototype_desktop_url ?? "",
     staging_url: project.staging_url ?? "",
     live_url: project.live_url ?? "",
   });
@@ -54,7 +56,8 @@ export function ProjectHero({
       .from("projects")
       .update({
         figma_url: draft.figma_url || null,
-        figma_prototype_url: draft.figma_prototype_url || null,
+        figma_prototype_mobile_url: draft.figma_prototype_mobile_url || null,
+        figma_prototype_desktop_url: draft.figma_prototype_desktop_url || null,
         staging_url: draft.staging_url || null,
         live_url: draft.live_url || null,
       })

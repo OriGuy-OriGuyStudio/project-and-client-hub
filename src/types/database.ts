@@ -214,7 +214,8 @@ export type Project = {
   client_id: string;
   status: ProjectStatus;
   figma_url: string | null;
-  figma_prototype_url: string | null;
+  figma_prototype_mobile_url: string | null;
+  figma_prototype_desktop_url: string | null;
   staging_url: string | null;
   live_url: string | null;
   warranty_start_date: string | null;
