@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -82,7 +83,21 @@ export function AppShell() {
           <div className="mx-auto w-full max-w-5xl">
             <BetaBanner />
             <Suspense fallback={<CenteredLoader />}>
-              <Outlet />
+              {reduced ? (
+                <Outlet />
+              ) : (
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={location.pathname}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Outlet />
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </Suspense>
           </div>
         </main>
