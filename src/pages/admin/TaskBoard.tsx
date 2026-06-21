@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import {
   DndContext,
-  DragOverlay,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -606,39 +605,32 @@ function TaskList({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
+  // Local order so the drag reorder is perfectly in sync with dnd-kit (no jump
+  // on release). Re-sync whenever the source list changes (add/edit/delete).
+  const [items, setItems] = useState(tasks);
+  useEffect(() => setItems(tasks), [tasks]);
 
   function handleDragEnd(e: DragEndEvent) {
-    setActiveId(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const oldI = tasks.findIndex((t) => t.id === active.id);
-    const newI = tasks.findIndex((t) => t.id === over.id);
+    const oldI = items.findIndex((t) => t.id === active.id);
+    const newI = items.findIndex((t) => t.id === over.id);
     if (oldI < 0 || newI < 0) return;
-    onReorder(arrayMove(tasks, oldI, newI));
+    const reordered = arrayMove(items, oldI, newI);
+    setItems(reordered); // instant, in-sync with the drag
+    onReorder(reordered); // persist + reconcile the cache
   }
 
-  const resolve = (t: AdminTask) => ({
-    projectName: t.project_id ? projectName.get(t.project_id) : undefined,
-    clientName: t.client_id ? clientName.get(t.client_id) : undefined,
-  });
-
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={(e) => setActiveId(String(e.active.id))}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveId(null)}
-    >
-      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
-          {tasks.map((t) => (
+          {items.map((t) => (
             <SortableTaskRow
               key={t.id}
               task={t}
-              {...resolve(t)}
+              projectName={t.project_id ? projectName.get(t.project_id) : undefined}
+              clientName={t.client_id ? clientName.get(t.client_id) : undefined}
               selected={selected.has(t.id)}
               onToggleSelect={() => onToggleSelect(t.id)}
               onStatus={(s) => onStatus(t, s)}
@@ -648,17 +640,6 @@ function TaskList({
           ))}
         </div>
       </SortableContext>
-      {/* The dragged row rides on its own layer (no jump on release). */}
-      <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}>
-        {activeTask ? (
-          <TaskCard
-            task={activeTask}
-            {...resolve(activeTask)}
-            selected={selected.has(activeTask.id)}
-            overlay
-          />
-        ) : null}
-      </DragOverlay>
     </DndContext>
   );
 }
@@ -678,22 +659,19 @@ type TaskCardProps = {
 function SortableTaskRow(props: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: props.task.id, animateLayoutChanges });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-  };
+  const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <TaskCard
       {...props}
       setNodeRef={setNodeRef}
       style={style}
       dragHandle={{ ...attributes, ...listeners }}
-      placeholder={isDragging}
+      dragging={isDragging}
     />
   );
 }
 
-/** Presentational row — used both in the list and inside the DragOverlay. */
+/** Presentational row used by the sortable wrapper. */
 function TaskCard({
   task,
   projectName,
@@ -706,14 +684,12 @@ function TaskCard({
   setNodeRef,
   style,
   dragHandle,
-  placeholder,
-  overlay,
+  dragging,
 }: TaskCardProps & {
   setNodeRef?: (el: HTMLElement | null) => void;
   style?: React.CSSProperties;
   dragHandle?: Record<string, unknown>;
-  placeholder?: boolean;
-  overlay?: boolean;
+  dragging?: boolean;
 }) {
   const done = task.status === "done";
   const overdue = isOverdue(task);
@@ -730,8 +706,7 @@ function TaskCard({
       style={style}
       className={cn(
         "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5",
-        placeholder && "opacity-30",
-        overlay && "cursor-grabbing shadow-2xl",
+        dragging && "relative z-10 shadow-lift",
         selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border"
       )}
     >
