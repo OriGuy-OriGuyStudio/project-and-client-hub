@@ -560,6 +560,8 @@ export type AdminTask = {
   start_date: string | null;
   end_date: string | null;
   note: string | null;
+  note_for_client: boolean;
+  client_informed: boolean;
   order_index: number;
   created_at: string;
 };

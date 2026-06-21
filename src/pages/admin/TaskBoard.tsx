@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
+  Check,
   ChevronDown,
   Download,
   FolderKanban,
   GripVertical,
   ListChecks,
+  Megaphone,
   Pencil,
   Plus,
   StickyNote,
@@ -204,6 +206,20 @@ export default function TaskBoard() {
     }
   }
 
+  async function setClientInformed(task: AdminTask, informed: boolean) {
+    qc.setQueryData<AdminTask[]>(["task-board-tasks"], (prev) =>
+      (prev ?? []).map((t) => (t.id === task.id ? { ...t, client_informed: informed } : t))
+    );
+    const { error } = await supabase
+      .from("admin_tasks")
+      .update({ client_informed: informed })
+      .eq("id", task.id);
+    if (error) {
+      toastError("העדכון נכשל.");
+      refresh();
+    }
+  }
+
   function removeTask(task: AdminTask) {
     setConfirm({
       title: "מחיקת משימה",
@@ -319,7 +335,7 @@ export default function TaskBoard() {
     const list = tasks ?? [];
     if (!list.length) return toastError("אין משימות לייצוא.");
     const groupTitleById = new Map((groups ?? []).map((g) => [g.id, g.title]));
-    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום", "הערה"];
+    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום", "הערה", "ליידע לקוח", "הוסבר ללקוח"];
     const rows = list.map((t) => [
       t.title,
       URGENCY[t.urgency].label,
@@ -330,6 +346,8 @@ export default function TaskBoard() {
       t.start_date ?? "",
       t.end_date ?? "",
       t.note ?? "",
+      t.note_for_client ? "כן" : "",
+      t.client_informed ? "כן" : "",
     ]);
     const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
@@ -462,6 +480,7 @@ export default function TaskBoard() {
               selected={selected}
               highlightId={highlightId}
               onToggleSelect={toggleSelect}
+              onToggleInformed={setClientInformed}
               onReorder={reorderList}
               onStatus={setStatus}
               onEdit={(t) => {
@@ -538,6 +557,7 @@ export default function TaskBoard() {
                           selected={selected}
                           highlightId={highlightId}
                           onToggleSelect={toggleSelect}
+                          onToggleInformed={setClientInformed}
                           onReorder={reorderList}
                           onStatus={setStatus}
                           onEdit={(t) => {
@@ -611,6 +631,7 @@ function TaskList({
   selected,
   highlightId,
   onToggleSelect,
+  onToggleInformed,
   onReorder,
   onStatus,
   onEdit,
@@ -622,6 +643,7 @@ function TaskList({
   selected: Set<string>;
   highlightId: string | null;
   onToggleSelect: (id: string) => void;
+  onToggleInformed: (task: AdminTask, informed: boolean) => void;
   onReorder: (reordered: AdminTask[]) => void;
   onStatus: (task: AdminTask, s: AdminTaskStatus) => void;
   onEdit: (task: AdminTask) => void;
@@ -659,6 +681,7 @@ function TaskList({
               selected={selected.has(t.id)}
               highlight={t.id === highlightId}
               onToggleSelect={() => onToggleSelect(t.id)}
+              onToggleInformed={(v) => onToggleInformed(t, v)}
               onStatus={(s) => onStatus(t, s)}
               onEdit={() => onEdit(t)}
               onDelete={() => onDelete(t)}
@@ -677,6 +700,7 @@ type TaskCardProps = {
   selected: boolean;
   highlight?: boolean;
   onToggleSelect?: () => void;
+  onToggleInformed?: (informed: boolean) => void;
   onStatus?: (s: AdminTaskStatus) => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -706,6 +730,7 @@ function TaskCard({
   selected,
   highlight,
   onToggleSelect,
+  onToggleInformed,
   onStatus,
   onEdit,
   onDelete,
@@ -802,6 +827,33 @@ function TaskCard({
               )}
             </div>
           )}
+          {task.note_for_client && (
+            <button
+              type="button"
+              onClick={() => onToggleInformed?.(!task.client_informed)}
+              className={cn(
+                "mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                task.client_informed
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-amber-400/50 bg-amber-400/10 text-amber-500 hover:bg-amber-400/20"
+              )}
+              title={
+                task.client_informed
+                  ? "סומן שהוסבר ללקוח — לחץ לביטול"
+                  : "הערה ליידוע הלקוח — לחץ לסמן שהוסבר"
+              }
+            >
+              {task.client_informed ? (
+                <>
+                  <Check className="size-3" /> הוסבר ללקוח
+                </>
+              ) : (
+                <>
+                  <Megaphone className="size-3" /> ליידע לקוח
+                </>
+              )}
+            </button>
+          )}
           {task.note && (
             <p className="mt-1 flex items-start gap-1 text-xs italic text-muted-foreground">
               <StickyNote className="mt-0.5 size-3.5 shrink-0" />
@@ -859,6 +911,8 @@ function TaskFormSheet({
     start_date: "",
     end_date: "",
     note: "",
+    note_for_client: false,
+    client_informed: false,
   });
 
   // Re-seed whenever the sheet opens for a different task (or for a new one).
@@ -873,6 +927,8 @@ function TaskFormSheet({
       start_date: task?.start_date ?? "",
       end_date: task?.end_date ?? "",
       note: task?.note ?? "",
+      note_for_client: task?.note_for_client ?? false,
+      client_informed: task?.client_informed ?? false,
     });
   }
 
@@ -898,6 +954,9 @@ function TaskFormSheet({
       start_date: draft.start_date || null,
       end_date: draft.end_date || null,
       note: clampText(draft.note.trim(), 2000) || null,
+      note_for_client: draft.note.trim() ? draft.note_for_client : false,
+      client_informed:
+        draft.note.trim() && draft.note_for_client ? draft.client_informed : false,
     };
 
     setSaving(true);
@@ -1017,6 +1076,39 @@ function TaskFormSheet({
               placeholder="מה עשיתי / מידע נוסף (אופציונלי)"
               onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
             />
+            {draft.note.trim() && (
+              <div className="grid grid-cols-2 items-end gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <Label htmlFor="t-note-type">סוג ההערה</Label>
+                  <SelectMenu
+                    id="t-note-type"
+                    variant="field"
+                    ariaLabel="סוג ההערה"
+                    value={draft.note_for_client ? "client" : "private"}
+                    onChange={(v) =>
+                      setDraft((d) => ({ ...d, note_for_client: v === "client" }))
+                    }
+                    options={[
+                      { value: "private", label: "פרטית" },
+                      { value: "client", label: "ליידוע הלקוח" },
+                    ]}
+                  />
+                </div>
+                {draft.note_for_client && (
+                  <label className="flex items-center gap-2 pb-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={draft.client_informed}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, client_informed: e.target.checked }))
+                      }
+                      className="size-4 accent-[var(--primary)]"
+                    />
+                    הוסבר ללקוח
+                  </label>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1083,7 +1175,14 @@ const HEADER_ALIASES: Record<string, string[]> = {
   end: ["תאריך סיום", "סיום", "דדליין", "end", "end_date", "due"],
   group: ["קבוצה", "סבב", "group"],
   note: ["הערה", "הערות", "note", "comment"],
+  note_for_client: ["ליידע לקוח", "הערה ללקוח", "note_for_client"],
+  client_informed: ["הוסבר ללקוח", "הוסבר", "client_informed"],
 };
+
+/** Loose truthy check for CSV yes/no cells. */
+function csvTruthy(v: string): boolean {
+  return /^(כן|yes|true|1|✓|v)$/i.test(v.trim());
+}
 
 function matchHeader(h: string): string | null {
   const n = h.trim().toLowerCase();
@@ -1162,6 +1261,8 @@ async function importCsv(
     start_date: string | null;
     end_date: string | null;
     note: string | null;
+    note_for_client: boolean;
+    client_informed: boolean;
     groupKey: string | null; // lowercase title, resolved to id after group creation
   };
   const newTasks: NewTask[] = [];
@@ -1192,6 +1293,8 @@ async function importCsv(
       start_date: parseDate(get("start")),
       end_date: parseDate(get("end")),
       note: clampText(get("note"), 2000) || null,
+      note_for_client: csvTruthy(get("note_for_client")),
+      client_informed: csvTruthy(get("client_informed")),
       groupKey,
     });
   }
@@ -1218,6 +1321,8 @@ async function importCsv(
     start_date: t.start_date,
     end_date: t.end_date,
     note: t.note,
+    note_for_client: t.note_for_client,
+    client_informed: t.client_informed,
     group_id: t.groupKey ? groupId.get(t.groupKey) ?? null : null,
   }));
 
