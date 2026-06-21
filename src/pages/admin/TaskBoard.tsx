@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  ArrowDownUp,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
   CalendarClock,
   Check,
   ChevronDown,
@@ -122,6 +123,7 @@ const STATUS_RANK: Record<AdminTaskStatus, number> = {
 };
 
 type SortBy = "manual" | "status" | "urgency" | "start" | "client" | "project";
+type SortDir = "asc" | "desc";
 const SORT_OPTIONS = [
   { value: "manual", label: "ידני (גרירה)" },
   { value: "status", label: "סטטוס" },
@@ -156,7 +158,9 @@ export default function TaskBoard() {
   const { data: partners } = usePartners();
   const fileRef = useRef<HTMLInputElement>(null);
   const [sortBy, setSortBy] = useState<SortBy>("manual");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [groupSortBy, setGroupSortBy] = useState<Record<string, SortBy>>({});
+  const [groupSortDir, setGroupSortDir] = useState<Record<string, SortDir>>({});
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTask, setEditTask] = useState<AdminTask | null>(null);
@@ -206,33 +210,44 @@ export default function TaskBoard() {
     t.client_id ? clientName.get(t.client_id) || "￿" : "￿";
   const pname = (t: AdminTask) =>
     t.project_id ? projectName.get(t.project_id) || "￿" : "￿";
-  const sortTasks = (arr: AdminTask[], by: SortBy) =>
+  const sortTasks = (arr: AdminTask[], by: SortBy, dir: SortDir) =>
     [...arr].sort((a, b) => {
-      const doneDiff = (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0);
-      if (doneDiff) return doneDiff;
       const tie = a.order_index - b.order_index || a.created_at.localeCompare(b.created_at);
+      // Manual = drag order with completed tasks sunk to the bottom.
+      if (by === "manual") {
+        return (
+          (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) || tie
+        );
+      }
+      // Explicit sorts honor the asc/desc direction (so the admin picks what
+      // comes first); no forced done-sink here.
+      const sign = dir === "desc" ? -1 : 1;
+      let cmp = 0;
       switch (by) {
         case "status":
-          return STATUS_RANK[a.status] - STATUS_RANK[b.status] || tie;
+          cmp = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+          break;
         case "urgency":
-          return URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] || tie;
+          cmp = URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency];
+          break;
         case "start":
-          return (
-            (a.start_date ?? "9999-99-99").localeCompare(b.start_date ?? "9999-99-99") || tie
-          );
+          cmp = (a.start_date ?? "9999-99-99").localeCompare(b.start_date ?? "9999-99-99");
+          break;
         case "client":
-          return cname(a).localeCompare(cname(b), "he") || tie;
+          cmp = cname(a).localeCompare(cname(b), "he");
+          break;
         case "project":
-          return pname(a).localeCompare(pname(b), "he") || tie;
-        default:
-          return tie;
+          cmp = pname(a).localeCompare(pname(b), "he");
+          break;
       }
+      return sign * cmp || tie;
     });
   // Ungrouped uses the toolbar sort; each group has its own.
   const groupSort = (gid: string): SortBy => groupSortBy[gid] ?? "manual";
-  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id), sortBy);
+  const groupDir = (gid: string): SortDir => groupSortDir[gid] ?? "asc";
+  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id), sortBy, sortDir);
   const byGroup = (gid: string) =>
-    sortTasks((tasks ?? []).filter((t) => t.group_id === gid), groupSort(gid));
+    sortTasks((tasks ?? []).filter((t) => t.group_id === gid), groupSort(gid), groupDir(gid));
 
   const stats = {
     total: tasks?.length ?? 0,
@@ -464,7 +479,6 @@ export default function TaskBoard() {
               onChange={onFile}
             />
             <div className="flex items-center gap-1.5">
-              <ArrowDownUp className="size-4 text-muted-foreground" />
               <div className="w-36">
                 <SelectMenu
                   ariaLabel="מיון"
@@ -473,6 +487,22 @@ export default function TaskBoard() {
                   options={SORT_OPTIONS}
                 />
               </div>
+              {sortBy !== "manual" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={sortDir === "asc" ? "סדר עולה" : "סדר יורד"}
+                  title={sortDir === "asc" ? "סדר עולה (לחץ להפוך)" : "סדר יורד (לחץ להפוך)"}
+                  onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                >
+                  {sortDir === "asc" ? (
+                    <ArrowUpNarrowWide className="size-4" />
+                  ) : (
+                    <ArrowDownWideNarrow className="size-4" />
+                  )}
+                </Button>
+              )}
             </div>
             <Button variant="ghost" size="sm" onClick={exportCsv}>
               <Download className="size-4" /> ייצוא CSV
@@ -594,7 +624,6 @@ export default function TaskBoard() {
                     </CollapsibleTrigger>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                       <div className="flex items-center gap-1">
-                        <ArrowDownUp className="size-3.5 text-muted-foreground" />
                         <div className="w-32">
                           <SelectMenu
                             ariaLabel="מיון הקבוצה"
@@ -605,6 +634,31 @@ export default function TaskBoard() {
                             options={SORT_OPTIONS}
                           />
                         </div>
+                        {groupSort(g.id) !== "manual" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label="כיוון מיון"
+                            title={
+                              groupDir(g.id) === "asc"
+                                ? "סדר עולה (לחץ להפוך)"
+                                : "סדר יורד (לחץ להפוך)"
+                            }
+                            onClick={() =>
+                              setGroupSortDir((m) => ({
+                                ...m,
+                                [g.id]: groupDir(g.id) === "asc" ? "desc" : "asc",
+                              }))
+                            }
+                          >
+                            {groupDir(g.id) === "asc" ? (
+                              <ArrowUpNarrowWide className="size-4" />
+                            ) : (
+                              <ArrowDownWideNarrow className="size-4" />
+                            )}
+                          </Button>
+                        )}
                       </div>
                       <div className="w-40">
                         <SelectMenu
