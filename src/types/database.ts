@@ -559,6 +559,7 @@ export type AdminTask = {
   group_id: string | null;
   start_date: string | null;
   end_date: string | null;
+  note: string | null;
   order_index: number;
   created_at: string;
 };

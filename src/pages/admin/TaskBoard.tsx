@@ -9,6 +9,7 @@ import {
   ListChecks,
   Pencil,
   Plus,
+  StickyNote,
   Trash2,
   Upload,
   User,
@@ -42,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -128,6 +130,10 @@ export default function TaskBoard() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // The task that just got completed — highlighted for a few seconds so it's
+  // clear where it slid to.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const highlightTimer = useRef<number | null>(null);
   const [confirm, setConfirm] = useState<
     { title: string; description?: string; onConfirm: () => void } | null
   >(null);
@@ -156,10 +162,17 @@ export default function TaskBoard() {
     qc.invalidateQueries({ queryKey: ["task-board-groups"] });
   };
 
-  // Manual order: the query already returns tasks by order_index, so just filter
-  // per list (drag-and-drop controls the order within each list).
-  const ungrouped = (tasks ?? []).filter((t) => !t.group_id);
-  const byGroup = (gid: string) => (tasks ?? []).filter((t) => t.group_id === gid);
+  // Drag controls the order (order_index); the only automatic reordering is that
+  // DONE tasks sink to the bottom (a date change never moves a task).
+  const sortTasks = (arr: AdminTask[]) =>
+    [...arr].sort(
+      (a, b) =>
+        (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) ||
+        a.order_index - b.order_index ||
+        a.created_at.localeCompare(b.created_at)
+    );
+  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id));
+  const byGroup = (gid: string) => sortTasks((tasks ?? []).filter((t) => t.group_id === gid));
 
   const stats = {
     total: tasks?.length ?? 0,
@@ -174,6 +187,13 @@ export default function TaskBoard() {
     qc.setQueryData<AdminTask[]>(["task-board-tasks"], (prev) =>
       (prev ?? []).map((t) => (t.id === task.id ? { ...t, status } : t))
     );
+    // Completing a task slides it to the bottom — flag it so the row glows for
+    // a few seconds and Ori can follow where it went.
+    if (status === "done") {
+      setHighlightId(task.id);
+      if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
+      highlightTimer.current = window.setTimeout(() => setHighlightId(null), 2800);
+    }
     const { error } = await supabase
       .from("admin_tasks")
       .update({ status })
@@ -299,7 +319,7 @@ export default function TaskBoard() {
     const list = tasks ?? [];
     if (!list.length) return toastError("אין משימות לייצוא.");
     const groupTitleById = new Map((groups ?? []).map((g) => [g.id, g.title]));
-    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום"];
+    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום", "הערה"];
     const rows = list.map((t) => [
       t.title,
       URGENCY[t.urgency].label,
@@ -309,6 +329,7 @@ export default function TaskBoard() {
       t.group_id ? groupTitleById.get(t.group_id) ?? "" : "",
       t.start_date ?? "",
       t.end_date ?? "",
+      t.note ?? "",
     ]);
     const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
@@ -439,6 +460,7 @@ export default function TaskBoard() {
               projectName={projectName}
               clientName={clientName}
               selected={selected}
+              highlightId={highlightId}
               onToggleSelect={toggleSelect}
               onReorder={reorderList}
               onStatus={setStatus}
@@ -514,6 +536,7 @@ export default function TaskBoard() {
                           projectName={projectName}
                           clientName={clientName}
                           selected={selected}
+                          highlightId={highlightId}
                           onToggleSelect={toggleSelect}
                           onReorder={reorderList}
                           onStatus={setStatus}
@@ -586,6 +609,7 @@ function TaskList({
   projectName,
   clientName,
   selected,
+  highlightId,
   onToggleSelect,
   onReorder,
   onStatus,
@@ -596,6 +620,7 @@ function TaskList({
   projectName: Map<string, string>;
   clientName: Map<string, string>;
   selected: Set<string>;
+  highlightId: string | null;
   onToggleSelect: (id: string) => void;
   onReorder: (reordered: AdminTask[]) => void;
   onStatus: (task: AdminTask, s: AdminTaskStatus) => void;
@@ -632,6 +657,7 @@ function TaskList({
               projectName={t.project_id ? projectName.get(t.project_id) : undefined}
               clientName={t.client_id ? clientName.get(t.client_id) : undefined}
               selected={selected.has(t.id)}
+              highlight={t.id === highlightId}
               onToggleSelect={() => onToggleSelect(t.id)}
               onStatus={(s) => onStatus(t, s)}
               onEdit={() => onEdit(t)}
@@ -649,6 +675,7 @@ type TaskCardProps = {
   projectName?: string;
   clientName?: string;
   selected: boolean;
+  highlight?: boolean;
   onToggleSelect?: () => void;
   onStatus?: (s: AdminTaskStatus) => void;
   onEdit?: () => void;
@@ -677,6 +704,7 @@ function TaskCard({
   projectName,
   clientName,
   selected,
+  highlight,
   onToggleSelect,
   onStatus,
   onEdit,
@@ -705,9 +733,13 @@ function TaskCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5",
+        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5 transition-[background-color,box-shadow,border-color] duration-700",
         dragging && "relative z-10 shadow-lift",
-        selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border"
+        highlight
+          ? "border-primary bg-primary/10 shadow-[0_0_0_2px_var(--primary)]"
+          : selected
+            ? "border-primary/50 ring-1 ring-primary/30"
+            : "border-border"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -770,6 +802,12 @@ function TaskCard({
               )}
             </div>
           )}
+          {task.note && (
+            <p className="mt-1 flex items-start gap-1 text-xs italic text-muted-foreground">
+              <StickyNote className="mt-0.5 size-3.5 shrink-0" />
+              <span className="line-clamp-2">{task.note}</span>
+            </p>
+          )}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -820,6 +858,7 @@ function TaskFormSheet({
     group_id: "",
     start_date: "",
     end_date: "",
+    note: "",
   });
 
   // Re-seed whenever the sheet opens for a different task (or for a new one).
@@ -833,6 +872,7 @@ function TaskFormSheet({
       group_id: task?.group_id ?? "",
       start_date: task?.start_date ?? "",
       end_date: task?.end_date ?? "",
+      note: task?.note ?? "",
     });
   }
 
@@ -857,6 +897,7 @@ function TaskFormSheet({
       group_id: draft.group_id || null,
       start_date: draft.start_date || null,
       end_date: draft.end_date || null,
+      note: clampText(draft.note.trim(), 2000) || null,
     };
 
     setSaving(true);
@@ -965,6 +1006,18 @@ function TaskFormSheet({
               />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="t-note">הערה</Label>
+            <Textarea
+              id="t-note"
+              value={draft.note}
+              maxLength={2000}
+              rows={3}
+              placeholder="מה עשיתי / מידע נוסף (אופציונלי)"
+              onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
+            />
+          </div>
         </div>
 
         <SheetFooter>
@@ -1029,6 +1082,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   start: ["תאריך התחלה", "התחלה", "start", "start_date"],
   end: ["תאריך סיום", "סיום", "דדליין", "end", "end_date", "due"],
   group: ["קבוצה", "סבב", "group"],
+  note: ["הערה", "הערות", "note", "comment"],
 };
 
 function matchHeader(h: string): string | null {
@@ -1107,6 +1161,7 @@ async function importCsv(
     client_id: string | null;
     start_date: string | null;
     end_date: string | null;
+    note: string | null;
     groupKey: string | null; // lowercase title, resolved to id after group creation
   };
   const newTasks: NewTask[] = [];
@@ -1136,6 +1191,7 @@ async function importCsv(
       client_id: project?.client_id ?? null,
       start_date: parseDate(get("start")),
       end_date: parseDate(get("end")),
+      note: clampText(get("note"), 2000) || null,
       groupKey,
     });
   }
@@ -1161,6 +1217,7 @@ async function importCsv(
     client_id: t.client_id,
     start_date: t.start_date,
     end_date: t.end_date,
+    note: t.note,
     group_id: t.groupKey ? groupId.get(t.groupKey) ?? null : null,
   }));
 
