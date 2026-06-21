@@ -115,10 +115,16 @@ const URGENCY_RANK: Record<TaskUrgency, number> = {
   medium: 2,
   low: 3,
 };
+const STATUS_RANK: Record<AdminTaskStatus, number> = {
+  todo: 0,
+  in_progress: 1,
+  done: 2,
+};
 
-type SortBy = "manual" | "urgency" | "start" | "client" | "project";
+type SortBy = "manual" | "status" | "urgency" | "start" | "client" | "project";
 const SORT_OPTIONS = [
   { value: "manual", label: "ידני (גרירה)" },
+  { value: "status", label: "סטטוס" },
   { value: "urgency", label: "דחיפות" },
   { value: "start", label: "תאריך התחלה" },
   { value: "client", label: "לקוח" },
@@ -150,6 +156,7 @@ export default function TaskBoard() {
   const { data: partners } = usePartners();
   const fileRef = useRef<HTMLInputElement>(null);
   const [sortBy, setSortBy] = useState<SortBy>("manual");
+  const [groupSortBy, setGroupSortBy] = useState<Record<string, SortBy>>({});
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTask, setEditTask] = useState<AdminTask | null>(null);
@@ -199,12 +206,14 @@ export default function TaskBoard() {
     t.client_id ? clientName.get(t.client_id) || "￿" : "￿";
   const pname = (t: AdminTask) =>
     t.project_id ? projectName.get(t.project_id) || "￿" : "￿";
-  const sortTasks = (arr: AdminTask[]) =>
+  const sortTasks = (arr: AdminTask[], by: SortBy) =>
     [...arr].sort((a, b) => {
       const doneDiff = (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0);
       if (doneDiff) return doneDiff;
       const tie = a.order_index - b.order_index || a.created_at.localeCompare(b.created_at);
-      switch (sortBy) {
+      switch (by) {
+        case "status":
+          return STATUS_RANK[a.status] - STATUS_RANK[b.status] || tie;
         case "urgency":
           return URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] || tie;
         case "start":
@@ -219,8 +228,11 @@ export default function TaskBoard() {
           return tie;
       }
     });
-  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id));
-  const byGroup = (gid: string) => sortTasks((tasks ?? []).filter((t) => t.group_id === gid));
+  // Ungrouped uses the toolbar sort; each group has its own.
+  const groupSort = (gid: string): SortBy => groupSortBy[gid] ?? "manual";
+  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id), sortBy);
+  const byGroup = (gid: string) =>
+    sortTasks((tasks ?? []).filter((t) => t.group_id === gid), groupSort(gid));
 
   const stats = {
     total: tasks?.length ?? 0,
@@ -580,7 +592,20 @@ export default function TaskBoard() {
                         {doneCount}/{list.length}
                       </Badge>
                     </CollapsibleTrigger>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      <div className="flex items-center gap-1">
+                        <ArrowDownUp className="size-3.5 text-muted-foreground" />
+                        <div className="w-32">
+                          <SelectMenu
+                            ariaLabel="מיון הקבוצה"
+                            value={groupSort(g.id)}
+                            onChange={(v) =>
+                              setGroupSortBy((m) => ({ ...m, [g.id]: v as SortBy }))
+                            }
+                            options={SORT_OPTIONS}
+                          />
+                        </div>
+                      </div>
                       <div className="w-40">
                         <SelectMenu
                           ariaLabel="שיוך הקבוצה לפרויקט"
@@ -619,7 +644,7 @@ export default function TaskBoard() {
                           projectName={projectName}
                           clientName={clientName}
                           partnerName={partnerName}
-                          dragDisabled={sortBy !== "manual"}
+                          dragDisabled={groupSort(g.id) !== "manual"}
                           selected={selected}
                           highlightId={highlightId}
                           onToggleSelect={toggleSelect}
@@ -868,19 +893,20 @@ function TaskCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5 transition-[background-color,box-shadow,border-color,opacity] duration-700",
+        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-[background-color,box-shadow,border-color,opacity] duration-700",
         dragging && "relative z-10 shadow-lift",
         // Completed → faded "disabled" look so it's clearly done.
         done && "opacity-55",
-        // In progress → very subtle green ring that gently breathes.
-        !done && task.status === "in_progress" && "task-breathe",
         highlight
           ? "border-primary bg-primary/10 opacity-100 shadow-[0_0_0_2px_var(--primary)]"
           : selected
-            ? "border-primary/50 ring-1 ring-primary/30"
+            ? "border-primary/50 bg-field ring-1 ring-primary/30"
             : done
               ? "border-border/60 bg-field/50"
-              : "border-border"
+              : task.status === "in_progress"
+                ? // In progress → stands out: green tint + breathing green ring.
+                  "task-breathe border-primary/40 bg-primary/[0.07]"
+                : "border-border bg-field"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
