@@ -26,8 +26,16 @@ import {
   verticalListSortingStrategy,
   useSortable,
   arrayMove,
+  defaultAnimateLayoutChanges,
+  type AnimateLayoutChanges,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Always animate the layout change on drop, so the item glides into its new
+// slot instead of snapping (the "jump"). Lets dnd-kit own the transform — a
+// GSAP tween here would fight it and make things worse.
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+  defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -648,8 +656,11 @@ function TaskRow({
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+    useSortable({ id: task.id, animateLayoutChanges });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+  };
   const done = task.status === "done";
   const overdue = isOverdue(task);
 
