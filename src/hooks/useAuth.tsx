@@ -33,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const lastActivity = useRef<number>(Date.now());
+  // Tracks the currently-resolved user so token refreshes / tab-focus events
+  // (which fire onAuthStateChange with the SAME user) don't trigger a reload.
+  const resolvedUserId = useRef<string | null>(null);
 
   // Resolve the profile for a session. A whitelisted user has a profiles row
   // (created by the signup trigger); an unknown Google account does not -> denied.
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
+      resolvedUserId.current = data.session?.user?.id ?? null;
       setSession(data.session);
       resolveProfile(data.session);
     });
@@ -82,6 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       if (!mounted) return;
       lastActivity.current = Date.now();
+      const nextUserId = next?.user?.id ?? null;
+
+      // Same user (token refresh, tab refocus, user-metadata update): just keep
+      // the fresh session token. Flipping to "loading" + re-resolving here would
+      // remount the whole app and wipe any in-progress, unsaved edits.
+      if (nextUserId && nextUserId === resolvedUserId.current) {
+        setSession(next);
+        return;
+      }
+
+      // Real change — signed in as a (different) user, or signed out.
+      resolvedUserId.current = nextUserId;
       setSession(next);
       setStatus("loading");
       resolveProfile(next);
