@@ -903,3 +903,18 @@
 @media (prefers-reduced-motion: reduce) {
   .ham-nav__bg, .ham-nav__group, .ham-nav__toggle, .ham-nav__bar, .ham-nav__bg-dark { transition-duration: .01ms; }
 }
+
+/* Admin task board: in-progress tasks "breathe" with a very subtle green ring. */
+@keyframes task-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(180, 214, 112, 0.14); }
+  50%      { box-shadow: 0 0 0 1px rgba(180, 214, 112, 0.45); }
+}
+.task-breathe {
+  animation: task-breathe 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-breathe {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(180, 214, 112, 0.3);
+  }
+}

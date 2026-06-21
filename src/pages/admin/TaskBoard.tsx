@@ -786,13 +786,19 @@ function TaskCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5 transition-[background-color,box-shadow,border-color] duration-700",
+        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5 transition-[background-color,box-shadow,border-color,opacity] duration-700",
         dragging && "relative z-10 shadow-lift",
+        // Completed → faded "disabled" look so it's clearly done.
+        done && "opacity-55",
+        // In progress → very subtle green ring that gently breathes.
+        !done && task.status === "in_progress" && "task-breathe",
         highlight
-          ? "border-primary bg-primary/10 shadow-[0_0_0_2px_var(--primary)]"
+          ? "border-primary bg-primary/10 opacity-100 shadow-[0_0_0_2px_var(--primary)]"
           : selected
             ? "border-primary/50 ring-1 ring-primary/30"
-            : "border-border"
+            : done
+              ? "border-border/60 bg-field/50"
+              : "border-border"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
