@@ -537,6 +537,31 @@ export type UsageEvent = {
   created_at: string;
 };
 
+export type TaskUrgency = "low" | "medium" | "high" | "urgent";
+export type AdminTaskStatus = "todo" | "in_progress" | "done";
+
+export type AdminTaskGroup = {
+  id: string;
+  title: string;
+  order_index: number;
+  collapsed: boolean;
+  created_at: string;
+};
+
+export type AdminTask = {
+  id: string;
+  title: string;
+  urgency: TaskUrgency;
+  status: AdminTaskStatus;
+  project_id: string | null;
+  client_id: string | null;
+  group_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  order_index: number;
+  created_at: string;
+};
+
 export type AnnouncementAudience = "client" | "partner" | "both";
 
 export type Announcement = {
@@ -617,6 +642,8 @@ export interface Database {
       announcements: TableShape<Announcement>;
       announcement_dismissals: TableShape<AnnouncementDismissal>;
       site_features: TableShape<SiteFeature>;
+      admin_task_groups: TableShape<AdminTaskGroup>;
+      admin_tasks: TableShape<AdminTask>;
     };
     Views: Record<string, never>;
     Functions: {

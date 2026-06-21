@@ -28,6 +28,7 @@ const ClientDashboard = lazy(() => import("@/pages/client/Dashboard"));
 const Profile = lazy(() => import("@/pages/client/Profile"));
 const Partner = lazy(() => import("@/pages/client/Partner"));
 const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
+const TaskBoard = lazy(() => import("@/pages/admin/TaskBoard"));
 const Clients = lazy(() => import("@/pages/admin/Clients"));
 const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
 const Projects = lazy(() => import("@/pages/admin/Projects"));
@@ -90,6 +91,7 @@ function App() {
                 {/* Admin-only */}
                 <Route element={<RequireAdmin />}>
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/tasks" element={<TaskBoard />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/projects" element={<Projects />} />
