@@ -719,6 +719,9 @@ function WelcomeEmailSection() {
             לניסוח לפי מין כתוב <code className="font-mono-code text-foreground">זכר|נקבה</code> (למשל{" "}
             <code className="font-mono-code text-foreground">שמח|שמחה</code>).
           </p>
+          <div className="flex justify-start pt-1">
+            <TestEmailButton template="welcome" label="שלח בדיקת מייל לקוח אליי" />
+          </div>
         </div>
         <div className="border-t border-border pt-4">
           <p className="mb-3 text-sm font-semibold text-foreground">מייל לשותף (שת״פ)</p>
@@ -748,7 +751,9 @@ function WelcomeEmailSection() {
                 ו-<code className="font-mono-code text-foreground">זכר|נקבה</code>.
               </p>
             </div>
-            <TestEmailButton template="welcome_partner" label="שלח בדיקת מייל שותף אליי" />
+            <div className="flex justify-start pt-1">
+              <TestEmailButton template="welcome_partner" label="שלח בדיקת מייל שותף אליי" />
+            </div>
           </div>
         </div>
 
@@ -768,8 +773,7 @@ function WelcomeEmailSection() {
           </p>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap justify-between gap-2">
-        <TestEmailButton template="welcome" label="שלח בדיקת מייל לקוח אליי" />
+      <div className="mt-5 flex justify-end border-t border-border pt-4">
         <Button onClick={save} disabled={saving}>
           {saving ? "שומר…" : "שמירה"}
         </Button>
