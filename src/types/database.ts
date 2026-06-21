@@ -543,6 +543,7 @@ export type AdminTaskStatus = "todo" | "in_progress" | "done";
 export type AdminTaskGroup = {
   id: string;
   title: string;
+  project_id: string | null;
   order_index: number;
   collapsed: boolean;
   created_at: string;

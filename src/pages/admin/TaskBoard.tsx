@@ -3,7 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
   ChevronDown,
+  Download,
   FolderKanban,
+  GripVertical,
   ListChecks,
   Pencil,
   Plus,
@@ -11,6 +13,21 @@ import {
   Upload,
   User,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,13 +91,6 @@ const STATUS_OPTIONS = (Object.keys(STATUS) as AdminTaskStatus[]).map((s) => ({
   label: STATUS[s],
 }));
 
-const URGENCY_RANK: Record<TaskUrgency, number> = {
-  urgent: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
-
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
 }
@@ -105,9 +115,17 @@ export default function TaskBoard() {
   const [editTask, setEditTask] = useState<AdminTask | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<
     { title: string; description?: string; onConfirm: () => void } | null
   >(null);
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   // id → display name, and project → its client, for showing/linking.
   const projectName = useMemo(() => {
@@ -126,19 +144,10 @@ export default function TaskBoard() {
     qc.invalidateQueries({ queryKey: ["task-board-groups"] });
   };
 
-  // Tasks grouped by group_id; within a group sorted by urgency then due date.
-  const sortTasks = (arr: AdminTask[]) =>
-    [...arr].sort((a, b) => {
-      if (a.status === "done" !== (b.status === "done"))
-        return a.status === "done" ? 1 : -1;
-      if (URGENCY_RANK[a.urgency] !== URGENCY_RANK[b.urgency])
-        return URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency];
-      return (a.end_date ?? "9999").localeCompare(b.end_date ?? "9999");
-    });
-
-  const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id));
-  const byGroup = (gid: string) =>
-    sortTasks((tasks ?? []).filter((t) => t.group_id === gid));
+  // Manual order: the query already returns tasks by order_index, so just filter
+  // per list (drag-and-drop controls the order within each list).
+  const ungrouped = (tasks ?? []).filter((t) => !t.group_id);
+  const byGroup = (gid: string) => (tasks ?? []).filter((t) => t.group_id === gid);
 
   const stats = {
     total: tasks?.length ?? 0,
@@ -211,6 +220,94 @@ export default function TaskBoard() {
     });
   }
 
+  // Persist a list's new order (drag-and-drop). order_index is per-list.
+  async function reorderList(reordered: AdminTask[]) {
+    const ids = new Set(reordered.map((t) => t.id));
+    const queue = reordered.map((t, i) => ({ ...t, order_index: i }));
+    qc.setQueryData<AdminTask[]>(["task-board-tasks"], (prev) => {
+      if (!prev) return prev;
+      let k = 0;
+      return prev.map((t) => (ids.has(t.id) ? queue[k++] : t));
+    });
+    await Promise.all(
+      reordered.map((t, i) =>
+        supabase.from("admin_tasks").update({ order_index: i }).eq("id", t.id)
+      )
+    );
+  }
+
+  function bulkDelete() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setConfirm({
+      title: "מחיקת משימות",
+      description: `למחוק ${ids.length} משימות שנבחרו?`,
+      onConfirm: async () => {
+        const { error } = await supabase.from("admin_tasks").delete().in("id", ids);
+        if (error) return toastError("המחיקה נכשלה.");
+        setSelected(new Set());
+        refresh();
+      },
+    });
+  }
+
+  // Tie a group to a project: every task in it inherits the project + its client.
+  async function setGroupProject(group: AdminTaskGroup, projectId: string) {
+    const project = projects?.find((p) => p.id === projectId);
+    const clientId = project?.client_id ?? null;
+    qc.setQueryData<AdminTaskGroup[]>(["task-board-groups"], (prev) =>
+      (prev ?? []).map((g) =>
+        g.id === group.id ? { ...g, project_id: projectId || null } : g
+      )
+    );
+    qc.setQueryData<AdminTask[]>(["task-board-tasks"], (prev) =>
+      (prev ?? []).map((t) =>
+        t.group_id === group.id
+          ? { ...t, project_id: projectId || null, client_id: clientId }
+          : t
+      )
+    );
+    const [gRes, tRes] = await Promise.all([
+      supabase
+        .from("admin_task_groups")
+        .update({ project_id: projectId || null })
+        .eq("id", group.id),
+      supabase
+        .from("admin_tasks")
+        .update({ project_id: projectId || null, client_id: clientId })
+        .eq("group_id", group.id),
+    ]);
+    if (gRes.error || tRes.error) {
+      toastError("שיוך הפרויקט לקבוצה נכשל.");
+      refresh();
+    }
+  }
+
+  function exportCsv() {
+    const list = tasks ?? [];
+    if (!list.length) return toastError("אין משימות לייצוא.");
+    const groupTitleById = new Map((groups ?? []).map((g) => [g.id, g.title]));
+    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום"];
+    const rows = list.map((t) => [
+      t.title,
+      URGENCY[t.urgency].label,
+      STATUS[t.status],
+      t.project_id ? projectName.get(t.project_id) ?? "" : "",
+      t.client_id ? clientName.get(t.client_id) ?? "" : "",
+      t.group_id ? groupTitleById.get(t.group_id) ?? "" : "",
+      t.start_date ?? "",
+      t.end_date ?? "",
+    ]);
+    const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -252,6 +349,9 @@ export default function TaskBoard() {
               className="hidden"
               onChange={onFile}
             />
+            <Button variant="ghost" size="sm" onClick={exportCsv}>
+              <Download className="size-4" /> ייצוא CSV
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
               <Upload className="size-4" /> ייבוא CSV
             </Button>
@@ -277,6 +377,20 @@ export default function TaskBoard() {
         <StatPill label="פתוחות" value={stats.open} tone="cyan" />
         <StatPill label="באיחור" value={stats.overdue} tone="destructive" />
       </div>
+
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm">
+          <span className="text-foreground">{selected.size} משימות נבחרו</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              ביטול בחירה
+            </Button>
+            <Button size="sm" variant="destructive" onClick={bulkDelete}>
+              <Trash2 className="size-4" /> מחק נבחרות
+            </Button>
+          </div>
+        </div>
+      )}
 
       {groupOpen && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-background/30 p-3">
@@ -308,22 +422,20 @@ export default function TaskBoard() {
       ) : (
         <div className="space-y-4">
           {ungrouped.length > 0 && (
-            <div className="space-y-2">
-              {ungrouped.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  projectName={t.project_id ? projectName.get(t.project_id) : undefined}
-                  clientName={t.client_id ? clientName.get(t.client_id) : undefined}
-                  onStatus={(s) => setStatus(t, s)}
-                  onEdit={() => {
-                    setEditTask(t);
-                    setFormOpen(true);
-                  }}
-                  onDelete={() => removeTask(t)}
-                />
-              ))}
-            </div>
+            <TaskList
+              tasks={ungrouped}
+              projectName={projectName}
+              clientName={clientName}
+              selected={selected}
+              onToggleSelect={toggleSelect}
+              onReorder={reorderList}
+              onStatus={setStatus}
+              onEdit={(t) => {
+                setEditTask(t);
+                setFormOpen(true);
+              }}
+              onDelete={removeTask}
+            />
           )}
 
           {(groups ?? []).map((g) => {
@@ -351,41 +463,54 @@ export default function TaskBoard() {
                         {doneCount}/{list.length}
                       </Badge>
                     </CollapsibleTrigger>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-destructive"
-                      aria-label="מחיקת קבוצה"
-                      onClick={() => removeGroup(g.id, g.title)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="w-40">
+                        <SelectMenu
+                          ariaLabel="שיוך הקבוצה לפרויקט"
+                          placeholder="שייך לפרויקט…"
+                          value={g.project_id ?? ""}
+                          onChange={(v) => setGroupProject(g, v)}
+                          options={[
+                            { value: "", label: "ללא פרויקט" },
+                            ...(projects ?? []).map((p) => ({
+                              value: p.id,
+                              label: p.business_name || p.title,
+                            })),
+                          ]}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive"
+                        aria-label="מחיקת קבוצה"
+                        onClick={() => removeGroup(g.id, g.title)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                   <CollapsibleContent>
-                    <div className="space-y-2 px-3 pb-3">
+                    <div className="px-3 pb-3">
                       {list.length === 0 ? (
                         <p className="px-1 pb-1 text-sm text-muted-foreground">
                           אין משימות בקבוצה הזו.
                         </p>
                       ) : (
-                        list.map((t) => (
-                          <TaskRow
-                            key={t.id}
-                            task={t}
-                            projectName={
-                              t.project_id ? projectName.get(t.project_id) : undefined
-                            }
-                            clientName={
-                              t.client_id ? clientName.get(t.client_id) : undefined
-                            }
-                            onStatus={(s) => setStatus(t, s)}
-                            onEdit={() => {
-                              setEditTask(t);
-                              setFormOpen(true);
-                            }}
-                            onDelete={() => removeTask(t)}
-                          />
-                        ))
+                        <TaskList
+                          tasks={list}
+                          projectName={projectName}
+                          clientName={clientName}
+                          selected={selected}
+                          onToggleSelect={toggleSelect}
+                          onReorder={reorderList}
+                          onStatus={setStatus}
+                          onEdit={(t) => {
+                            setEditTask(t);
+                            setFormOpen(true);
+                          }}
+                          onDelete={removeTask}
+                        />
                       )}
                     </div>
                   </CollapsibleContent>
@@ -444,10 +569,67 @@ function StatPill({
   );
 }
 
+function TaskList({
+  tasks,
+  projectName,
+  clientName,
+  selected,
+  onToggleSelect,
+  onReorder,
+  onStatus,
+  onEdit,
+  onDelete,
+}: {
+  tasks: AdminTask[];
+  projectName: Map<string, string>;
+  clientName: Map<string, string>;
+  selected: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onReorder: (reordered: AdminTask[]) => void;
+  onStatus: (task: AdminTask, s: AdminTaskStatus) => void;
+  onEdit: (task: AdminTask) => void;
+  onDelete: (task: AdminTask) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldI = tasks.findIndex((t) => t.id === active.id);
+    const newI = tasks.findIndex((t) => t.id === over.id);
+    if (oldI < 0 || newI < 0) return;
+    onReorder(arrayMove(tasks, oldI, newI));
+  }
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-2">
+          {tasks.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              projectName={t.project_id ? projectName.get(t.project_id) : undefined}
+              clientName={t.client_id ? clientName.get(t.client_id) : undefined}
+              selected={selected.has(t.id)}
+              onToggleSelect={() => onToggleSelect(t.id)}
+              onStatus={(s) => onStatus(t, s)}
+              onEdit={() => onEdit(t)}
+              onDelete={() => onDelete(t)}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 function TaskRow({
   task,
   projectName,
   clientName,
+  selected,
+  onToggleSelect,
   onStatus,
   onEdit,
   onDelete,
@@ -455,10 +637,15 @@ function TaskRow({
   task: AdminTask;
   projectName?: string;
   clientName?: string;
+  selected: boolean;
+  onToggleSelect: () => void;
   onStatus: (s: AdminTaskStatus) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
   const done = task.status === "done";
   const overdue = isOverdue(task);
 
@@ -469,20 +656,47 @@ function TaskRow({
   else if (task.start_date) dates = `מ-${fmtDate(task.start_date)}`;
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-field px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <Badge variant={URGENCY[task.urgency].variant}>{URGENCY[task.urgency].label}</Badge>
-          <span
-            className={cn(
-              "truncate font-medium",
-              done ? "text-muted-foreground line-through" : "text-foreground"
-            )}
-          >
-            {task.title}
-          </span>
-        </div>
-        {(projectName || clientName || dates) && (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5",
+        isDragging && "relative z-10 opacity-70 shadow-lift",
+        selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border"
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          type="button"
+          aria-label="גרירה לסידור"
+          className="shrink-0 cursor-grab touch-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          aria-label="בחירת משימה"
+          className="size-4 shrink-0 accent-[var(--primary)]"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Badge variant={URGENCY[task.urgency].variant}>
+              {URGENCY[task.urgency].label}
+            </Badge>
+            <span
+              className={cn(
+                "truncate font-medium",
+                done ? "text-muted-foreground line-through" : "text-foreground"
+              )}
+            >
+              {task.title}
+            </span>
+          </div>
+          {(projectName || clientName || dates) && (
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {projectName && (
               <span className="inline-flex items-center gap-1">
@@ -510,6 +724,7 @@ function TaskRow({
             )}
           </div>
         )}
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <SelectMenu
@@ -547,7 +762,7 @@ function TaskFormSheet({
   onOpenChange: (o: boolean) => void;
   task: AdminTask | null;
   projects: { id: string; title: string; business_name: string | null; client_id: string }[];
-  groups: { id: string; title: string }[];
+  groups: { id: string; title: string; project_id: string | null }[];
   onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
@@ -599,9 +814,12 @@ function TaskFormSheet({
     };
 
     setSaving(true);
+    // New tasks append to the end of their list (large order_index).
     const { error } = task
       ? await supabase.from("admin_tasks").update(payload).eq("id", task.id)
-      : await supabase.from("admin_tasks").insert(payload);
+      : await supabase
+          .from("admin_tasks")
+          .insert({ ...payload, order_index: Math.floor(Date.now() / 1000) });
     setSaving(false);
     if (error) return toastError("שמירת המשימה נכשלה.");
     toast({ title: task ? "המשימה עודכנה" : "המשימה נוספה", variant: "success" });
@@ -650,7 +868,19 @@ function TaskFormSheet({
                 variant="field"
                 ariaLabel="קבוצה"
                 value={draft.group_id}
-                onChange={(v) => setDraft((d) => ({ ...d, group_id: v }))}
+                onChange={(v) =>
+                  setDraft((d) => {
+                    // Picking a group that's tied to a project pre-fills the
+                    // project (unless one was already chosen).
+                    const g = groups.find((x) => x.id === v);
+                    return {
+                      ...d,
+                      group_id: v,
+                      project_id:
+                        !d.project_id && g?.project_id ? g.project_id : d.project_id,
+                    };
+                  })
+                }
                 options={groupOptions}
               />
             </div>
@@ -704,7 +934,12 @@ function TaskFormSheet({
   );
 }
 
-/* ------------------------------- CSV import -------------------------------- */
+/* ---------------------------- CSV import / export -------------------------- */
+
+/** Quote a CSV cell when it contains a comma, quote or newline. */
+function csvCell(v: string): string {
+  return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
 
 /** Minimal RFC-4180-ish CSV parser (handles quoted fields + escaped quotes). */
 function parseCsv(text: string): string[][] {
