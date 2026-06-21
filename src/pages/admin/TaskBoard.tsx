@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   CalendarClock,
   Check,
@@ -33,10 +34,11 @@ import {
   type AnimateLayoutChanges,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
-// Always animate the layout change on drop, so the item glides into its new
-// slot instead of snapping (the "jump"). Lets dnd-kit own the transform — a
-// GSAP tween here would fight it and make things worse.
+// Drops are animated by dnd-kit (smooth, no jump). Framer Motion's `layout`
+// animates the OTHER reorders — a completed task sliding to the bottom — but is
+// switched off mid-drag so the two never fight over the same row.
 const animateLayoutChanges: AnimateLayoutChanges = (args) =>
   defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -649,6 +651,7 @@ function TaskList({
   onEdit: (task: AdminTask) => void;
   onDelete: (task: AdminTask) => void;
 }) {
+  const reduced = usePrefersReducedMotion();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
@@ -657,8 +660,14 @@ function TaskList({
   const [items, setItems] = useState(tasks);
   useEffect(() => setItems(tasks), [tasks]);
 
+  // Framer `layout` is off during a drag (dnd-kit owns it) and on otherwise, so
+  // a completed task animates to the bottom without disturbing the drag.
+  const [dragging, setDragging] = useState(false);
+
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
+    // Keep Framer off through dnd-kit's drop settle, then re-enable next frame.
+    requestAnimationFrame(() => setDragging(false));
     if (!over || active.id === over.id) return;
     const oldI = items.findIndex((t) => t.id === active.id);
     const newI = items.findIndex((t) => t.id === over.id);
@@ -668,25 +677,44 @@ function TaskList({
     onReorder(reordered); // persist + reconcile the cache
   }
 
+  const renderRow = (t: AdminTask) => (
+    <SortableTaskRow
+      task={t}
+      projectName={t.project_id ? projectName.get(t.project_id) : undefined}
+      clientName={t.client_id ? clientName.get(t.client_id) : undefined}
+      selected={selected.has(t.id)}
+      highlight={t.id === highlightId}
+      onToggleSelect={() => onToggleSelect(t.id)}
+      onToggleInformed={(v) => onToggleInformed(t, v)}
+      onStatus={(s) => onStatus(t, s)}
+      onEdit={() => onEdit(t)}
+      onDelete={() => onDelete(t)}
+    />
+  );
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setDragging(false)}
+    >
       <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
-          {items.map((t) => (
-            <SortableTaskRow
-              key={t.id}
-              task={t}
-              projectName={t.project_id ? projectName.get(t.project_id) : undefined}
-              clientName={t.client_id ? clientName.get(t.client_id) : undefined}
-              selected={selected.has(t.id)}
-              highlight={t.id === highlightId}
-              onToggleSelect={() => onToggleSelect(t.id)}
-              onToggleInformed={(v) => onToggleInformed(t, v)}
-              onStatus={(s) => onStatus(t, s)}
-              onEdit={() => onEdit(t)}
-              onDelete={() => onDelete(t)}
-            />
-          ))}
+          {items.map((t) =>
+            reduced ? (
+              <div key={t.id}>{renderRow(t)}</div>
+            ) : (
+              <motion.div
+                key={t.id}
+                layout={!dragging}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {renderRow(t)}
+              </motion.div>
+            )
+          )}
         </div>
       </SortableContext>
     </DndContext>
