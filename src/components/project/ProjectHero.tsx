@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, ExternalLink, Figma, Globe, MousePointerClick, Pencil, Server } from "lucide-react";
+import { Building2, ExternalLink, Figma, Globe, MousePointerClick, Pencil, Server, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { projectStatusHe, projectStatusVariant } from "@/lib/status";
 import type { BrandColor, ClientBrand, Project } from "@/types/database";
 
 const links = [
+  { key: "meeting_url" as const, label: "קביעת פגישה", icon: Video },
   { key: "figma_url" as const, label: "עיצוב Figma", icon: Figma },
   { key: "figma_prototype_url" as const, label: "אבטיפוס", icon: MousePointerClick },
   { key: "staging_url" as const, label: "סביבת Staging", icon: Server },
@@ -42,6 +43,7 @@ export function ProjectHero({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
+    meeting_url: project.meeting_url ?? "",
     figma_url: project.figma_url ?? "",
     figma_prototype_url: project.figma_prototype_url ?? "",
     staging_url: project.staging_url ?? "",
@@ -53,6 +55,7 @@ export function ProjectHero({
     const { error } = await supabase
       .from("projects")
       .update({
+        meeting_url: draft.meeting_url || null,
         figma_url: draft.figma_url || null,
         figma_prototype_url: draft.figma_prototype_url || null,
         staging_url: draft.staging_url || null,

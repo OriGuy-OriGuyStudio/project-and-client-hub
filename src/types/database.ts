@@ -215,6 +215,7 @@ export type Project = {
   status: ProjectStatus;
   figma_url: string | null;
   figma_prototype_url: string | null;
+  meeting_url: string | null;
   staging_url: string | null;
   live_url: string | null;
   warranty_start_date: string | null;
