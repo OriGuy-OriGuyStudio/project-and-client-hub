@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { CreditCard, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -26,6 +26,7 @@ export function PaymentsSection({
   const qc = useQueryClient();
   const { requestNotify } = useNotifyClient();
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ label: "", amount: "", due_date: "", payment_link: "" });
 
   const { data: payments, isLoading } = useQuery({
@@ -44,20 +45,55 @@ export function PaymentsSection({
   const refresh = () => qc.invalidateQueries({ queryKey: ["payments", projectId] });
   const nextPending = payments?.find((p) => p.status === "pending");
 
-  async function addPayment() {
+  function resetForm() {
+    setForm({ label: "", amount: "", due_date: "", payment_link: "" });
+    setEditId(null);
+    setOpen(false);
+  }
+
+  function startEdit(p: Payment) {
+    setForm({
+      label: p.label,
+      amount: p.amount != null ? String(p.amount) : "",
+      due_date: p.due_date ?? "",
+      payment_link: p.payment_link ?? "",
+    });
+    setEditId(p.id);
+    setOpen(true);
+  }
+
+  // Open the panel for a brand-new payment (clearing any in-progress edit).
+  function toggleAdd() {
+    if (open) return resetForm();
+    setForm({ label: "", amount: "", due_date: "", payment_link: "" });
+    setEditId(null);
+    setOpen(true);
+  }
+
+  async function savePayment() {
     const label = clampText(form.label.trim(), 160);
     if (!label) return toastError("תן שם לתשלום.");
-    const { error } = await supabase.from("payments").insert({
-      project_id: projectId,
+    const payload = {
       label,
       amount: form.amount ? Number(form.amount) : null,
       due_date: form.due_date || null,
       payment_link: clampText(form.payment_link.trim(), 500) || null,
-    });
+    };
+
+    if (editId) {
+      const { error } = await supabase.from("payments").update(payload).eq("id", editId);
+      if (error) return toastError("עדכון התשלום נכשל.");
+      resetForm();
+      refresh();
+      return;
+    }
+
+    const { error } = await supabase
+      .from("payments")
+      .insert({ project_id: projectId, ...payload });
     if (error) return toastError("הוספת התשלום נכשלה.");
     const amountText = form.amount ? ` · ₪${Number(form.amount).toLocaleString("he-IL")}` : "";
-    setForm({ label: "", amount: "", due_date: "", payment_link: "" });
-    setOpen(false);
+    resetForm();
     refresh();
     requestNotify({
       type: "payment",
@@ -90,7 +126,7 @@ export function PaymentsSection({
           <h2 className="font-heading text-lg font-semibold text-foreground">תשלומים</h2>
         </div>
         {isAdmin && (
-          <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
+          <Button size="sm" variant="ghost" onClick={toggleAdd}>
             <Plus className="size-4" /> תשלום
           </Button>
         )}
@@ -125,9 +161,12 @@ export function PaymentsSection({
             value={form.payment_link}
             onChange={(e) => setForm((f) => ({ ...f, payment_link: e.target.value }))}
           />
-          <div className="flex justify-end">
-            <Button size="sm" onClick={addPayment}>
-              הוספה
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={resetForm}>
+              ביטול
+            </Button>
+            <Button size="sm" onClick={savePayment}>
+              {editId ? "שמירה" : "הוספה"}
             </Button>
           </div>
         </div>
@@ -190,6 +229,14 @@ export function PaymentsSection({
                     <>
                       <Button size="sm" variant="ghost" onClick={() => togglePaid(p)}>
                         {p.status === "paid" ? "בטל" : "סמן שולם"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="עריכה"
+                        onClick={() => startEdit(p)}
+                      >
+                        <Pencil className="size-4" />
                       </Button>
                       <Button
                         variant="ghost"
