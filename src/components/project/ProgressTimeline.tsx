@@ -31,7 +31,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader } from "@/components/ui/loader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -128,7 +127,9 @@ export function ProgressTimeline({
 
   const total = stages?.length ?? 0;
   const doneCount = stages?.filter((s) => s.status === "done").length ?? 0;
-  const pct = total > 1 ? (doneCount / (total - 1)) * 100 : doneCount > 0 ? 100 : 0;
+  // Every stage counts — the project only hits 100% when the final phase
+  // (e.g. warranty & support) is done too, not when all-but-one are.
+  const pct = total > 0 ? (doneCount / total) * 100 : 0;
   const nextOrder = (stages?.reduce((m, s) => Math.max(m, s.order_index), -1) ?? -1) + 1;
 
   // Collapsed phases (by stage id).
@@ -371,7 +372,7 @@ function PhaseItem({
   const style = { transform: CSS.Transform.toString(transform), transition };
   const Icon = statusIcon[stage.status];
   const done = stage.status === "done";
-  const tasksDone = tasks.filter((t) => t.is_done).length;
+  const tasksDone = tasks.filter((t) => t.status === "done").length;
 
   return (
     <li
@@ -425,7 +426,7 @@ function PhaseItem({
               )}
             >
               {stage.status === "in_progress" ? (
-                <Loader size={16} />
+                <Loader2 className="size-4 animate-spin text-primary" />
               ) : (
                 <Icon className="size-4" />
               )}
@@ -524,19 +525,22 @@ function StageTasks({
     invalidate();
   }
 
-  async function toggle(task: StageTask) {
-    const willBeDone = !task.is_done;
-    // Would this toggle leave every sub-task in the phase checked?
+  async function setTaskStatus(task: StageTask, status: StageStatus) {
+    if (status === task.status) return;
+    // Would this leave every sub-task in the phase done?
     const allDone =
       tasks.length > 0 &&
-      tasks.every((x) => (x.id === task.id ? willBeDone : x.is_done));
-    // Optimistic: flip the checkbox immediately, reconcile after the round-trip.
+      tasks.every((x) => (x.id === task.id ? status === "done" : x.status === "done"));
+    // Optimistic: reflect the new status immediately, reconcile after the round-trip.
+    // (is_done mirrors status here too, though the DB trigger also keeps it in sync.)
     qc.setQueriesData<StageTask[]>({ queryKey: ["stage-tasks", projectId] }, (prev) =>
-      (prev ?? []).map((x) => (x.id === task.id ? { ...x, is_done: willBeDone } : x))
+      (prev ?? []).map((x) =>
+        x.id === task.id ? { ...x, status, is_done: status === "done" } : x
+      )
     );
     const { error } = await supabase
       .from("stage_tasks")
-      .update({ is_done: willBeDone })
+      .update({ status })
       .eq("id", task.id);
     if (error) {
       toastError("עדכון המשימה נכשל.");
@@ -561,27 +565,37 @@ function StageTasks({
         <ul className="space-y-1">
           {tasks.map((t) => (
             <li key={t.id} className="group flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={t.is_done}
-                disabled={!isAdmin}
-                onChange={() => toggle(t)}
-                className="size-4 accent-[var(--primary)]"
-              />
               <span
                 className={cn(
                   "flex-1",
-                  t.is_done ? "text-muted-foreground line-through" : "text-foreground"
+                  t.status === "done"
+                    ? "text-muted-foreground line-through"
+                    : "text-foreground"
                 )}
               >
                 {t.title}
               </span>
+              {isAdmin ? (
+                <SelectMenu
+                  ariaLabel="סטטוס המשימה"
+                  value={t.status}
+                  onChange={(v) => setTaskStatus(t, v as StageStatus)}
+                  options={STAGE_STATUSES.map((s) => ({
+                    value: s,
+                    label: stageStatusHe[s],
+                  }))}
+                />
+              ) : (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {stageStatusHe[t.status]}
+                </span>
+              )}
               {isAdmin && (
                 <button
                   type="button"
                   onClick={() => remove(t)}
                   aria-label="מחיקת משימה"
-                  className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                 >
                   <X className="size-3.5" />
                 </button>

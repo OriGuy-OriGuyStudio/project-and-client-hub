@@ -240,6 +240,7 @@ export type StageTask = {
   stage_id: string;
   title: string;
   is_done: boolean;
+  status: StageStatus;
   order_index: number;
   created_at: string;
 }
