@@ -89,10 +89,9 @@ export function AppShell() {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={location.pathname}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }}
+                    exit={{ opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
                   >
                     <Outlet />
                   </motion.div>
