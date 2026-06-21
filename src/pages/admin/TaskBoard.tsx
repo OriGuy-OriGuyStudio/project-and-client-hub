@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   PointerSensor,
   useSensor,
@@ -605,7 +606,11 @@ function TaskList({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
+
   function handleDragEnd(e: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const oldI = tasks.findIndex((t) => t.id === active.id);
@@ -613,16 +618,27 @@ function TaskList({
     if (oldI < 0 || newI < 0) return;
     onReorder(arrayMove(tasks, oldI, newI));
   }
+
+  const resolve = (t: AdminTask) => ({
+    projectName: t.project_id ? projectName.get(t.project_id) : undefined,
+    clientName: t.client_id ? clientName.get(t.client_id) : undefined,
+  });
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={(e) => setActiveId(String(e.active.id))}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {tasks.map((t) => (
-            <TaskRow
+            <SortableTaskRow
               key={t.id}
               task={t}
-              projectName={t.project_id ? projectName.get(t.project_id) : undefined}
-              clientName={t.client_id ? clientName.get(t.client_id) : undefined}
+              {...resolve(t)}
               selected={selected.has(t.id)}
               onToggleSelect={() => onToggleSelect(t.id)}
               onStatus={(s) => onStatus(t, s)}
@@ -632,11 +648,53 @@ function TaskList({
           ))}
         </div>
       </SortableContext>
+      {/* The dragged row rides on its own layer (no jump on release). */}
+      <DragOverlay dropAnimation={{ duration: 200, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }}>
+        {activeTask ? (
+          <TaskCard
+            task={activeTask}
+            {...resolve(activeTask)}
+            selected={selected.has(activeTask.id)}
+            overlay
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
 
-function TaskRow({
+type TaskCardProps = {
+  task: AdminTask;
+  projectName?: string;
+  clientName?: string;
+  selected: boolean;
+  onToggleSelect?: () => void;
+  onStatus?: (s: AdminTaskStatus) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+};
+
+/** Sortable wrapper: owns the dnd transform and feeds it to the visual card. */
+function SortableTaskRow(props: TaskCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: props.task.id, animateLayoutChanges });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+  return (
+    <TaskCard
+      {...props}
+      setNodeRef={setNodeRef}
+      style={style}
+      dragHandle={{ ...attributes, ...listeners }}
+      placeholder={isDragging}
+    />
+  );
+}
+
+/** Presentational row — used both in the list and inside the DragOverlay. */
+function TaskCard({
   task,
   projectName,
   clientName,
@@ -645,22 +703,18 @@ function TaskRow({
   onStatus,
   onEdit,
   onDelete,
-}: {
-  task: AdminTask;
-  projectName?: string;
-  clientName?: string;
-  selected: boolean;
-  onToggleSelect: () => void;
-  onStatus: (s: AdminTaskStatus) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  setNodeRef,
+  style,
+  dragHandle,
+  placeholder,
+  overlay,
+}: TaskCardProps & {
+  setNodeRef?: (el: HTMLElement | null) => void;
+  style?: React.CSSProperties;
+  dragHandle?: Record<string, unknown>;
+  placeholder?: boolean;
+  overlay?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id, animateLayoutChanges });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-  };
   const done = task.status === "done";
   const overdue = isOverdue(task);
 
@@ -676,14 +730,14 @@ function TaskRow({
       style={style}
       className={cn(
         "flex items-center justify-between gap-3 rounded-xl border bg-field px-3 py-2.5",
-        isDragging && "relative z-10 opacity-70 shadow-lift",
+        placeholder && "opacity-30",
+        overlay && "cursor-grabbing shadow-2xl",
         selected ? "border-primary/50 ring-1 ring-primary/30" : "border-border"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <button
-          {...attributes}
-          {...listeners}
+          {...((dragHandle ?? {}) as React.ButtonHTMLAttributes<HTMLButtonElement>)}
           type="button"
           aria-label="גרירה לסידור"
           className="shrink-0 cursor-grab touch-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
@@ -693,7 +747,7 @@ function TaskRow({
         <input
           type="checkbox"
           checked={selected}
-          onChange={onToggleSelect}
+          onChange={() => onToggleSelect?.()}
           aria-label="בחירת משימה"
           className="size-4 shrink-0 accent-[var(--primary)]"
         />
@@ -712,42 +766,42 @@ function TaskRow({
             </span>
           </div>
           {(projectName || clientName || dates) && (
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            {projectName && (
-              <span className="inline-flex items-center gap-1">
-                <FolderKanban className="size-3.5 text-brand-cyan-base" />
-                {projectName}
-              </span>
-            )}
-            {clientName && (
-              <span className="inline-flex items-center gap-1">
-                <User className="size-3.5" />
-                {clientName}
-              </span>
-            )}
-            {dates && (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
-                  overdue
-                    ? "border-destructive/40 font-semibold text-destructive"
-                    : "border-border text-foreground/80"
-                )}
-              >
-                <CalendarClock className="size-3.5" />
-                {dates}
-                {overdue ? " (באיחור)" : ""}
-              </span>
-            )}
-          </div>
-        )}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {projectName && (
+                <span className="inline-flex items-center gap-1">
+                  <FolderKanban className="size-3.5 text-brand-cyan-base" />
+                  {projectName}
+                </span>
+              )}
+              {clientName && (
+                <span className="inline-flex items-center gap-1">
+                  <User className="size-3.5" />
+                  {clientName}
+                </span>
+              )}
+              {dates && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
+                    overdue
+                      ? "border-destructive/40 font-semibold text-destructive"
+                      : "border-border text-foreground/80"
+                  )}
+                >
+                  <CalendarClock className="size-3.5" />
+                  {dates}
+                  {overdue ? " (באיחור)" : ""}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <SelectMenu
           ariaLabel="סטטוס"
           value={task.status}
-          onChange={(v) => onStatus(v as AdminTaskStatus)}
+          onChange={(v) => onStatus?.(v as AdminTaskStatus)}
           options={STATUS_OPTIONS}
         />
         <Button variant="ghost" size="icon" className="size-8" aria-label="עריכה" onClick={onEdit}>
