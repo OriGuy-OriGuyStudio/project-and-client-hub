@@ -1,12 +1,15 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  CalendarClock,
   ChevronDown,
+  FolderKanban,
   ListChecks,
   Pencil,
   Plus,
   Trash2,
   Upload,
+  User,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -195,10 +198,14 @@ export default function TaskBoard() {
   function removeGroup(id: string, title: string) {
     setConfirm({
       title: "מחיקת קבוצה",
-      description: `למחוק את הקבוצה "${title}"? המשימות יישארו, ללא קבוצה.`,
+      description: `למחוק את הקבוצה "${title}" ואת כל המשימות שבתוכה?`,
       onConfirm: async () => {
         const { error } = await supabase.from("admin_task_groups").delete().eq("id", id);
         if (error) return toastError("מחיקת הקבוצה נכשלה.");
+        // The group's tasks are removed too (DB cascade); reflect it.
+        qc.setQueryData<AdminTask[]>(["task-board-tasks"], (prev) =>
+          (prev ?? []).filter((t) => t.group_id !== id)
+        );
         refresh();
       },
     });
@@ -454,9 +461,6 @@ function TaskRow({
 }) {
   const done = task.status === "done";
   const overdue = isOverdue(task);
-  const meta: string[] = [];
-  if (projectName) meta.push(projectName);
-  if (clientName) meta.push(clientName);
 
   let dates = "";
   if (task.start_date && task.end_date)
@@ -478,17 +482,33 @@ function TaskRow({
             {task.title}
           </span>
         </div>
-        {(meta.length > 0 || dates) && (
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {meta.join(" · ")}
-            {meta.length > 0 && dates ? " · " : ""}
+        {(projectName || clientName || dates) && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {projectName && (
+              <span className="inline-flex items-center gap-1">
+                <FolderKanban className="size-3.5 text-brand-cyan-base" />
+                {projectName}
+              </span>
+            )}
+            {clientName && (
+              <span className="inline-flex items-center gap-1">
+                <User className="size-3.5" />
+                {clientName}
+              </span>
+            )}
             {dates && (
-              <span className={cn(overdue && "font-semibold text-destructive")}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1",
+                  overdue && "font-semibold text-destructive"
+                )}
+              >
+                <CalendarClock className="size-3.5" />
                 {dates}
                 {overdue ? " (באיחור)" : ""}
               </span>
             )}
-          </p>
+          </div>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
