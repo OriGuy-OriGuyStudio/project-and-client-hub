@@ -556,6 +556,7 @@ export type AdminTask = {
   status: AdminTaskStatus;
   project_id: string | null;
   client_id: string | null;
+  partner_id: string | null;
   group_id: string | null;
   start_date: string | null;
   end_date: string | null;

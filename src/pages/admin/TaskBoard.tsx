@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+  ArrowDownUp,
   CalendarClock,
   Check,
   ChevronDown,
   Download,
   FolderKanban,
   GripVertical,
+  Handshake,
   ListChecks,
   Megaphone,
   Pencil,
@@ -72,6 +75,7 @@ import { cn } from "@/lib/utils";
 import { useTaskBoardGroups, useTaskBoardTasks } from "@/hooks/useTaskBoard";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
+import { usePartners } from "@/hooks/usePartners";
 import type {
   AdminTask,
   AdminTaskGroup,
@@ -105,6 +109,22 @@ const STATUS_OPTIONS = (Object.keys(STATUS) as AdminTaskStatus[]).map((s) => ({
   label: STATUS[s],
 }));
 
+const URGENCY_RANK: Record<TaskUrgency, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+type SortBy = "manual" | "urgency" | "start" | "client" | "project";
+const SORT_OPTIONS = [
+  { value: "manual", label: "ידני (גרירה)" },
+  { value: "urgency", label: "דחיפות" },
+  { value: "start", label: "תאריך התחלה" },
+  { value: "client", label: "לקוח" },
+  { value: "project", label: "פרויקט" },
+];
+
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("he-IL", {
     day: "2-digit",
@@ -127,7 +147,9 @@ export default function TaskBoard() {
   const { data: tasks, isLoading: tLoading } = useTaskBoardTasks();
   const { data: projects } = useProjects();
   const { data: clients } = useClients();
+  const { data: partners } = usePartners();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("manual");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTask, setEditTask] = useState<AdminTask | null>(null);
@@ -160,21 +182,43 @@ export default function TaskBoard() {
     (clients?.active ?? []).forEach((c) => m.set(c.id, c.full_name || c.email));
     return m;
   }, [clients]);
+  const partnerName = useMemo(() => {
+    const m = new Map<string, string>();
+    (partners?.active ?? []).forEach((p) => m.set(p.id, p.full_name || p.email));
+    return m;
+  }, [partners]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["task-board-tasks"] });
     qc.invalidateQueries({ queryKey: ["task-board-groups"] });
   };
 
-  // Drag controls the order (order_index); the only automatic reordering is that
-  // DONE tasks sink to the bottom (a date change never moves a task).
+  // Done tasks always sink to the bottom; within that, order by the chosen sort
+  // (default "manual" = the drag order). Empty client/project sort last.
+  const cname = (t: AdminTask) =>
+    t.client_id ? clientName.get(t.client_id) || "￿" : "￿";
+  const pname = (t: AdminTask) =>
+    t.project_id ? projectName.get(t.project_id) || "￿" : "￿";
   const sortTasks = (arr: AdminTask[]) =>
-    [...arr].sort(
-      (a, b) =>
-        (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) ||
-        a.order_index - b.order_index ||
-        a.created_at.localeCompare(b.created_at)
-    );
+    [...arr].sort((a, b) => {
+      const doneDiff = (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0);
+      if (doneDiff) return doneDiff;
+      const tie = a.order_index - b.order_index || a.created_at.localeCompare(b.created_at);
+      switch (sortBy) {
+        case "urgency":
+          return URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] || tie;
+        case "start":
+          return (
+            (a.start_date ?? "9999-99-99").localeCompare(b.start_date ?? "9999-99-99") || tie
+          );
+        case "client":
+          return cname(a).localeCompare(cname(b), "he") || tie;
+        case "project":
+          return pname(a).localeCompare(pname(b), "he") || tie;
+        default:
+          return tie;
+      }
+    });
   const ungrouped = sortTasks((tasks ?? []).filter((t) => !t.group_id));
   const byGroup = (gid: string) => sortTasks((tasks ?? []).filter((t) => t.group_id === gid));
 
@@ -337,13 +381,14 @@ export default function TaskBoard() {
     const list = tasks ?? [];
     if (!list.length) return toastError("אין משימות לייצוא.");
     const groupTitleById = new Map((groups ?? []).map((g) => [g.id, g.title]));
-    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "קבוצה", "התחלה", "סיום", "הערה", "ליידע לקוח", "הוסבר ללקוח"];
+    const header = ["שם המשימה", "דחיפות", "סטטוס", "פרוייקט", "לקוח", "שותף", "קבוצה", "התחלה", "סיום", "הערה", "ליידע לקוח", "הוסבר ללקוח"];
     const rows = list.map((t) => [
       t.title,
       URGENCY[t.urgency].label,
       STATUS[t.status],
       t.project_id ? projectName.get(t.project_id) ?? "" : "",
       t.client_id ? clientName.get(t.client_id) ?? "" : "",
+      t.partner_id ? partnerName.get(t.partner_id) ?? "" : "",
       t.group_id ? groupTitleById.get(t.group_id) ?? "" : "",
       t.start_date ?? "",
       t.end_date ?? "",
@@ -369,6 +414,10 @@ export default function TaskBoard() {
       const text = await file.text();
       const result = await importCsv(text, {
         projects: projects ?? [],
+        partners: (partners?.active ?? []).map((p) => ({
+          id: p.id,
+          name: p.full_name || p.email,
+        })),
         groups: groups ?? [],
       });
       refresh();
@@ -402,6 +451,17 @@ export default function TaskBoard() {
               className="hidden"
               onChange={onFile}
             />
+            <div className="flex items-center gap-1.5">
+              <ArrowDownUp className="size-4 text-muted-foreground" />
+              <div className="w-36">
+                <SelectMenu
+                  ariaLabel="מיון"
+                  value={sortBy}
+                  onChange={(v) => setSortBy(v as SortBy)}
+                  options={SORT_OPTIONS}
+                />
+              </div>
+            </div>
             <Button variant="ghost" size="sm" onClick={exportCsv}>
               <Download className="size-4" /> ייצוא CSV
             </Button>
@@ -479,6 +539,8 @@ export default function TaskBoard() {
               tasks={ungrouped}
               projectName={projectName}
               clientName={clientName}
+              partnerName={partnerName}
+              dragDisabled={sortBy !== "manual"}
               selected={selected}
               highlightId={highlightId}
               onToggleSelect={toggleSelect}
@@ -556,6 +618,8 @@ export default function TaskBoard() {
                           tasks={list}
                           projectName={projectName}
                           clientName={clientName}
+                          partnerName={partnerName}
+                          dragDisabled={sortBy !== "manual"}
                           selected={selected}
                           highlightId={highlightId}
                           onToggleSelect={toggleSelect}
@@ -583,6 +647,10 @@ export default function TaskBoard() {
         onOpenChange={setFormOpen}
         task={editTask}
         projects={projects ?? []}
+        partners={(partners?.active ?? []).map((p) => ({
+          id: p.id,
+          name: p.full_name || p.email,
+        }))}
         groups={groups ?? []}
         onSaved={refresh}
       />
@@ -630,6 +698,8 @@ function TaskList({
   tasks,
   projectName,
   clientName,
+  partnerName,
+  dragDisabled,
   selected,
   highlightId,
   onToggleSelect,
@@ -642,6 +712,8 @@ function TaskList({
   tasks: AdminTask[];
   projectName: Map<string, string>;
   clientName: Map<string, string>;
+  partnerName: Map<string, string>;
+  dragDisabled: boolean;
   selected: Set<string>;
   highlightId: string | null;
   onToggleSelect: (id: string) => void;
@@ -682,6 +754,8 @@ function TaskList({
       task={t}
       projectName={t.project_id ? projectName.get(t.project_id) : undefined}
       clientName={t.client_id ? clientName.get(t.client_id) : undefined}
+      partnerName={t.partner_id ? partnerName.get(t.partner_id) : undefined}
+      dragDisabled={dragDisabled}
       selected={selected.has(t.id)}
       highlight={t.id === highlightId}
       onToggleSelect={() => onToggleSelect(t.id)}
@@ -725,6 +799,8 @@ type TaskCardProps = {
   task: AdminTask;
   projectName?: string;
   clientName?: string;
+  partnerName?: string;
+  dragDisabled?: boolean;
   selected: boolean;
   highlight?: boolean;
   onToggleSelect?: () => void;
@@ -737,7 +813,11 @@ type TaskCardProps = {
 /** Sortable wrapper: owns the dnd transform and feeds it to the visual card. */
 function SortableTaskRow(props: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: props.task.id, animateLayoutChanges });
+    useSortable({
+      id: props.task.id,
+      animateLayoutChanges,
+      disabled: props.dragDisabled,
+    });
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
     <TaskCard
@@ -755,6 +835,8 @@ function TaskCard({
   task,
   projectName,
   clientName,
+  partnerName,
+  dragDisabled,
   selected,
   highlight,
   onToggleSelect,
@@ -802,14 +884,16 @@ function TaskCard({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <button
-          {...((dragHandle ?? {}) as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-          type="button"
-          aria-label="גרירה לסידור"
-          className="shrink-0 cursor-grab touch-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {!dragDisabled && (
+          <button
+            {...((dragHandle ?? {}) as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+            type="button"
+            aria-label="גרירה לסידור"
+            className="shrink-0 cursor-grab touch-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
         <input
           type="checkbox"
           checked={selected}
@@ -831,19 +915,34 @@ function TaskCard({
               {task.title}
             </span>
           </div>
-          {(projectName || clientName || dates) && (
+          {(projectName || clientName || partnerName || dates) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {projectName && (
-                <span className="inline-flex items-center gap-1">
+              {projectName && task.project_id && (
+                <Link
+                  to={`/projects/${task.project_id}`}
+                  className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                >
                   <FolderKanban className="size-3.5 text-brand-cyan-base" />
                   {projectName}
-                </span>
+                </Link>
               )}
-              {clientName && (
-                <span className="inline-flex items-center gap-1">
+              {clientName && task.client_id && (
+                <Link
+                  to={`/admin/clients/${task.client_id}`}
+                  className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                >
                   <User className="size-3.5" />
                   {clientName}
-                </span>
+                </Link>
+              )}
+              {partnerName && task.partner_id && (
+                <Link
+                  to={`/admin/partners/${task.partner_id}`}
+                  className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                >
+                  <Handshake className="size-3.5 text-brand-cyan-base" />
+                  {partnerName}
+                </Link>
               )}
               {dates && (
                 <span
@@ -925,6 +1024,7 @@ function TaskFormSheet({
   onOpenChange,
   task,
   projects,
+  partners,
   groups,
   onSaved,
 }: {
@@ -932,6 +1032,7 @@ function TaskFormSheet({
   onOpenChange: (o: boolean) => void;
   task: AdminTask | null;
   projects: { id: string; title: string; business_name: string | null; client_id: string }[];
+  partners: { id: string; name: string }[];
   groups: { id: string; title: string; project_id: string | null }[];
   onSaved: () => void;
 }) {
@@ -941,6 +1042,7 @@ function TaskFormSheet({
     title: "",
     urgency: "medium" as TaskUrgency,
     project_id: "",
+    partner_id: "",
     group_id: "",
     start_date: "",
     end_date: "",
@@ -957,6 +1059,7 @@ function TaskFormSheet({
       title: task?.title ?? "",
       urgency: task?.urgency ?? "medium",
       project_id: task?.project_id ?? "",
+      partner_id: task?.partner_id ?? "",
       group_id: task?.group_id ?? "",
       start_date: task?.start_date ?? "",
       end_date: task?.end_date ?? "",
@@ -969,6 +1072,10 @@ function TaskFormSheet({
   const projectOptions = [
     { value: "", label: "ללא פרויקט" },
     ...projects.map((p) => ({ value: p.id, label: p.business_name || p.title })),
+  ];
+  const partnerOptions = [
+    { value: "", label: "ללא שותף" },
+    ...partners.map((p) => ({ value: p.id, label: p.name })),
   ];
   const groupOptions = [
     { value: "", label: "ללא קבוצה" },
@@ -984,6 +1091,7 @@ function TaskFormSheet({
       urgency: draft.urgency,
       project_id: draft.project_id || null,
       client_id: project?.client_id ?? null,
+      partner_id: draft.partner_id || null,
       group_id: draft.group_id || null,
       start_date: draft.start_date || null,
       end_date: draft.end_date || null,
@@ -1076,6 +1184,19 @@ function TaskFormSheet({
               value={draft.project_id}
               onChange={(v) => setDraft((d) => ({ ...d, project_id: v }))}
               options={projectOptions}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="t-partner">שותף משויך</Label>
+            <SelectMenu
+              id="t-partner"
+              variant="field"
+              ariaLabel="שותף"
+              placeholder="בחר שותף…"
+              value={draft.partner_id}
+              onChange={(v) => setDraft((d) => ({ ...d, partner_id: v }))}
+              options={partnerOptions}
             />
           </div>
 
@@ -1208,6 +1329,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   start: ["תאריך התחלה", "התחלה", "start", "start_date"],
   end: ["תאריך סיום", "סיום", "דדליין", "end", "end_date", "due"],
   group: ["קבוצה", "סבב", "group"],
+  partner: ["שותף", "שת\"פ", "partner"],
   note: ["הערה", "הערות", "note", "comment"],
   note_for_client: ["ליידע לקוח", "הערה ללקוח", "note_for_client"],
   client_informed: ["הוסבר ללקוח", "הוסבר", "client_informed"],
@@ -1258,6 +1380,7 @@ function parseDate(s: string): string | null {
 
 interface ImportCtx {
   projects: { id: string; title: string; business_name: string | null; client_id: string }[];
+  partners: { id: string; name: string }[];
   groups: { id: string; title: string }[];
 }
 
@@ -1286,12 +1409,18 @@ async function importCsv(
         p.title.trim().toLowerCase() === n
     );
   };
+  const findPartner = (name: string) => {
+    const n = name.trim().toLowerCase();
+    if (!n) return undefined;
+    return ctx.partners.find((p) => p.name.trim().toLowerCase() === n);
+  };
 
   type NewTask = {
     title: string;
     urgency: TaskUrgency;
     project_id: string | null;
     client_id: string | null;
+    partner_id: string | null;
     start_date: string | null;
     end_date: string | null;
     note: string | null;
@@ -1316,6 +1445,7 @@ async function importCsv(
     };
     const urgency = URGENCY_FROM_HE[get("urgency").toLowerCase()] ?? "medium";
     const project = findProject(get("project"));
+    const partner = findPartner(get("partner"));
     const groupRaw = get("group");
     const groupKey = groupRaw ? groupRaw.trim().toLowerCase() : null;
     if (groupKey && !groupId.has(groupKey)) neededGroups.add(groupRaw.trim());
@@ -1324,6 +1454,7 @@ async function importCsv(
       urgency,
       project_id: project?.id ?? null,
       client_id: project?.client_id ?? null,
+      partner_id: partner?.id ?? null,
       start_date: parseDate(get("start")),
       end_date: parseDate(get("end")),
       note: clampText(get("note"), 2000) || null,
@@ -1352,6 +1483,7 @@ async function importCsv(
     urgency: t.urgency,
     project_id: t.project_id,
     client_id: t.client_id,
+    partner_id: t.partner_id,
     start_date: t.start_date,
     end_date: t.end_date,
     note: t.note,
