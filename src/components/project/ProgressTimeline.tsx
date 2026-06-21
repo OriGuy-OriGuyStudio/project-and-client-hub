@@ -202,12 +202,18 @@ export function ProgressTimeline({
 
   async function setStatus(stage: ProjectStage, status: StageStatus) {
     if (status === stage.status) return;
+    // Optimistic: reflect the new status instantly (icon, progress bar, badge)
+    // so the change is visible the moment it's picked, not after the round-trip.
+    qc.setQueryData<ProjectStage[]>(["stages", projectId], (prev) =>
+      (prev ?? []).map((s) => (s.id === stage.id ? { ...s, status } : s))
+    );
     const { error } = await supabase
       .from("project_stages")
       .update({ status })
       .eq("id", stage.id);
     if (error) {
       toastError("עדכון השלב נכשל.");
+      qc.invalidateQueries({ queryKey: ["stages", projectId] }); // roll back to server truth
       return;
     }
     if (status === "done") {
@@ -508,11 +514,19 @@ function StageTasks({
   }
 
   async function toggle(task: StageTask) {
+    // Optimistic: flip the checkbox immediately, reconcile after the round-trip.
+    qc.setQueriesData<StageTask[]>({ queryKey: ["stage-tasks", projectId] }, (prev) =>
+      (prev ?? []).map((x) => (x.id === task.id ? { ...x, is_done: !x.is_done } : x))
+    );
     const { error } = await supabase
       .from("stage_tasks")
       .update({ is_done: !task.is_done })
       .eq("id", task.id);
-    if (error) return toastError("עדכון המשימה נכשל.");
+    if (error) {
+      toastError("עדכון המשימה נכשל.");
+      invalidate(); // roll back to server truth
+      return;
+    }
     invalidate();
   }
 
