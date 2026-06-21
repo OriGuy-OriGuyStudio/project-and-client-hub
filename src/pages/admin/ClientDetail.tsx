@@ -7,6 +7,7 @@ import {
   Coins,
   FolderKanban,
   Gift,
+  Globe,
   Handshake,
   Mail,
   MessageCircle,
@@ -25,6 +26,11 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import { ColorSwatch } from "@/components/brand/ColorSwatch";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
+import {
+  iconForPlatform,
+  labelForPlatform,
+  normalizeSocialLinks,
+} from "@/components/brand/social";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -121,7 +127,9 @@ export default function ClientDetail() {
     !!brand?.logo_url ||
     !!brand?.business_name ||
     !!brand?.business_description ||
-    colors.length > 0;
+    colors.length > 0 ||
+    !!brand?.website_url ||
+    normalizeSocialLinks(brand?.social_links).length > 0;
   const phone = profile.phone;
 
   return (
@@ -281,6 +289,40 @@ export default function ClientDetail() {
                 ))}
               </div>
             )}
+            {(() => {
+              const socialEntries = normalizeSocialLinks(brand?.social_links);
+              if (!brand?.website_url && socialEntries.length === 0) return null;
+              return (
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  {brand?.website_url && (
+                    <a
+                      href={brand.website_url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="flex items-center gap-1 text-link hover:underline"
+                    >
+                      <Globe className="size-4" />
+                      אתר
+                    </a>
+                  )}
+                  {socialEntries.map((s, i) => {
+                    const Icon = iconForPlatform(s.platform);
+                    return (
+                      <a
+                        key={`${s.platform}-${i}`}
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="flex items-center gap-1 text-link hover:underline"
+                      >
+                        <Icon className="size-4" />
+                        {labelForPlatform(s.platform)}
+                      </a>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
       </Card>
