@@ -185,6 +185,8 @@ export type StageTemplate = {
   created_at: string;
 }
 
+export type LogoFit = "auto" | "contain" | "cover";
+
 export type ClientBrand = {
   id: string;
   client_id: string;
@@ -195,6 +197,7 @@ export type ClientBrand = {
   font_notes: string | null;
   website_url: string | null;
   social_links: Json;
+  logo_fit: LogoFit;
   updated_at: string;
 }
 

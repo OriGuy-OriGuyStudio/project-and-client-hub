@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import type { LogoFit } from "@/types/database";
 
 type Fit = "cover" | "contain";
 
@@ -20,15 +21,23 @@ export function BrandLogo({
   src,
   alt = "",
   className,
+  fit: override = "auto",
 }: {
   src: string;
   alt?: string;
   className?: string;
+  /** Admin override; "auto" (default) lets the component decide. */
+  fit?: LogoFit;
 }) {
-  const [fit, setFit] = useState<Fit>("contain");
+  const [fit, setFit] = useState<Fit>(override === "cover" ? "cover" : "contain");
 
   useEffect(() => {
     if (!src) return;
+    // A pinned override skips detection entirely.
+    if (override === "contain" || override === "cover") {
+      setFit(override);
+      return;
+    }
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -42,7 +51,7 @@ export function BrandLogo({
     return () => {
       cancelled = true;
     };
-  }, [src]);
+  }, [src, override]);
 
   return (
     <img

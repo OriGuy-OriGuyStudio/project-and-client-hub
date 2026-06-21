@@ -27,7 +27,7 @@ import {
   iconForPlatform,
   normalizeSocialLinks,
 } from "@/components/brand/social";
-import type { BrandColor, BrandColorRole, ClientBrand } from "@/types/database";
+import type { BrandColor, BrandColorRole, ClientBrand, LogoFit } from "@/types/database";
 import { cn } from "@/lib/utils";
 
 const roleHe: Record<BrandColorRole, string> = {
@@ -59,8 +59,15 @@ function seedForm(brand: ClientBrand | null): BrandFormValues {
     font_notes: brand?.font_notes ?? "",
     website_url: brand?.website_url ?? "",
     social_links: [], // socials are edited via their own row state below
+    logo_fit: brand?.logo_fit ?? "auto",
   };
 }
+
+const LOGO_FIT_OPTIONS = [
+  { value: "auto", label: "אוטומטי" },
+  { value: "contain", label: "מותאם (לוגו שלם)" },
+  { value: "cover", label: "מילוי (ממלא מסגרת)" },
+];
 
 function seedColors(colors: BrandColor[]): ColorRow[] {
   return colors.map((c) => ({
@@ -179,6 +186,22 @@ export function BrandIdentityEditor({
               value={form.logo_icon_url}
               onChange={(v) => set("logo_icon_url", v)}
             />
+          </div>
+
+          {/* How the logo sits inside round/framed avatars across the app. */}
+          <div className="space-y-1.5">
+            <Label htmlFor="b-logo-fit">התאמת הלוגו</Label>
+            <SelectMenu
+              id="b-logo-fit"
+              variant="field"
+              ariaLabel="התאמת הלוגו"
+              value={form.logo_fit}
+              onChange={(v) => set("logo_fit", v as LogoFit)}
+              options={LOGO_FIT_OPTIONS}
+            />
+            <p className="text-xs text-muted-foreground">
+              אוטומטי בוחר לבד; בחר ידנית אם לוגו מסוים נחתך או מוצג קטן מדי.
+            </p>
           </div>
 
           {/* Business details */}

@@ -338,7 +338,7 @@ export default function ClientDetail() {
               <ProjectCard
                 key={p.id}
                 index={i}
-                project={{ ...p, business_name: brand?.business_name ?? null, logo_url: brand?.logo_url ?? null }}
+                project={{ ...p, business_name: brand?.business_name ?? null, logo_url: brand?.logo_url ?? null, logo_fit: brand?.logo_fit ?? "auto" }}
               />
             ))}
           </div>

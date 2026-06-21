@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Project } from "@/types/database";
+import type { LogoFit, Project } from "@/types/database";
 
 export interface ProjectWithBrand extends Project {
   business_name: string | null;
   logo_url: string | null;
+  logo_fit: LogoFit;
 }
 
 /**
@@ -26,7 +27,7 @@ export function useProjects() {
       const clientIds = [...new Set(projects.map((p) => p.client_id))];
       const { data: brands } = await supabase
         .from("client_brand")
-        .select("client_id, business_name, logo_url")
+        .select("client_id, business_name, logo_url, logo_fit")
         .in("client_id", clientIds);
 
       const brandByClient = new Map(
@@ -37,6 +38,7 @@ export function useProjects() {
         ...p,
         business_name: brandByClient.get(p.client_id)?.business_name ?? null,
         logo_url: brandByClient.get(p.client_id)?.logo_url ?? null,
+        logo_fit: (brandByClient.get(p.client_id)?.logo_fit as LogoFit) ?? "auto",
       }));
     },
   });

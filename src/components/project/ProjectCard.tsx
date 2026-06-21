@@ -38,7 +38,11 @@ export function ProjectCard({
             <div className="flex items-center gap-3">
               <span className="flex size-11 items-center justify-center overflow-hidden rounded-xl bg-brand-purple-base/30">
                 {project.logo_url ? (
-                  <BrandLogo src={project.logo_url} className="size-full" />
+                  <BrandLogo
+                    src={project.logo_url}
+                    fit={project.logo_fit}
+                    className="size-full"
+                  />
                 ) : (
                   <Building2 className="size-5 text-brand-cyan-base" />
                 )}

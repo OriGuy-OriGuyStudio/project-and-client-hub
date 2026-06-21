@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { SocialLink } from "@/components/brand/social";
-import type { BrandColorRole } from "@/types/database";
+import type { BrandColorRole, LogoFit } from "@/types/database";
 
 /** Editable brand-identity fields (the `client_brand` row, minus ids/timestamps). */
 export interface BrandFormValues {
@@ -12,6 +12,7 @@ export interface BrandFormValues {
   font_notes: string;
   website_url: string;
   social_links: SocialLink[];
+  logo_fit: LogoFit;
 }
 
 /** A single palette row being edited (no id — colors are replaced as a set). */
@@ -53,6 +54,7 @@ export function useSaveClientBrand(clientId: string | undefined) {
           social_links: brand.social_links
             .map((s) => ({ platform: s.platform, url: s.url.trim() }))
             .filter((s) => s.url.length > 0),
+          logo_fit: brand.logo_fit,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "client_id" }

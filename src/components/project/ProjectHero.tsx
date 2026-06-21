@@ -90,7 +90,11 @@ export function ProjectHero({
             )}
           >
             {brand?.logo_url ? (
-              <BrandLogo src={brand.logo_url} className="size-full" />
+              <BrandLogo
+                src={brand.logo_url}
+                fit={brand.logo_fit}
+                className="size-full"
+              />
             ) : (
               <Building2 className="size-9 text-brand-cyan-base" />
             )}
