@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
 import type { ProjectWithBrand } from "@/hooks/useProjects";
 
@@ -37,11 +38,7 @@ export function ProjectCard({
             <div className="flex items-center gap-3">
               <span className="flex size-11 items-center justify-center overflow-hidden rounded-xl bg-brand-purple-base/30">
                 {project.logo_url ? (
-                  <img
-                    src={project.logo_url}
-                    alt=""
-                    className="size-full object-cover"
-                  />
+                  <BrandLogo src={project.logo_url} className="size-full" />
                 ) : (
                   <Building2 className="size-5 text-brand-cyan-base" />
                 )}

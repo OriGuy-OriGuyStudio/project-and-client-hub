@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WarrantyBadge } from "@/components/warranty/WarrantyCountdown";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { EditProjectSheet } from "@/components/project/EditProjectSheet";
 import { MeshBanner } from "@/components/ui/mesh-banner";
 import { cn } from "@/lib/utils";
@@ -89,7 +90,7 @@ export function ProjectHero({
             )}
           >
             {brand?.logo_url ? (
-              <img src={brand.logo_url} alt="" className="size-full object-cover" />
+              <BrandLogo src={brand.logo_url} className="size-full" />
             ) : (
               <Building2 className="size-9 text-brand-cyan-base" />
             )}
