@@ -51,6 +51,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
+import { celebrate } from "@/lib/confetti";
 import { stageStatusHe } from "@/lib/status";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
@@ -476,6 +477,14 @@ function PhaseItem({
           stageId={stage.id}
           tasks={tasks}
           isAdmin={isAdmin}
+          onAllTasksDone={() => {
+            // Checking off the last sub-task auto-completes the whole phase
+            // (with a side-fireworks celebration) — only when it isn't already done.
+            if (stage.status !== "done") {
+              onSetStatus("done");
+              celebrate();
+            }
+          }}
         />
       )}
     </li>
@@ -487,11 +496,13 @@ function StageTasks({
   stageId,
   tasks,
   isAdmin,
+  onAllTasksDone,
 }: {
   projectId: string;
   stageId: string;
   tasks: StageTask[];
   isAdmin: boolean;
+  onAllTasksDone?: () => void;
 }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -514,13 +525,18 @@ function StageTasks({
   }
 
   async function toggle(task: StageTask) {
+    const willBeDone = !task.is_done;
+    // Would this toggle leave every sub-task in the phase checked?
+    const allDone =
+      tasks.length > 0 &&
+      tasks.every((x) => (x.id === task.id ? willBeDone : x.is_done));
     // Optimistic: flip the checkbox immediately, reconcile after the round-trip.
     qc.setQueriesData<StageTask[]>({ queryKey: ["stage-tasks", projectId] }, (prev) =>
-      (prev ?? []).map((x) => (x.id === task.id ? { ...x, is_done: !x.is_done } : x))
+      (prev ?? []).map((x) => (x.id === task.id ? { ...x, is_done: willBeDone } : x))
     );
     const { error } = await supabase
       .from("stage_tasks")
-      .update({ is_done: !task.is_done })
+      .update({ is_done: willBeDone })
       .eq("id", task.id);
     if (error) {
       toastError("עדכון המשימה נכשל.");
@@ -528,6 +544,7 @@ function StageTasks({
       return;
     }
     invalidate();
+    if (allDone) onAllTasksDone?.();
   }
 
   async function remove(task: StageTask) {
