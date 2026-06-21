@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WarrantyBadge } from "@/components/warranty/WarrantyCountdown";
+import { EditProjectSheet } from "@/components/project/EditProjectSheet";
 import { MeshBanner } from "@/components/ui/mesh-banner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -159,14 +160,17 @@ export function ProjectHero({
                 );
               })}
               {isAdmin && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditing(true)}
-                  className="text-muted-foreground"
-                >
-                  <Pencil className="size-4" /> עריכת קישורים
-                </Button>
+                <>
+                  <EditProjectSheet project={project} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditing(true)}
+                    className="text-muted-foreground"
+                  >
+                    <Pencil className="size-4" /> עריכת קישורים
+                  </Button>
+                </>
               )}
             </div>
           )}
