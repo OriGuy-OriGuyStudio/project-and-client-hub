@@ -163,6 +163,8 @@ export type StudioSettings = {
   warranty_email_body: string | null;
   welcome_email_subject: string | null;
   welcome_email_body: string | null;
+  welcome_email_subject_partner: string | null;
+  welcome_email_body_partner: string | null;
   portal_url: string | null;
   /** How many ILS one coin/credit is worth (rewards-store calculator). */
   ils_per_coin: number;

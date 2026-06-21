@@ -180,7 +180,8 @@ Deno.serve(async (req) => {
   let template = "welcome";
   try {
     const b = await req.json();
-    template = b?.template === "warranty" ? "warranty" : "welcome";
+    const t = b?.template;
+    template = t === "warranty" || t === "welcome_partner" ? t : "welcome";
   } catch {
     return json({ error: "bad request" }, 400);
   }
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey);
   const { data: settings } = await admin
     .from("studio_settings")
-    .select("studio_name, contact_email, contact_phone, portal_url, welcome_email_subject, welcome_email_body, warranty_email_subject, warranty_email_body")
+    .select("studio_name, contact_email, contact_phone, portal_url, welcome_email_subject, welcome_email_body, welcome_email_subject_partner, welcome_email_body_partner, warranty_email_subject, warranty_email_body")
     .maybeSingle();
 
   const rawPhone = (settings?.contact_phone || "0547520899").replace(/\D/g, "");
@@ -219,6 +220,21 @@ Deno.serve(async (req) => {
     );
     const sampleEnd = new Date(Date.now() + 7 * 86400000).toLocaleDateString("he-IL");
     html = buildWarrantyHtml(body, "אתר לדוגמה", sampleEnd, contact);
+  } else if (template === "welcome_partner") {
+    subject =
+      "[בדיקה] " +
+      (settings?.welcome_email_subject_partner ||
+        settings?.welcome_email_subject ||
+        "ברוכים הבאים לתוכנית השותפים של Orion");
+    const body = personalize(
+      settings?.welcome_email_body_partner ||
+        settings?.welcome_email_body ||
+        "ברוכים הבאים לתוכנית השותפים של Orion.",
+      "אורי",
+      null
+    );
+    const portal = (settings?.portal_url || DEFAULT_PORTAL).replace(/\/+$/, "");
+    html = buildWelcomeHtml(body, `${portal}/partner-portal/login`, contact);
   } else {
     subject = "[בדיקה] " + (settings?.welcome_email_subject || "ברוכים הבאים ל-Orion");
     const body = personalize(

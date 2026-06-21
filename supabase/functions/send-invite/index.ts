@@ -195,13 +195,21 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await admin
     .from("studio_settings")
-    .select("studio_name, contact_email, contact_phone, welcome_email_subject, welcome_email_body, portal_url")
+    .select("studio_name, contact_email, contact_phone, welcome_email_subject, welcome_email_body, welcome_email_subject_partner, welcome_email_body_partner, portal_url")
     .maybeSingle();
 
-  const subject = settings?.welcome_email_subject || "ברוכים הבאים ל-Orion";
-  const bodyText = settings?.welcome_email_body || "ברוכים הבאים ל-Orion — הפורטל האישי שלך מול הסטודיו.";
+  // Partners get their own welcome copy; fall back to the client copy if blank.
+  const isPartner = row.role === "partner";
+  const subject =
+    (isPartner && settings?.welcome_email_subject_partner) ||
+    settings?.welcome_email_subject ||
+    (isPartner ? "ברוכים הבאים לתוכנית השותפים של Orion" : "ברוכים הבאים ל-Orion");
+  const bodyText =
+    (isPartner && settings?.welcome_email_body_partner) ||
+    settings?.welcome_email_body ||
+    "ברוכים הבאים ל-Orion — הפורטל האישי שלך מול הסטודיו.";
   const portal = (settings?.portal_url || DEFAULT_PORTAL).replace(/\/+$/, "");
-  const loginUrl = row.role === "partner" ? `${portal}/partner-portal/login` : `${portal}/login`;
+  const loginUrl = isPartner ? `${portal}/partner-portal/login` : `${portal}/login`;
 
   const rawPhone = (settings?.contact_phone || "0547520899").replace(/\D/g, "");
   const intlPhone = rawPhone.replace(/^0/, "972");

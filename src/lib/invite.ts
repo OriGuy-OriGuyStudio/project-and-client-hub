@@ -30,7 +30,7 @@ export async function sendInvite(email: string): Promise<InviteResult> {
  * can check how it looks. `to` (the admin's email) is returned on success.
  */
 export async function sendTestEmail(
-  template: "welcome" | "warranty"
+  template: "welcome" | "welcome_partner" | "warranty"
 ): Promise<InviteResult & { to?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke("send-test-email", {

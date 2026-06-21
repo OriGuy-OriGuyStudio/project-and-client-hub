@@ -619,7 +619,13 @@ function ResourceEditor({ resource }: { resource: PartnerResource }) {
 /* -------------------------- Email templates ------------------------------- */
 
 /** Sends a preview of the template to the admin's own inbox. */
-function TestEmailButton({ template }: { template: "welcome" | "warranty" }) {
+function TestEmailButton({
+  template,
+  label = "שלח מייל בדיקה אליי",
+}: {
+  template: "welcome" | "welcome_partner" | "warranty";
+  label?: string;
+}) {
   const [testing, setTesting] = useState(false);
   async function send() {
     setTesting(true);
@@ -631,7 +637,7 @@ function TestEmailButton({ template }: { template: "welcome" | "warranty" }) {
   return (
     <Button variant="secondary" onClick={send} disabled={testing}>
       <Send className="size-4" />
-      {testing ? "שולח…" : "שלח מייל בדיקה אליי"}
+      {testing ? "שולח…" : label}
     </Button>
   );
 }
@@ -641,13 +647,21 @@ function WelcomeEmailSection() {
   const { data: settings, isLoading } = useStudioSettings();
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(false);
-  const [form, setForm] = useState({ subject: "", body: "", portal: "" });
+  const [form, setForm] = useState({
+    subject: "",
+    body: "",
+    portal: "",
+    partnerSubject: "",
+    partnerBody: "",
+  });
 
   if (settings && !seeded) {
     setForm({
       subject: settings.welcome_email_subject ?? "",
       body: settings.welcome_email_body ?? "",
       portal: settings.portal_url ?? "",
+      partnerSubject: settings.welcome_email_subject_partner ?? "",
+      partnerBody: settings.welcome_email_body_partner ?? "",
     });
     setSeeded(true);
   }
@@ -659,6 +673,8 @@ function WelcomeEmailSection() {
       .update({
         welcome_email_subject: clampText(form.subject.trim(), 200) || null,
         welcome_email_body: clampText(form.body.trim(), 4000) || null,
+        welcome_email_subject_partner: clampText(form.partnerSubject.trim(), 200) || null,
+        welcome_email_body_partner: clampText(form.partnerBody.trim(), 4000) || null,
         portal_url: clampText(form.portal.trim(), 300) || null,
         updated_at: new Date().toISOString(),
       })
@@ -679,6 +695,7 @@ function WelcomeEmailSection() {
         hint="נשלח אוטומטית ללקוח/שותף חדש עם קישור כניסה. כפתור 'כניסה ל-Orion' מתווסף אוטומטית."
       />
       <div className="space-y-4">
+        <p className="text-sm font-semibold text-foreground">מייל ללקוח</p>
         <div className="space-y-1.5">
           <Label htmlFor="wl-subj">נושא המייל</Label>
           <Input
@@ -703,6 +720,38 @@ function WelcomeEmailSection() {
             <code className="font-mono-code text-foreground">שמח|שמחה</code>).
           </p>
         </div>
+        <div className="border-t border-border pt-4">
+          <p className="mb-3 text-sm font-semibold text-foreground">מייל לשותף (שת״פ)</p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="wl-subj-p">נושא המייל</Label>
+              <Input
+                id="wl-subj-p"
+                value={form.partnerSubject}
+                maxLength={200}
+                placeholder="ברוכים הבאים לתוכנית השותפים של Orion"
+                onChange={(e) => setForm((f) => ({ ...f, partnerSubject: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wl-body-p">גוף המייל</Label>
+              <Textarea
+                id="wl-body-p"
+                value={form.partnerBody}
+                maxLength={4000}
+                rows={7}
+                onChange={(e) => setForm((f) => ({ ...f, partnerBody: e.target.value }))}
+              />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                אם יישאר ריק, השותף יקבל את מייל הלקוח. כפתור הכניסה מפנה אוטומטית
+                לפורטל השותפים. אותם טוקנים: <code className="font-mono-code text-foreground">{"{שם}"}</code>{" "}
+                ו-<code className="font-mono-code text-foreground">זכר|נקבה</code>.
+              </p>
+            </div>
+            <TestEmailButton template="welcome_partner" label="שלח בדיקת מייל שותף אליי" />
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="wl-portal">כתובת הפורטל (לקישור הכניסה)</Label>
           <Input
@@ -720,7 +769,7 @@ function WelcomeEmailSection() {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap justify-between gap-2">
-        <TestEmailButton template="welcome" />
+        <TestEmailButton template="welcome" label="שלח בדיקת מייל לקוח אליי" />
         <Button onClick={save} disabled={saving}>
           {saving ? "שומר…" : "שמירה"}
         </Button>
