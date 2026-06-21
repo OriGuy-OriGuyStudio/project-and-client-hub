@@ -92,7 +92,11 @@ const STATUS_OPTIONS = (Object.keys(STATUS) as AdminTaskStatus[]).map((s) => ({
 }));
 
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
+  return new Date(d).toLocaleDateString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
 }
 function isOverdue(t: AdminTask) {
   if (!t.end_date || t.status === "done") return false;
@@ -651,7 +655,7 @@ function TaskRow({
 
   let dates = "";
   if (task.start_date && task.end_date)
-    dates = `${fmtDate(task.start_date)} – ${fmtDate(task.end_date)}`;
+    dates = `${fmtDate(task.start_date)} עד ${fmtDate(task.end_date)}`;
   else if (task.end_date) dates = `עד ${fmtDate(task.end_date)}`;
   else if (task.start_date) dates = `מ-${fmtDate(task.start_date)}`;
 
@@ -713,8 +717,10 @@ function TaskRow({
             {dates && (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1",
-                  overdue && "font-semibold text-destructive"
+                  "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5",
+                  overdue
+                    ? "border-destructive/40 font-semibold text-destructive"
+                    : "border-border text-foreground/80"
                 )}
               >
                 <CalendarClock className="size-3.5" />
