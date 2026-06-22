@@ -94,6 +94,12 @@ export default function DiscoverySessionPage() {
       return { ...d, answers: { ...d.answers, [qid]: { ...prev, ...patch } } };
     });
 
+  function appendChip(qid: string, chip: string) {
+    const cur = (draft.answers[qid]?.value ?? "").trim();
+    if (cur.includes(chip)) return; // already added
+    setAnswer(qid, { value: cur ? `${cur}, ${chip}` : chip });
+  }
+
   function buildItems() {
     const out: { question: string; answer: string; show: boolean }[] = [];
     for (const sec of template.sections) {
@@ -247,6 +253,20 @@ export default function DiscoverySessionPage() {
                   onChange={(e) => setAnswer(q.id, { value: e.target.value })}
                   placeholder="התשובה מהשיחה…"
                 />
+                {q.chips && q.chips.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {q.chips.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => appendChip(q.id, c)}
+                        className="rounded-full border border-border bg-background/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
