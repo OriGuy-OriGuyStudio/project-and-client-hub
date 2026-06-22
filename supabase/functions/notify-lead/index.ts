@@ -46,6 +46,22 @@ const b64utf8 = (s: string) => bytesToBase64(encoder.encode(s));
 const b64urlAscii = (s: string) =>
   btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
+// RFC 2047 subject: split into base64 encoded-words <= 75 chars each, without
+// splitting a multi-byte UTF-8 char. A single long Hebrew encoded-word breaks in
+// some mail clients (shows "???"); multiple short ones render correctly.
+function encodeSubject(s: string): string {
+  const bytes = encoder.encode(s);
+  const words: string[] = [];
+  let i = 0;
+  while (i < bytes.length) {
+    let end = Math.min(i + 45, bytes.length); // 45 bytes -> 60 b64 chars -> 72 total
+    while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--; // char boundary
+    words.push("=?UTF-8?B?" + bytesToBase64(bytes.slice(i, end)) + "?=");
+    i = end;
+  }
+  return words.join("\r\n ");
+}
+
 async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -65,7 +81,7 @@ async function sendGmail(accessToken: string, subject: string, html: string): Pr
   const mime = [
     `From: ${FROM_NAME} <${FROM_EMAIL}>`,
     `To: ${TO_EMAIL}`,
-    `Subject: =?UTF-8?B?${b64utf8(subject)}?=`,
+    `Subject: ${encodeSubject(subject)}`,
     `MIME-Version: 1.0`,
     `Content-Type: text/html; charset="UTF-8"`,
     `Content-Transfer-Encoding: base64`,
