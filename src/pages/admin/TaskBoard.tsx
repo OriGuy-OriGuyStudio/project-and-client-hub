@@ -62,13 +62,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
@@ -164,6 +164,8 @@ export default function TaskBoard() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTask, setEditTask] = useState<AdminTask | null>(null);
+  // When opening "new task" from a group header, pre-fill that group (+ its project).
+  const [presetGroupId, setPresetGroupId] = useState<string | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -203,6 +205,13 @@ export default function TaskBoard() {
     qc.invalidateQueries({ queryKey: ["task-board-tasks"] });
     qc.invalidateQueries({ queryKey: ["task-board-groups"] });
   };
+
+  // Open the quick-add modal for a new task, optionally scoped to a group.
+  function openNewTask(groupId: string | null) {
+    setEditTask(null);
+    setPresetGroupId(groupId);
+    setFormOpen(true);
+  }
 
   // Done tasks always sink to the bottom; within that, order by the chosen sort
   // (default "manual" = the drag order). Empty client/project sort last.
@@ -513,13 +522,7 @@ export default function TaskBoard() {
             <Button variant="ghost" size="sm" onClick={() => setGroupOpen((v) => !v)}>
               <Plus className="size-4" /> קבוצה
             </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditTask(null);
-                setFormOpen(true);
-              }}
-            >
+            <Button size="sm" onClick={() => openNewTask(null)}>
               <Plus className="size-4" /> משימה חדשה
             </Button>
           </div>
@@ -623,6 +626,13 @@ export default function TaskBoard() {
                       </Badge>
                     </CollapsibleTrigger>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openNewTask(g.id)}
+                      >
+                        <Plus className="size-4" /> משימה
+                      </Button>
                       <div className="flex items-center gap-1">
                         <div className="w-32">
                           <SelectMenu
@@ -721,10 +731,11 @@ export default function TaskBoard() {
         </div>
       )}
 
-      <TaskFormSheet
+      <TaskFormModal
         open={formOpen}
         onOpenChange={setFormOpen}
         task={editTask}
+        presetGroupId={presetGroupId}
         projects={projects ?? []}
         partners={(partners?.active ?? []).map((p) => ({
           id: p.id,
@@ -1099,10 +1110,11 @@ function TaskCard({
   );
 }
 
-function TaskFormSheet({
+function TaskFormModal({
   open,
   onOpenChange,
   task,
+  presetGroupId,
   projects,
   partners,
   groups,
@@ -1111,6 +1123,7 @@ function TaskFormSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   task: AdminTask | null;
+  presetGroupId: string | null;
   projects: { id: string; title: string; business_name: string | null; client_id: string }[];
   partners: { id: string; name: string }[];
   groups: { id: string; title: string; project_id: string | null }[];
@@ -1131,16 +1144,18 @@ function TaskFormSheet({
     client_informed: false,
   });
 
-  // Re-seed whenever the sheet opens for a different task (or for a new one).
-  const wantSeed = open ? task?.id ?? "new" : null;
+  // Re-seed whenever the modal opens for a different task, or for a new one in a
+  // different group (the key includes the preset group so re-opening re-seeds).
+  const presetGroup = groups.find((g) => g.id === presetGroupId);
+  const wantSeed = open ? task?.id ?? `new:${presetGroupId ?? ""}` : null;
   if (wantSeed !== seededId) {
     setSeededId(wantSeed);
     setDraft({
       title: task?.title ?? "",
       urgency: task?.urgency ?? "medium",
-      project_id: task?.project_id ?? "",
+      project_id: task?.project_id ?? presetGroup?.project_id ?? "",
       partner_id: task?.partner_id ?? "",
-      group_id: task?.group_id ?? "",
+      group_id: task?.group_id ?? presetGroupId ?? "",
       start_date: task?.start_date ?? "",
       end_date: task?.end_date ?? "",
       note: task?.note ?? "",
@@ -1196,14 +1211,14 @@ function TaskFormSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>{task ? "עריכת משימה" : "משימה חדשה"}</SheetTitle>
-          <SheetDescription>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{task ? "עריכת משימה" : "משימה חדשה"}</DialogTitle>
+          <DialogDescription>
             הלוח גלוי רק לך. הלקוח נמשך אוטומטית מהפרויקט המשויך.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -1347,16 +1362,16 @@ function TaskFormSheet({
           </div>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <Button onClick={save} disabled={saving}>
             {saving ? "שומר…" : "שמירה"}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             ביטול
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
