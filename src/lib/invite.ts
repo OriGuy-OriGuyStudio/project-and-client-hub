@@ -101,6 +101,28 @@ const ENV_TAG = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.inclu
   ? ""
   : "[STAGING] ";
 
+/**
+ * Generate an AI summary of a discovery call via the `discovery-summarize` Edge
+ * Function (Gemini, admin-gated). `kind` picks the client-facing summary or the
+ * internal follow-up bullets. Returns the text for the admin to edit & save.
+ */
+export async function summarizeDiscovery(payload: {
+  kind: "client" | "follow_up";
+  title: string;
+  items: { question: string; answer: string; show?: boolean }[];
+}): Promise<InviteResult & { text?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("discovery-summarize", {
+      body: payload,
+    });
+    if (error) return { ok: false, error: error.message };
+    if (data && data.ok === false) return { ok: false, error: data.error || "summary failed" };
+    return { ok: true, text: data?.text };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function notifyAdminTask(title: string, body: string): Promise<InviteResult> {
   try {
     const { data, error } = await supabase.functions.invoke("notify-admin-task", {

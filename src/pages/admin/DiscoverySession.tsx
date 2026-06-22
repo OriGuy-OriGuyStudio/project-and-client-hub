@@ -8,7 +8,9 @@ import {
   Eye,
   EyeOff,
   ListChecks,
+  Loader2,
   Save,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -22,6 +24,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
+import { summarizeDiscovery } from "@/lib/invite";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { templateByKey } from "@/lib/discovery";
@@ -34,6 +37,7 @@ export default function DiscoverySessionPage() {
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [aiBusy, setAiBusy] = useState<null | "client" | "follow_up">(null);
   const [draft, setDraft] = useState({
     answers: {} as Record<string, DiscoveryAnswer>,
     client_summary: "",
@@ -89,6 +93,30 @@ export default function DiscoverySessionPage() {
       const prev = d.answers[qid] ?? { value: "", show: false };
       return { ...d, answers: { ...d.answers, [qid]: { ...prev, ...patch } } };
     });
+
+  function buildItems() {
+    const out: { question: string; answer: string; show: boolean }[] = [];
+    for (const sec of template.sections) {
+      for (const q of sec.questions) {
+        const a = draft.answers[q.id];
+        if (a?.value?.trim()) out.push({ question: q.q, answer: a.value, show: !!a.show });
+      }
+    }
+    return out;
+  }
+
+  async function runAi(kind: "client" | "follow_up") {
+    const items = buildItems();
+    if (!items.length) return toastError("מלא תשובות לפני יצירת סיכום AI.");
+    setAiBusy(kind);
+    const r = await summarizeDiscovery({ kind, title: session!.title, items });
+    setAiBusy(null);
+    if (!r.ok || !r.text) return toastError(r.error || "סיכום ה-AI נכשל.");
+    setDraft((d) =>
+      kind === "client" ? { ...d, client_summary: r.text! } : { ...d, follow_up: r.text! }
+    );
+    toast({ title: "סיכום AI נוצר. אפשר לערוך ולשמור.", variant: "success" });
+  }
 
   async function save() {
     setSaving(true);
@@ -228,9 +256,25 @@ export default function DiscoverySessionPage() {
       {/* Summary + follow-up */}
       <Card className="space-y-4 p-5">
         <div className="space-y-1.5">
-          <Label htmlFor="client-summary">סיכום ללקוח</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="client-summary">סיכום ללקוח</Label>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => runAi("client")}
+              disabled={aiBusy !== null}
+            >
+              {aiBusy === "client" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              סכם עם AI
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">
-            הטקסט הזה מופיע בראש עמוד הסיכום שמשותף ללקוח.
+            הטקסט הזה מופיע בראש עמוד הסיכום שמשותף ללקוח. ה-AI מסכם מהתשובות
+            שסומנו "ללקוח".
           </p>
           <Textarea
             id="client-summary"
@@ -242,8 +286,25 @@ export default function DiscoverySessionPage() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="follow-up">נקודות להמשך (פנימי)</Label>
-          <p className="text-xs text-muted-foreground">לא מוצג ללקוח. רק לעיניך.</p>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="follow-up">נקודות להמשך (פנימי)</Label>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => runAi("follow_up")}
+              disabled={aiBusy !== null}
+            >
+              {aiBusy === "follow_up" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              סכם עם AI
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            לא מוצג ללקוח. רק לעיניך. ה-AI מסכם נקודות פעולה מכל התשובות.
+          </p>
           <Textarea
             id="follow-up"
             rows={4}
