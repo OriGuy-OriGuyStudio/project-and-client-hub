@@ -211,7 +211,7 @@ function ClientRow({
   }
 
   return (
-    <Card className="flex items-center justify-between gap-3 p-4">
+    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
           <Icon className="size-5" />

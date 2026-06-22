@@ -111,15 +111,15 @@ export default function Partners() {
                 פעילים ({data!.active.length})
               </h2>
               {data!.active.map((p) => (
-                <Card key={p.id} className="flex items-center justify-between gap-3 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <Card key={p.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
                       <Handshake className="size-5" />
                     </span>
-                    <div>
-                      <p className="font-medium text-foreground">{p.full_name || "ללא שם"}</p>
-                      <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
-                        <span className="truncate">{p.email}</span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{p.full_name || "ללא שם"}</p>
+                      <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 font-mono-code text-xs text-muted-foreground">
+                        <span className="max-w-full truncate">{p.email}</span>
                         <CopyButton
                           content={p.email}
                           variant="ghost"
@@ -227,7 +227,7 @@ function PendingPartnerRow({
   }
 
   return (
-    <Card className="flex items-center justify-between gap-3 p-4">
+    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <Clock className="size-5" />

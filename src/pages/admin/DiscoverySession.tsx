@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  FileText,
   ListChecks,
   Loader2,
   Save,
@@ -22,8 +23,17 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
+import { useClients } from "@/hooks/useClients";
+import { useProjects } from "@/hooks/useProjects";
 import { summarizeDiscovery } from "@/lib/invite";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
@@ -37,12 +47,17 @@ export default function DiscoverySessionPage() {
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [fullOpen, setFullOpen] = useState(false);
   const [aiBusy, setAiBusy] = useState<null | "client" | "follow_up">(null);
+  const { data: clients } = useClients();
+  const { data: projects } = useProjects();
   const [draft, setDraft] = useState({
     answers: {} as Record<string, DiscoveryAnswer>,
     client_summary: "",
     follow_up: "",
     status: "draft" as "draft" | "done",
+    client_id: "",
+    project_id: "",
   });
 
   const { data: session, isLoading, isError } = useQuery({
@@ -65,6 +80,8 @@ export default function DiscoverySessionPage() {
       client_summary: session.client_summary ?? "",
       follow_up: session.follow_up ?? "",
       status: session.status,
+      client_id: session.client_id ?? "",
+      project_id: session.project_id ?? "",
     });
     setSeeded(true);
   }
@@ -139,6 +156,8 @@ export default function DiscoverySessionPage() {
         client_summary: clampText(draft.client_summary.trim(), 6000) || null,
         follow_up: clampText(draft.follow_up.trim(), 6000) || null,
         status: draft.status,
+        client_id: draft.client_id || null,
+        project_id: draft.project_id || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", session!.id);
@@ -175,9 +194,12 @@ export default function DiscoverySessionPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setFullOpen(true)}>
+            <FileText className="size-3.5" /> סיכום מלא
+          </Button>
           <Button asChild variant="secondary" size="sm">
             <a href={shareUrl} target="_blank" rel="noreferrer noopener">
-              צפה בסיכום <ExternalLink className="size-3.5" />
+              תצוגת לקוח <ExternalLink className="size-3.5" />
             </a>
           </Button>
           <CopyButton
@@ -195,9 +217,15 @@ export default function DiscoverySessionPage() {
 
       {/* Status + share hint */}
       <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <ListChecks className="size-4 text-brand-cyan-base" />
-          {shownCount} תשובות מסומנות לתצוגה ללקוח
+        <div className="min-w-0 space-y-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ListChecks className="size-4 text-brand-cyan-base" />
+            {shownCount} תשובות מסומנות לתצוגה ללקוח
+          </div>
+          <p className="text-xs text-muted-foreground/80">
+            הדף הזה הוא התצוגה המלאה שלך (כולל פנימי). הלקוח רואה רק תשובות שסימנת "ללקוח" ואת
+            "הסיכום ללקוח". לחיצה על "תצוגת לקוח" פותחת בדיוק את מה שהלקוח רואה.
+          </p>
         </div>
         <div className="w-40">
           <SelectMenu
@@ -211,6 +239,53 @@ export default function DiscoverySessionPage() {
             ]}
           />
         </div>
+      </Card>
+
+      {/* Client / project assignment */}
+      <Card className="space-y-3 p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="d-client">שיוך ללקוח</Label>
+            <SelectMenu
+              id="d-client"
+              variant="field"
+              ariaLabel="לקוח"
+              value={draft.client_id}
+              onChange={(v) => setDraft((d) => ({ ...d, client_id: v }))}
+              options={[
+                { value: "", label: "ללא לקוח" },
+                ...(clients?.active ?? []).map((c) => ({
+                  value: c.id,
+                  label: c.full_name || c.email,
+                })),
+              ]}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="d-project">שיוך לפרויקט</Label>
+            <SelectMenu
+              id="d-project"
+              variant="field"
+              ariaLabel="פרויקט"
+              value={draft.project_id}
+              onChange={(v) => setDraft((d) => ({ ...d, project_id: v }))}
+              options={[
+                { value: "", label: "ללא פרויקט" },
+                ...(projects ?? []).map((p) => ({
+                  value: p.id,
+                  label: p.business_name || p.title,
+                })),
+              ]}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground/80">
+          {draft.client_id
+            ? draft.status === "done"
+              ? "השיחה משויכת ללקוח ומסומנת 'הושלם', אז היא מופיעה אצלו בפורטל (תחת 'סיכומי שיחות אפיון')."
+              : "השיחה משויכת ללקוח, אבל תופיע אצלו בפורטל רק כשתסמן את הסטטוס 'הושלם'."
+            : "אחרי שתשייך לקוח ותסמן 'הושלם', הסיכום יופיע אצלו בפורטל. אל תשכח לשמור."}
+        </p>
       </Card>
 
       {/* Questionnaire */}
@@ -331,7 +406,7 @@ export default function DiscoverySessionPage() {
             value={draft.follow_up}
             maxLength={6000}
             onChange={(e) => setDraft((d) => ({ ...d, follow_up: e.target.value }))}
-            placeholder="משימות, סיכונים, דברים לבדוק, הצעת מחיר…"
+            placeholder="משימות, סיכונים, דברים לבדוק, נקודות להכין…"
           />
         </div>
       </Card>
@@ -349,6 +424,75 @@ export default function DiscoverySessionPage() {
         description={`למחוק את "${session.title}"? פעולה זו אינה הפיכה.`}
         onConfirm={remove}
       />
+
+      {/* Admin full summary — everything in one readable place (read-only) */}
+      <Dialog open={fullOpen} onOpenChange={setFullOpen}>
+        <DialogContent className="w-full sm:max-w-2xl lg:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>סיכום מלא — {session.title}</DialogTitle>
+            <DialogDescription>
+              התצוגה המלאה שלך: הסיכום ללקוח, כל התשובות (כולל פנימי), והנקודות להמשך.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            {draft.client_summary.trim() && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <h3 className="mb-1.5 font-heading text-sm font-semibold text-primary">
+                  הסיכום ללקוח
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+                  {draft.client_summary}
+                </p>
+              </div>
+            )}
+
+            {template.sections.map((sec) => {
+              const items = sec.questions.filter((q) => draft.answers[q.id]?.value?.trim());
+              if (!items.length) return null;
+              return (
+                <div key={sec.key} className="space-y-2">
+                  <h3 className="font-heading text-sm font-semibold text-foreground">{sec.title}</h3>
+                  {items.map((q) => {
+                    const a = draft.answers[q.id]!;
+                    return (
+                      <div key={q.id} className="rounded-lg border border-border bg-card p-3">
+                        <div className="mb-1 flex items-start justify-between gap-2">
+                          <p className="text-xs font-semibold text-muted-foreground">{q.q}</p>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                              a.show
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {a.show ? "ללקוח" : "פנימי"}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+                          {a.value}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {draft.follow_up.trim() && (
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <h3 className="mb-1.5 font-heading text-sm font-semibold text-foreground">
+                  נקודות להמשך (פנימי)
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+                  {draft.follow_up}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

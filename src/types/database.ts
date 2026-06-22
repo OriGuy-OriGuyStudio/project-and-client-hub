@@ -732,6 +732,16 @@ export interface Database {
           created_at: string;
         } | null;
       };
+      get_my_discovery_sessions: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          title: string;
+          template_key: string;
+          share_token: string;
+          created_at: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

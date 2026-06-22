@@ -115,12 +115,31 @@ export async function summarizeDiscovery(payload: {
     const { data, error } = await supabase.functions.invoke("discovery-summarize", {
       body: payload,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
     if (data && data.ok === false) return { ok: false, error: data.error || "summary failed" };
     return { ok: true, text: data?.text };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * When an Edge Function returns a non-2xx status, `functions.invoke` resolves with
+ * a generic `FunctionsHttpError` ("…returned a non-2xx status code") and never
+ * parses the body, so our own Hebrew error text is lost. The raw `Response` lives
+ * on `error.context` — read it to surface the real reason to the user.
+ */
+async function fnErrorMessage(error: unknown): Promise<string> {
+  const ctx = (error as { context?: Response })?.context;
+  if (ctx && typeof ctx.json === "function") {
+    try {
+      const body = await ctx.json();
+      if (body?.error) return String(body.error);
+    } catch {
+      /* body wasn't JSON — fall through to the generic message */
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 export async function notifyAdminTask(title: string, body: string): Promise<InviteResult> {

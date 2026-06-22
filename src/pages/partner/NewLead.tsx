@@ -69,6 +69,8 @@ export default function NewLead() {
 
     qc.invalidateQueries({ queryKey: ["partner-me"] });
     setDone(true);
+    // The studio email is sent server-side by a DB trigger on partner_leads
+    // (so every lead notifies, on any path, even if the client drops offline).
   }
 
   if (done) {

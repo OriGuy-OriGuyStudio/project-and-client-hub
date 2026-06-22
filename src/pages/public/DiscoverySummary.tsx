@@ -5,7 +5,7 @@ import { Sparkles } from "lucide-react";
 import { MeshBanner } from "@/components/ui/mesh-banner";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { supabase } from "@/lib/supabase";
-import { templateByKey, questionText } from "@/lib/discovery";
+import { templateByKey, groupAnswers } from "@/lib/discovery";
 
 interface Summary {
   title: string;
@@ -54,7 +54,7 @@ export default function DiscoverySummary() {
     );
   }
 
-  const answers = Object.entries(data.answers ?? {});
+  const groups = groupAnswers(data.template_key, data.answers ?? {});
   const dateHe = new Date(data.created_at).toLocaleDateString("he-IL", {
     day: "numeric",
     month: "long",
@@ -99,7 +99,7 @@ export default function DiscoverySummary() {
           >
             <div className="mb-2 flex items-center gap-2">
               <Sparkles className="size-5 text-primary" />
-              <h2 className="font-heading text-lg font-semibold text-foreground">הסיכום שלנו</h2>
+              <h2 className="font-heading text-lg font-semibold text-foreground">הסיכום שלי</h2>
             </div>
             <p className="whitespace-pre-line leading-relaxed text-foreground/90">
               {data.client_summary}
@@ -107,28 +107,26 @@ export default function DiscoverySummary() {
           </motion.div>
         )}
 
-        {/* Shown answers */}
-        {answers.length > 0 && (
-          <motion.div variants={fadeUp} className="space-y-3">
-            <h2 className="px-1 font-heading text-lg font-semibold text-muted-foreground">
-              מה שעלה בשיחה
-            </h2>
-            {answers.map(([qid, value]) => (
+        {/* Shown answers, grouped by the stages of the call */}
+        {groups.map((group) => (
+          <motion.div key={group.key} variants={fadeUp} className="space-y-3">
+            <h2 className="px-1 font-heading text-lg font-semibold text-primary">{group.title}</h2>
+            {group.items.map((it) => (
               <motion.div
-                key={qid}
+                key={it.id}
                 variants={fadeUp}
                 className="rounded-2xl border border-border bg-card p-5"
               >
-                <p className="mb-1.5 font-heading text-sm font-semibold text-primary">
-                  {questionText(data.template_key, qid)}
+                <p className="mb-1.5 font-heading text-sm font-semibold text-muted-foreground">
+                  {it.q}
                 </p>
-                <p className="whitespace-pre-line leading-relaxed text-foreground/90">{value}</p>
+                <p className="whitespace-pre-line leading-relaxed text-foreground/90">{it.value}</p>
               </motion.div>
             ))}
           </motion.div>
-        )}
+        ))}
 
-        {!data.client_summary && answers.length === 0 && (
+        {!data.client_summary && groups.length === 0 && (
           <motion.p variants={fadeUp} className="py-10 text-center text-muted-foreground">
             הסיכום עדיין בהכנה. נעדכן אותך בקרוב.
           </motion.p>
