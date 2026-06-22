@@ -29,6 +29,8 @@ const Profile = lazy(() => import("@/pages/client/Profile"));
 const Partner = lazy(() => import("@/pages/client/Partner"));
 const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
 const TaskBoard = lazy(() => import("@/pages/admin/TaskBoard"));
+const Discovery = lazy(() => import("@/pages/admin/Discovery"));
+const DiscoverySessionPage = lazy(() => import("@/pages/admin/DiscoverySession"));
 const Clients = lazy(() => import("@/pages/admin/Clients"));
 const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
 const Projects = lazy(() => import("@/pages/admin/Projects"));
@@ -41,6 +43,7 @@ const Announcements = lazy(() => import("@/pages/admin/Announcements"));
 const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
+const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
 const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
@@ -92,6 +95,8 @@ function App() {
                 <Route element={<RequireAdmin />}>
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/tasks" element={<TaskBoard />} />
+                  <Route path="/admin/discovery" element={<Discovery />} />
+                  <Route path="/admin/discovery/:id" element={<DiscoverySessionPage />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/projects" element={<Projects />} />
@@ -112,6 +117,16 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <RefLanding />
+                </Suspense>
+              }
+            />
+
+            {/* Public discovery-call summary (no auth, token-gated) */}
+            <Route
+              path="/discovery/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <DiscoverySummary />
                 </Suspense>
               }
             />

@@ -12,6 +12,7 @@ import {
   MessageSquareHeart,
   Megaphone,
   ListChecks,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ export interface NavItem {
 export const adminNav: NavItem[] = [
   { to: "/admin", label: "לוח בקרה", icon: LayoutDashboard, end: true },
   { to: "/admin/tasks", label: "המשימות שלי", icon: ListChecks },
+  { to: "/admin/discovery", label: "שיחות אפיון", icon: ClipboardList },
   { to: "/admin/clients", label: "לקוחות", icon: Users },
   {
     to: "/admin/projects",

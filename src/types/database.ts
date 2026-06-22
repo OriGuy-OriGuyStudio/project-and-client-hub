@@ -549,6 +549,23 @@ export type AdminTaskGroup = {
   created_at: string;
 };
 
+export type DiscoveryAnswer = { value: string; show: boolean };
+
+export type DiscoverySession = {
+  id: string;
+  client_id: string | null;
+  project_id: string | null;
+  title: string;
+  template_key: string;
+  answers: Record<string, DiscoveryAnswer>;
+  client_summary: string | null;
+  follow_up: string | null;
+  status: "draft" | "done";
+  share_token: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdminTask = {
   id: string;
   title: string;
@@ -649,6 +666,7 @@ export interface Database {
       site_features: TableShape<SiteFeature>;
       admin_task_groups: TableShape<AdminTaskGroup>;
       admin_tasks: TableShape<AdminTask>;
+      discovery_sessions: TableShape<DiscoverySession>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -703,6 +721,16 @@ export interface Database {
       admin_user_activity: {
         Args: Record<string, never>;
         Returns: { id: string; last_sign_in_at: string | null; created_at: string }[];
+      };
+      get_discovery_summary: {
+        Args: { p_token: string };
+        Returns: {
+          title: string;
+          template_key: string;
+          client_summary: string | null;
+          answers: Record<string, string>;
+          created_at: string;
+        } | null;
       };
     };
     Enums: Record<string, never>;

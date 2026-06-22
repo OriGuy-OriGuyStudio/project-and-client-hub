@@ -24,6 +24,7 @@ function titleForPath(path: string): string {
   if (TITLE_MAP[path]) return TITLE_MAP[path];
   if (path.startsWith("/projects/")) return "פרויקט";
   if (path.startsWith("/admin/clients/")) return "כרטיס לקוח";
+  if (path.startsWith("/admin/discovery/")) return "שיחת אפיון";
   return "";
 }
 
