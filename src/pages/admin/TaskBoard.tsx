@@ -121,6 +121,13 @@ const STATUS_RANK: Record<AdminTaskStatus, number> = {
   in_progress: 1,
   done: 2,
 };
+// Display band, applied before any sort so it always holds: in-progress tasks
+// rise to the top of the group, done tasks sink to the bottom.
+const STATUS_BAND: Record<AdminTaskStatus, number> = {
+  in_progress: 0,
+  todo: 1,
+  done: 2,
+};
 
 type SortBy = "manual" | "status" | "urgency" | "start" | "client" | "project";
 type SortDir = "asc" | "desc";
@@ -213,23 +220,23 @@ export default function TaskBoard() {
     setFormOpen(true);
   }
 
-  // Done tasks always sink to the bottom; within that, order by the chosen sort
-  // (default "manual" = the drag order). Empty client/project sort last.
+  // In-progress tasks always rise to the top and done tasks sink to the bottom;
+  // within each band, order by the chosen sort (default "manual" = drag order).
+  // Empty client/project sort last.
   const cname = (t: AdminTask) =>
     t.client_id ? clientName.get(t.client_id) || "￿" : "￿";
   const pname = (t: AdminTask) =>
     t.project_id ? projectName.get(t.project_id) || "￿" : "￿";
   const sortTasks = (arr: AdminTask[], by: SortBy, dir: SortDir) =>
     [...arr].sort((a, b) => {
+      // Status band always wins: in-progress on top, done at the bottom,
+      // regardless of the chosen sort/filter.
+      const band = STATUS_BAND[a.status] - STATUS_BAND[b.status];
+      if (band !== 0) return band;
       const tie = a.order_index - b.order_index || a.created_at.localeCompare(b.created_at);
-      // Manual = drag order with completed tasks sunk to the bottom.
-      if (by === "manual") {
-        return (
-          (a.status === "done" ? 1 : 0) - (b.status === "done" ? 1 : 0) || tie
-        );
-      }
-      // Explicit sorts honor the asc/desc direction (so the admin picks what
-      // comes first); no forced done-sink here.
+      // Within a band, "manual" keeps the drag order.
+      if (by === "manual") return tie;
+      // Explicit sorts honor the asc/desc direction within the band.
       const sign = dir === "desc" ? -1 : 1;
       let cmp = 0;
       switch (by) {
