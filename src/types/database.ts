@@ -538,7 +538,7 @@ export type UsageEvent = {
 };
 
 export type TaskUrgency = "low" | "medium" | "high" | "urgent";
-export type AdminTaskStatus = "todo" | "in_progress" | "done";
+export type AdminTaskStatus = "todo" | "in_progress" | "in_progress_claude" | "done";
 
 export type AdminTaskGroup = {
   id: string;

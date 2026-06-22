@@ -103,6 +103,7 @@ const URGENCY_OPTIONS = (Object.keys(URGENCY) as TaskUrgency[]).map((u) => ({
 const STATUS: Record<AdminTaskStatus, string> = {
   todo: "לביצוע",
   in_progress: "בתהליך",
+  in_progress_claude: "בתהליך בטיפול קלוד",
   done: "הושלם",
 };
 const STATUS_OPTIONS = (Object.keys(STATUS) as AdminTaskStatus[]).map((s) => ({
@@ -119,14 +120,16 @@ const URGENCY_RANK: Record<TaskUrgency, number> = {
 const STATUS_RANK: Record<AdminTaskStatus, number> = {
   todo: 0,
   in_progress: 1,
-  done: 2,
+  in_progress_claude: 2,
+  done: 3,
 };
-// Display band, applied before any sort so it always holds: in-progress tasks
-// rise to the top of the group, done tasks sink to the bottom.
+// Display band, applied before any sort so it always holds: both in-progress
+// states rise to the top of the group, done tasks sink to the bottom.
 const STATUS_BAND: Record<AdminTaskStatus, number> = {
-  in_progress: 0,
-  todo: 1,
-  done: 2,
+  in_progress_claude: 0,
+  in_progress: 1,
+  todo: 2,
+  done: 3,
 };
 
 type SortBy = "manual" | "status" | "urgency" | "start" | "client" | "project";
@@ -975,10 +978,13 @@ function TaskCard({
             ? "border-primary/50 bg-field ring-1 ring-primary/30"
             : done
               ? "border-border/60 bg-field/50"
-              : task.status === "in_progress"
-                ? // In progress → stands out: green tint + breathing green ring.
-                  "task-breathe border-primary/40 bg-primary/[0.07]"
-                : "border-border bg-field"
+              : task.status === "in_progress_claude"
+                ? // Handled by Claude → cyan tint + breathing ring.
+                  "task-breathe border-brand-cyan-base/50 bg-brand-cyan-base/[0.08]"
+                : task.status === "in_progress"
+                  ? // In progress → green tint + breathing green ring.
+                    "task-breathe border-primary/40 bg-primary/[0.07]"
+                  : "border-border bg-field"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
