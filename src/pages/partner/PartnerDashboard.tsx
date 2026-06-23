@@ -25,6 +25,45 @@ import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
 import { referralDisplay, referralUrl } from "@/lib/referral";
+import { cn } from "@/lib/utils";
+import type { PartnerLeadStatus } from "@/types/database";
+
+// The funnel a lead moves through, shown as a mini progress bar on each card so
+// the partner sees exactly where things stand (instead of a single status word).
+const LEAD_STAGES: { key: PartnerLeadStatus; label: string }[] = [
+  { key: "submitted", label: "התקבל" },
+  { key: "in_review", label: "בבדיקה" },
+  { key: "quote_sent", label: "הצעה" },
+  { key: "interested", label: "מתעניין" },
+  { key: "closed", label: "נסגר" },
+];
+
+function LeadPipeline({ status }: { status: PartnerLeadStatus }) {
+  if (status === "not_relevant") {
+    return <p className="text-xs text-muted-foreground">סומן כלא רלוונטי כרגע</p>;
+  }
+  const current = Math.max(0, LEAD_STAGES.findIndex((s) => s.key === status));
+  return (
+    <div className="flex items-end gap-1.5">
+      {LEAD_STAGES.map((s, i) => {
+        const done = i <= current;
+        return (
+          <div key={s.key} className="flex flex-1 flex-col items-center gap-1">
+            <span
+              className={cn(
+                "text-[10px] leading-tight",
+                i === current ? "font-semibold text-primary" : "text-muted-foreground"
+              )}
+            >
+              {s.label}
+            </span>
+            <div className={cn("h-1.5 w-full rounded-full", done ? "bg-primary" : "bg-border")} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string | number }) {
@@ -68,6 +107,10 @@ export default function PartnerDashboard() {
   const paid = leads
     .filter((l) => l.payment_confirmed_at)
     .reduce((sum, l) => sum + (l.commission_amount ?? 0), 0);
+  // Closed deals whose commission hasn't been paid out yet — money on the way.
+  const pending = leads
+    .filter((l) => l.status === "closed" && !l.payment_confirmed_at)
+    .reduce((sum, l) => sum + (l.commission_amount ?? 0), 0);
 
   const code = data?.profile?.referral_code ?? "";
   const refLink = code ? referralDisplay(code) : "";
@@ -109,11 +152,12 @@ export default function PartnerDashboard() {
         </div>
       ) : (
         <>
-          <div data-tour="partner-stats" data-section="במבט אחד" className="scroll-mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-tour="partner-stats" data-section="במבט אחד" className="scroll-mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Stat icon={Users} label="לידים שהוגשו" value={leads.length} />
             <Stat icon={Briefcase} label="לידים פתוחים" value={open} />
             <Stat icon={Check} label="עסקאות שנסגרו" value={closed} />
             <Stat icon={Wallet} label="עמלה שהתקבלה" value={`₪${paid.toLocaleString("he-IL")}`} />
+            <Stat icon={Wallet} label="ממתין לתשלום" value={`₪${pending.toLocaleString("he-IL")}`} />
           </div>
 
           {/* Referral link */}
@@ -160,20 +204,28 @@ export default function PartnerDashboard() {
             ) : (
               <div className="space-y-2">
                 {leads.map((l) => (
-                  <Card key={l.id} className="flex items-center justify-between gap-3 p-4">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{l.lead_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {l.project_type ? projectTypeHe[l.project_type] : "-"} ·{" "}
-                        {new Date(l.created_at).toLocaleDateString("he-IL")}
-                        {l.commission_amount
-                          ? ` · עמלה ₪${l.commission_amount.toLocaleString("he-IL")}`
-                          : ""}
-                      </p>
+                  <Card key={l.id} className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{l.lead_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {l.project_type ? projectTypeHe[l.project_type] : "-"} ·{" "}
+                          {new Date(l.created_at).toLocaleDateString("he-IL")}
+                          {l.commission_amount
+                            ? ` · עמלה ₪${l.commission_amount.toLocaleString("he-IL")}`
+                            : ""}
+                          {l.status === "closed" && l.commission_amount
+                            ? l.payment_confirmed_at
+                              ? " · שולמה ✓"
+                              : " · ממתינה לתשלום"
+                            : ""}
+                        </p>
+                      </div>
+                      <Badge variant={leadStatusVariant[l.status]} className="shrink-0">
+                        {leadStatusHe[l.status]}
+                      </Badge>
                     </div>
-                    <Badge variant={leadStatusVariant[l.status]}>
-                      {leadStatusHe[l.status]}
-                    </Badge>
+                    <LeadPipeline status={l.status} />
                   </Card>
                 ))}
               </div>
