@@ -58,6 +58,7 @@ export type Profile = {
   role: UserRole;
   gender: Gender | null;
   created_at: string;
+  last_seen_at: string | null;
 }
 
 export type AllowedEmail = {
@@ -730,6 +731,7 @@ export interface Database {
         Args: Record<string, never>;
         Returns: { id: string; last_sign_in_at: string | null; created_at: string }[];
       };
+      touch_last_seen: { Args: Record<string, never>; Returns: undefined };
       get_discovery_summary: {
         Args: { p_token: string };
         Returns: {

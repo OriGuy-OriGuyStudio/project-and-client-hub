@@ -144,7 +144,7 @@ export default function Partners() {
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {lastSeen?.get(p.id)
-                          ? `כניסה אחרונה: ${new Date(lastSeen.get(p.id)!).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
+                          ? `פעילות אחרונה: ${new Date(lastSeen.get(p.id)!).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
                           : "טרם נכנס"}
                       </p>
                     </div>

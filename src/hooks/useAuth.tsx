@@ -71,6 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setProfile(data);
     setStatus("authenticated");
+    // Heartbeat: record real activity (every app load with a session), so the
+    // admin "last activity" reflects visits, not only fresh sign-ins.
+    void supabase.rpc("touch_last_seen");
   }
 
   useEffect(() => {
