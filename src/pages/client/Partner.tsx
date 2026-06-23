@@ -34,6 +34,7 @@ import { RewardStoreCard, NextRewardNudge, CoinTimeline } from "@/components/rew
 import { notifyAdminTask } from "@/lib/invite";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
+import { StatusPipeline } from "@/components/partner/StatusPipeline";
 import type { Referral } from "@/types/database";
 
 export default function Partner() {
@@ -234,35 +235,38 @@ export default function Partner() {
         ) : (
           <div className="space-y-2">
             {data.referrals.map((r) => (
-              <Card key={r.id} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{r.referred_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleDateString("he-IL")}
-                    {r.deal_value ? ` · עסקה ₪${r.deal_value.toLocaleString("he-IL")}` : ""}
-                  </p>
+              <Card key={r.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{r.referred_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString("he-IL")}
+                      {r.deal_value ? ` · עסקה ₪${r.deal_value.toLocaleString("he-IL")}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Badge variant={referralStatusVariant[r.status]}>
+                      {referralStatusHe[r.status]}
+                    </Badge>
+                    {r.status === "submitted" && (
+                      <>
+                        <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => setEditTarget(r)}>
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          aria-label="מחיקה"
+                          onClick={() => setDeleteTarget(r)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Badge variant={referralStatusVariant[r.status]}>
-                    {referralStatusHe[r.status]}
-                  </Badge>
-                  {r.status === "submitted" && (
-                    <>
-                      <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => setEditTarget(r)}>
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        aria-label="מחיקה"
-                        onClick={() => setDeleteTarget(r)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+                <StatusPipeline status={r.status} />
               </Card>
             ))}
           </div>

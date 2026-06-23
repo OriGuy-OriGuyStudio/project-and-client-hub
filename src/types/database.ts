@@ -31,7 +31,14 @@ export type StageStatus = "not_started" | "in_progress" | "done" | "blocked";
 export type ApprovalStatus = "pending" | "approved" | "needs_changes";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type PaymentStatus = "pending" | "paid";
-export type ReferralStatus = "submitted" | "in_progress" | "closed" | "not_relevant";
+export type ReferralStatus =
+  | "submitted"
+  | "awaiting_intro"
+  | "intro_done"
+  | "quote_sent"
+  | "client_approved"
+  | "closed"
+  | "not_relevant";
 export type BrandColorRole =
   | "primary"
   | "secondary"

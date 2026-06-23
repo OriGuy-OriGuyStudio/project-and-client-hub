@@ -9,18 +9,24 @@ import type {
 } from "@/types/database";
 
 export const referralStatusHe: Record<ReferralStatus, string> = {
-  submitted: "הוגשה",
-  in_progress: "בתהליך",
-  closed: "נסגרה",
-  not_relevant: "לא רלוונטי",
+  submitted: "התקבלה",
+  awaiting_intro: "ממתין לשיחת היכרות",
+  intro_done: "שיחת היכרות בוצעה",
+  quote_sent: "נשלחה הצעת מחיר",
+  client_approved: "הלקוח אישר",
+  closed: "אושר לעבודה",
+  not_relevant: "נפל / לא רלוונטי",
 };
 
 export const referralStatusVariant: Record<
   ReferralStatus,
-  "secondary" | "warning" | "success" | "destructive"
+  "secondary" | "warning" | "cyan" | "success" | "destructive"
 > = {
   submitted: "secondary",
-  in_progress: "warning",
+  awaiting_intro: "warning",
+  intro_done: "cyan",
+  quote_sent: "cyan",
+  client_approved: "cyan",
   closed: "success",
   not_relevant: "destructive",
 };

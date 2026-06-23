@@ -26,7 +26,7 @@ import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
 import { referralDisplay, referralUrl } from "@/lib/referral";
 import { celebrateBig } from "@/lib/confetti";
-import { cn } from "@/lib/utils";
+import { StatusPipeline } from "@/components/partner/StatusPipeline";
 import {
   Dialog,
   DialogContent,
@@ -35,50 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PartnerLead, PartnerLeadStatus } from "@/types/database";
-
-// The funnel a lead moves through, shown as a mini progress bar on each card so
-// the partner sees exactly where things stand (instead of a single status word).
-const LEAD_STAGES: { key: PartnerLeadStatus; label: string }[] = [
-  { key: "submitted", label: "התקבל" },
-  { key: "awaiting_intro", label: "ממתין לשיחה" },
-  { key: "intro_done", label: "שיחה בוצעה" },
-  { key: "quote_sent", label: "הצעה נשלחה" },
-  { key: "client_approved", label: "לקוח אישר" },
-  { key: "closed", label: "אושר לעבודה" },
-];
-
-function LeadPipeline({ status }: { status: PartnerLeadStatus }) {
-  if (status === "not_relevant") {
-    return (
-      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
-        <span className="size-1.5 rounded-full bg-destructive" />
-        הליד נפל / לא רלוונטי
-      </p>
-    );
-  }
-  const current = Math.max(0, LEAD_STAGES.findIndex((s) => s.key === status));
-  return (
-    <div className="flex items-end gap-1.5">
-      {LEAD_STAGES.map((s, i) => {
-        const done = i <= current;
-        return (
-          <div key={s.key} className="flex flex-1 flex-col items-center gap-1">
-            <span
-              className={cn(
-                "text-[10px] leading-tight",
-                i === current ? "font-semibold text-primary" : "text-muted-foreground"
-              )}
-            >
-              {s.label}
-            </span>
-            <div className={cn("h-1.5 w-full rounded-full", done ? "bg-primary" : "bg-border")} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import type { PartnerLead } from "@/types/database";
 
 
 type Celebration = { id: string; kind: "won" | "paid"; amount: number; name: string };
@@ -316,7 +273,7 @@ export default function PartnerDashboard() {
                         {leadStatusHe[l.status]}
                       </Badge>
                     </div>
-                    <LeadPipeline status={l.status} />
+                    <StatusPipeline status={l.status} />
                   </Card>
                 ))}
               </div>

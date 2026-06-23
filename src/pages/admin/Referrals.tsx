@@ -27,7 +27,15 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 import type { ReferralStatus } from "@/types/database";
 
-const STATUSES: ReferralStatus[] = ["submitted", "in_progress", "closed", "not_relevant"];
+const STATUSES: ReferralStatus[] = [
+  "submitted",
+  "awaiting_intro",
+  "intro_done",
+  "quote_sent",
+  "client_approved",
+  "closed",
+  "not_relevant",
+];
 
 export default function Referrals() {
   const { data, isLoading } = useAdminReferrals();
