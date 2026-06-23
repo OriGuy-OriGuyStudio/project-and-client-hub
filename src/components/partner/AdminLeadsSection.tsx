@@ -101,12 +101,18 @@ export function AdminLeadsSection() {
   );
 }
 
-function ManageLeadDialog({
+export function ManageLeadDialog({
   lead,
   onClose,
+  initialStatus,
+  onSaved,
 }: {
   lead: AdminLead | null;
   onClose: () => void;
+  /** Preselect a status when opening (e.g. "closed" to jump straight to the deal fields). */
+  initialStatus?: PartnerLeadStatus;
+  /** Called after a successful save, in addition to refreshing the admin leads list. */
+  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -122,7 +128,7 @@ function ManageLeadDialog({
 
   if (lead && lead.id !== seeded) {
     setForm({
-      status: lead.status,
+      status: initialStatus ?? lead.status,
       deal_value: lead.deal_value != null ? String(lead.deal_value) : "",
       rate: String(lead.commission_rate_at_close ?? lead.partner_commission_rate ?? ""),
       payment_method: (lead.payment_method ?? "") as "" | "bit" | "bank_transfer",
@@ -178,6 +184,7 @@ function ManageLeadDialog({
 
     toast({ title: "הליד עודכן", variant: "success" });
     qc.invalidateQueries({ queryKey: ["admin-partner-leads"] });
+    onSaved?.();
     onClose();
   }
 

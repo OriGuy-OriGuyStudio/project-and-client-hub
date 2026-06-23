@@ -40,6 +40,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { GENDER_OPTIONS } from "@/lib/gender";
 import { useClients } from "@/hooks/useClients";
+import { isDemoEmail } from "@/lib/demo";
 import { useClientCrm } from "@/hooks/useClientCrm";
 import { useAuth } from "@/hooks/useAuth";
 import type { ClientCallLog } from "@/types/database";
@@ -81,6 +82,56 @@ export default function Clients() {
     },
   });
 
+  const activeList = data?.active ?? [];
+  const pendingList = data?.pending ?? [];
+  const realActive = activeList.filter((c) => !isDemoEmail(c.email));
+  const demoActive = activeList.filter((c) => isDemoEmail(c.email));
+  const realPending = pendingList.filter((c) => !isDemoEmail(c.email));
+  const demoPending = pendingList.filter((c) => isDemoEmail(c.email));
+  const hasDemo = demoActive.length + demoPending.length > 0;
+
+  const renderActive = (c: (typeof activeList)[number]) => (
+    <ClientRow
+      key={c.id}
+      item={{
+        kind: "active",
+        id: c.id,
+        email: c.email,
+        full_name: c.full_name,
+        business_name: c.business_name,
+        phone: c.phone,
+        enrolled: c.enrolled,
+        inviteSentAt: null,
+        lastSeen: activity?.get(c.id) ?? null,
+      }}
+      icon={Building2}
+      iconClass="bg-primary/15 text-primary"
+      badge={c.enrolled ? <Badge variant="cyan">שותף</Badge> : <Badge variant="success">פעיל</Badge>}
+      onEdit={setEditTarget}
+      onDelete={setDeleteTarget}
+    />
+  );
+  const renderPending = (c: (typeof pendingList)[number]) => (
+    <ClientRow
+      key={c.email}
+      item={{
+        kind: "pending",
+        id: null,
+        email: c.email,
+        full_name: c.full_name,
+        business_name: c.business_name,
+        phone: null,
+        enrolled: false,
+        inviteSentAt: c.invite_sent_at,
+      }}
+      icon={Clock}
+      iconClass="bg-muted text-muted-foreground"
+      badge={<Badge variant="warning">ממתין</Badge>}
+      onEdit={setEditTarget}
+      onDelete={setDeleteTarget}
+    />
+  );
+
   return (
     <div>
       <PageHeader
@@ -106,66 +157,31 @@ export default function Clients() {
         />
       ) : (
         <div className="space-y-6">
-          {data!.active.length > 0 && (
+          {realActive.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground">
-                פעילים ({data!.active.length})
+                פעילים ({realActive.length})
               </h2>
-              {data!.active.map((c) => (
-                <ClientRow
-                  key={c.id}
-                  item={{
-                    kind: "active",
-                    id: c.id,
-                    email: c.email,
-                    full_name: c.full_name,
-                    business_name: c.business_name,
-                    phone: c.phone,
-                    enrolled: c.enrolled,
-                    inviteSentAt: null,
-                    lastSeen: activity?.get(c.id) ?? null,
-                  }}
-                  icon={Building2}
-                  iconClass="bg-primary/15 text-primary"
-                  badge={
-                    c.enrolled ? (
-                      <Badge variant="cyan">שותף</Badge>
-                    ) : (
-                      <Badge variant="success">פעיל</Badge>
-                    )
-                  }
-                  onEdit={setEditTarget}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
+              {realActive.map(renderActive)}
             </section>
           )}
 
-          {data!.pending.length > 0 && (
+          {realPending.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground">
-                ממתינים לכניסה ראשונה ({data!.pending.length})
+                ממתינים לכניסה ראשונה ({realPending.length})
               </h2>
-              {data!.pending.map((c) => (
-                <ClientRow
-                  key={c.email}
-                  item={{
-                    kind: "pending",
-                    id: null,
-                    email: c.email,
-                    full_name: c.full_name,
-                    business_name: c.business_name,
-                    phone: null,
-                    enrolled: false,
-                    inviteSentAt: c.invite_sent_at,
-                  }}
-                  icon={Clock}
-                  iconClass="bg-muted text-muted-foreground"
-                  badge={<Badge variant="warning">ממתין</Badge>}
-                  onEdit={setEditTarget}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
+              {realPending.map(renderPending)}
+            </section>
+          )}
+
+          {hasDemo && (
+            <section className="space-y-2 rounded-2xl border border-dashed border-border/60 bg-background/20 p-3">
+              <h2 className="text-sm font-medium text-amber-500">
+                טסטים (דמה) , לא נספרים כלקוחות אמיתיים
+              </h2>
+              {demoActive.map(renderActive)}
+              {demoPending.map(renderPending)}
             </section>
           )}
         </div>

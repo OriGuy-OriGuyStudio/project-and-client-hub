@@ -28,7 +28,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { usePartners, rateLabel, type ActivePartner } from "@/hooks/usePartners";
-import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
+import { isDemoEmail } from "@/lib/demo";
 import { sendInvite } from "@/lib/invite";
 import { referralUrl } from "@/lib/referral";
 import type { AllowedEmail, Gender } from "@/types/database";
@@ -80,6 +80,61 @@ export default function Partners() {
     },
   });
 
+  const activeList = data?.active ?? [];
+  const pendingList = data?.pending ?? [];
+  const realActive = activeList.filter((p) => !isDemoEmail(p.email));
+  const demoActive = activeList.filter((p) => isDemoEmail(p.email));
+  const realPending = pendingList.filter((p) => !isDemoEmail(p.email));
+  const demoPending = pendingList.filter((p) => isDemoEmail(p.email));
+  const hasDemo = demoActive.length + demoPending.length > 0;
+
+  const renderActivePartner = (p: ActivePartner) => (
+    <Card key={p.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+          <Handshake className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-medium text-foreground">{p.full_name || "ללא שם"}</p>
+          <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 font-mono-code text-xs text-muted-foreground">
+            <span className="max-w-full truncate">{p.email}</span>
+            <CopyButton content={p.email} variant="ghost" size="icon"
+              className="size-5 shrink-0 hover:text-foreground" toastMessage="האימייל הועתק" title="העתקת אימייל" />
+            {p.referral_code && (
+              <>
+                <span>· ref/{p.referral_code}</span>
+                <CopyButton content={referralUrl(p.referral_code)} variant="ghost" size="icon"
+                  className="size-5 shrink-0 hover:text-foreground" toastMessage="לינק ההפניה הועתק" title="העתקת לינק הפניה" />
+              </>
+            )}
+          </p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {lastSeen?.get(p.id)
+              ? `פעילות אחרונה: ${new Date(lastSeen.get(p.id)!).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
+              : "טרם נכנס"}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Badge variant="success">
+          {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
+        </Badge>
+        <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
+          <Link to={`/admin/partners/${p.id}`}>
+            <Eye className="size-4" />
+          </Link>
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => setEditTarget(toTarget(p, "active"))}>
+          <Pencil className="size-4" />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="מחיקה" className="text-destructive"
+          onClick={() => setDeleteTarget(toTarget(p, "active"))}>
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+    </Card>
+  );
+
   return (
     <div>
       <PageHeader
@@ -105,83 +160,38 @@ export default function Partners() {
         />
       ) : (
         <div className="space-y-6">
-          {data!.active.length > 0 && (
+          {realActive.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground">
-                פעילים ({data!.active.length})
+                פעילים ({realActive.length})
               </h2>
-              {data!.active.map((p) => (
-                <Card key={p.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                      <Handshake className="size-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">{p.full_name || "ללא שם"}</p>
-                      <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 font-mono-code text-xs text-muted-foreground">
-                        <span className="max-w-full truncate">{p.email}</span>
-                        <CopyButton
-                          content={p.email}
-                          variant="ghost"
-                          size="icon"
-                          className="size-5 shrink-0 hover:text-foreground"
-                          toastMessage="האימייל הועתק"
-                          title="העתקת אימייל"
-                        />
-                        {p.referral_code && (
-                          <>
-                            <span>· ref/{p.referral_code}</span>
-                            <CopyButton
-                              content={referralUrl(p.referral_code)}
-                              variant="ghost"
-                              size="icon"
-                              className="size-5 shrink-0 hover:text-foreground"
-                              toastMessage="לינק ההפניה הועתק"
-                              title="העתקת לינק הפניה"
-                            />
-                          </>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {lastSeen?.get(p.id)
-                          ? `פעילות אחרונה: ${new Date(lastSeen.get(p.id)!).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
-                          : "טרם נכנס"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Badge variant="success">
-                      {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
-                    </Badge>
-                    <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
-                      <Link to={`/admin/partners/${p.id}`}>
-                        <Eye className="size-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => setEditTarget(toTarget(p, "active"))}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="מחיקה"
-                      className="text-destructive"
-                      onClick={() => setDeleteTarget(toTarget(p, "active"))}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </Card>
+              {realActive.map(renderActivePartner)}
+            </section>
+          )}
+
+          {realPending.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground">
+                ממתינים לכניסה ראשונה ({realPending.length})
+              </h2>
+              {realPending.map((p) => (
+                <PendingPartnerRow
+                  key={p.email}
+                  p={p}
+                  onEdit={() => setEditTarget(toTarget(p, "pending"))}
+                  onDelete={() => setDeleteTarget(toTarget(p, "pending"))}
+                />
               ))}
             </section>
           )}
 
-          {data!.pending.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                ממתינים לכניסה ראשונה ({data!.pending.length})
+          {hasDemo && (
+            <section className="space-y-2 rounded-2xl border border-dashed border-border/60 bg-background/20 p-3">
+              <h2 className="text-sm font-medium text-amber-500">
+                טסטים (דמה) , לא נספרים כשותפים אמיתיים
               </h2>
-              {data!.pending.map((p) => (
+              {demoActive.map(renderActivePartner)}
+              {demoPending.map((p) => (
                 <PendingPartnerRow
                   key={p.email}
                   p={p}
@@ -193,10 +203,6 @@ export default function Partners() {
           )}
         </div>
       )}
-
-      <div className="mt-8">
-        <AdminLeadsSection />
-      </div>
 
       <EditPartnerDialog target={editTarget} onClose={() => setEditTarget(null)} />
       <DeletePartnerDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />

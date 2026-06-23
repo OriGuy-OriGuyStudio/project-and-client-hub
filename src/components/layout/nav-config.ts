@@ -13,6 +13,7 @@ import {
   Megaphone,
   ListChecks,
   ClipboardList,
+  Inbox,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export const adminNav: NavItem[] = [
     icon: FolderKanban,
     badgeTypes: ["file", "message", "approval", "checklist"],
   },
+  { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"] },
   { to: "/admin/partners", label: "שותפים", icon: Handshake },
   { to: "/admin/referrals", label: "הפניות", icon: Handshake, badgeTypes: ["referral"] },
   {

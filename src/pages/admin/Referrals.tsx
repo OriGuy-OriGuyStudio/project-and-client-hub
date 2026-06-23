@@ -119,12 +119,18 @@ export default function Referrals() {
   );
 }
 
-function ManageReferralDialog({
+export function ManageReferralDialog({
   referral,
   onClose,
+  initialStatus,
+  onSaved,
 }: {
   referral: AdminReferral | null;
   onClose: () => void;
+  /** Preselect a status when opening (e.g. "closed" to jump straight to the deal fields). */
+  initialStatus?: ReferralStatus;
+  /** Called after a successful save, in addition to refreshing the admin referrals list. */
+  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -139,7 +145,7 @@ function ManageReferralDialog({
 
   if (referral && referral.id !== seeded) {
     setForm({
-      status: referral.status,
+      status: initialStatus ?? referral.status,
       deal_value: referral.deal_value != null ? String(referral.deal_value) : "",
       payment_method: (referral.payment_method ?? "") as "" | "bit" | "bank_transfer",
       payment_confirmed: !!referral.payment_confirmed_at,
@@ -197,6 +203,7 @@ function ManageReferralDialog({
     setSaving(false);
     toast({ title: "ההפניה עודכנה", variant: "success" });
     qc.invalidateQueries({ queryKey: ["admin-referrals"] });
+    onSaved?.();
     onClose();
   }
 
