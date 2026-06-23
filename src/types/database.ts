@@ -680,6 +680,9 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
+      clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
+      reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
+      is_demo_account: { Args: { p_uid: string }; Returns: boolean };
       log_usage_event: {
         Args: { p_event: string; p_path?: string | null; p_meta?: Record<string, unknown> | null };
         Returns: undefined;

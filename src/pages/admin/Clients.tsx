@@ -41,6 +41,7 @@ import { clampText } from "@/lib/sanitize";
 import { GENDER_OPTIONS } from "@/lib/gender";
 import { useClients } from "@/hooks/useClients";
 import { isDemoEmail } from "@/lib/demo";
+import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { useClientCrm } from "@/hooks/useClientCrm";
 import { useAuth } from "@/hooks/useAuth";
 import type { ClientCallLog } from "@/types/database";
@@ -180,8 +181,27 @@ export default function Clients() {
               <h2 className="text-sm font-medium text-amber-500">
                 טסטים (דמה) , לא נספרים כלקוחות אמיתיים
               </h2>
-              {demoActive.map(renderActive)}
-              {demoPending.map(renderPending)}
+              {demoActive.map((c) => (
+                <div key={c.id} className="space-y-1">
+                  {renderActive(c)}
+                  <DemoAccountControls
+                    demoId={c.id}
+                    role="client"
+                    sources={realActive.map((r) => ({
+                      id: r.id,
+                      label: r.full_name || r.business_name || r.email,
+                    }))}
+                  />
+                </div>
+              ))}
+              {demoPending.length > 0 && (
+                <>
+                  {demoPending.map(renderPending)}
+                  <p className="ps-1 text-xs text-muted-foreground">
+                    התחבר פעם אחת עם חשבון הדמה כדי להפעיל את טעינת הנתונים.
+                  </p>
+                </>
+              )}
             </section>
           )}
         </div>

@@ -29,6 +29,7 @@ import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { usePartners, rateLabel, type ActivePartner } from "@/hooks/usePartners";
 import { isDemoEmail } from "@/lib/demo";
+import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { sendInvite } from "@/lib/invite";
 import { referralUrl } from "@/lib/referral";
 import type { AllowedEmail, Gender } from "@/types/database";
@@ -190,15 +191,34 @@ export default function Partners() {
               <h2 className="text-sm font-medium text-amber-500">
                 טסטים (דמה) , לא נספרים כשותפים אמיתיים
               </h2>
-              {demoActive.map(renderActivePartner)}
-              {demoPending.map((p) => (
-                <PendingPartnerRow
-                  key={p.email}
-                  p={p}
-                  onEdit={() => setEditTarget(toTarget(p, "pending"))}
-                  onDelete={() => setDeleteTarget(toTarget(p, "pending"))}
-                />
+              {demoActive.map((p) => (
+                <div key={p.id} className="space-y-1">
+                  {renderActivePartner(p)}
+                  <DemoAccountControls
+                    demoId={p.id}
+                    role="partner"
+                    sources={realActive.map((r) => ({
+                      id: r.id,
+                      label: r.full_name || r.email,
+                    }))}
+                  />
+                </div>
               ))}
+              {demoPending.length > 0 && (
+                <>
+                  {demoPending.map((p) => (
+                    <PendingPartnerRow
+                      key={p.email}
+                      p={p}
+                      onEdit={() => setEditTarget(toTarget(p, "pending"))}
+                      onDelete={() => setDeleteTarget(toTarget(p, "pending"))}
+                    />
+                  ))}
+                  <p className="ps-1 text-xs text-muted-foreground">
+                    התחבר פעם אחת עם חשבון הדמה כדי להפעיל את טעינת הנתונים.
+                  </p>
+                </>
+              )}
             </section>
           )}
         </div>
