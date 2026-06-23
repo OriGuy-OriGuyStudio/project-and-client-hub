@@ -42,10 +42,24 @@ import { sendRedemptionNotice } from "@/lib/invite";
 import { rateLabel } from "@/hooks/usePartners";
 import { referralDisplay, referralUrl } from "@/lib/referral";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
+import { StatusPipeline } from "@/components/partner/StatusPipeline";
+import type { PartnerLeadStatus } from "@/types/database";
 
 function ils(n: number | null | undefined) {
   return n == null ? "-" : `₪${n.toLocaleString("he-IL")}`;
 }
+
+// Inline stage editing covers the funnel up to "client_approved"; closing a deal
+// (with value + commission) stays in the dedicated close form, and not_relevant
+// marks a drop.
+const LEAD_EDIT_STATUSES: PartnerLeadStatus[] = [
+  "submitted",
+  "awaiting_intro",
+  "intro_done",
+  "quote_sent",
+  "client_approved",
+  "not_relevant",
+];
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string | number }) {
   return (
@@ -90,6 +104,13 @@ export default function PartnerDetail() {
             : "המימוש הוחזר לטיפול",
       variant: "success",
     });
+    qc.invalidateQueries({ queryKey: ["partner-detail", id] });
+  }
+
+  async function updateLeadStatus(leadId: string, status: PartnerLeadStatus) {
+    const { error } = await supabase.from("partner_leads").update({ status }).eq("id", leadId);
+    if (error) return toastError("עדכון הסטטוס נכשל.");
+    toast({ title: "הסטטוס עודכן", variant: "success" });
     qc.invalidateQueries({ queryKey: ["partner-detail", id] });
   }
 
@@ -220,19 +241,36 @@ export default function PartnerDetail() {
         ) : (
           <div className="space-y-2">
             {leads.map((l) => (
-              <Card key={l.id} className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{l.lead_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {l.project_type ? projectTypeHe[l.project_type] : "פרויקט"}
-                    {l.deal_value != null ? ` · עסקה ${ils(l.deal_value)}` : ""}
-                    {l.commission_amount != null ? ` · עמלה ${ils(l.commission_amount)}` : ""}
-                    {l.payment_confirmed_at
-                      ? ` · שולם ${new Date(l.payment_confirmed_at).toLocaleDateString("he-IL")}`
-                      : ""}
-                  </p>
+              <Card key={l.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{l.lead_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {l.project_type ? projectTypeHe[l.project_type] : "פרויקט"}
+                      {l.deal_value != null ? ` · עסקה ${ils(l.deal_value)}` : ""}
+                      {l.commission_amount != null ? ` · עמלה ${ils(l.commission_amount)}` : ""}
+                      {l.payment_confirmed_at
+                        ? ` · שולם ${new Date(l.payment_confirmed_at).toLocaleDateString("he-IL")}`
+                        : ""}
+                    </p>
+                  </div>
+                  {l.status === "closed" ? (
+                    <Badge variant={leadStatusVariant.closed} className="shrink-0">
+                      {leadStatusHe.closed}
+                    </Badge>
+                  ) : (
+                    <div className="w-40 shrink-0">
+                      <SelectMenu
+                        ariaLabel="סטטוס הליד"
+                        variant="field"
+                        value={l.status}
+                        onChange={(v) => updateLeadStatus(l.id, v as PartnerLeadStatus)}
+                        options={LEAD_EDIT_STATUSES.map((s) => ({ value: s, label: leadStatusHe[s] }))}
+                      />
+                    </div>
+                  )}
                 </div>
-                <Badge variant={leadStatusVariant[l.status]}>{leadStatusHe[l.status]}</Badge>
+                <StatusPipeline status={l.status} />
               </Card>
             ))}
           </div>

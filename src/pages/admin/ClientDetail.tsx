@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Building2,
@@ -32,6 +32,10 @@ import {
   normalizeSocialLinks,
 } from "@/components/brand/social";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
+import { SelectMenu } from "@/components/ui/select-menu";
+import { StatusPipeline } from "@/components/partner/StatusPipeline";
+import { referralStatusHe, referralStatusVariant } from "@/lib/status";
+import type { Referral, ReferralStatus } from "@/types/database";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
@@ -56,6 +60,89 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Coins; label: string;
       </div>
       <p className="mt-1 font-heading text-2xl font-black text-foreground">{value}</p>
     </Card>
+  );
+}
+
+// Inline stage editing for the client's referrals (closing, with deal value +
+// credits, stays in the dedicated referrals form).
+const REFERRAL_EDIT_STATUSES: ReferralStatus[] = [
+  "submitted",
+  "awaiting_intro",
+  "intro_done",
+  "quote_sent",
+  "client_approved",
+  "not_relevant",
+];
+
+function ClientReferrals({ clientId }: { clientId: string }) {
+  const qc = useQueryClient();
+  const { data: referrals, isLoading } = useQuery({
+    queryKey: ["client-referrals", clientId],
+    queryFn: async (): Promise<Referral[]> => {
+      const { data, error } = await supabase
+        .from("referrals")
+        .select("*")
+        .eq("referrer_id", clientId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  async function updateStatus(refId: string, status: ReferralStatus) {
+    const { error } = await supabase.from("referrals").update({ status }).eq("id", refId);
+    if (error) return toastError("עדכון הסטטוס נכשל.");
+    toast({ title: "הסטטוס עודכן", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["client-referrals", clientId] });
+    qc.invalidateQueries({ queryKey: ["client-detail", clientId] });
+  }
+
+  return (
+    <div data-section className="scroll-mt-20">
+      <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-foreground">
+        <Handshake className="size-5" /> ההפניות שלו
+      </h2>
+      {isLoading ? (
+        <Skeleton className="h-20 w-full rounded-2xl" />
+      ) : !referrals?.length ? (
+        <EmptyState icon={Handshake} title="עוד לא הגיש הפניות" />
+      ) : (
+        <div className="space-y-2">
+          {referrals.map((r) => (
+            <Card key={r.id} className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{r.referred_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleDateString("he-IL")}
+                    {r.deal_value ? ` · עסקה ₪${r.deal_value.toLocaleString("he-IL")}` : ""}
+                  </p>
+                </div>
+                {r.status === "closed" ? (
+                  <Badge variant={referralStatusVariant.closed} className="shrink-0">
+                    {referralStatusHe.closed}
+                  </Badge>
+                ) : (
+                  <div className="w-40 shrink-0">
+                    <SelectMenu
+                      ariaLabel="סטטוס ההפניה"
+                      variant="field"
+                      value={r.status}
+                      onChange={(v) => updateStatus(r.id, v as ReferralStatus)}
+                      options={REFERRAL_EDIT_STATUSES.map((s) => ({
+                        value: s,
+                        label: referralStatusHe[s],
+                      }))}
+                    />
+                  </div>
+                )}
+              </div>
+              <StatusPipeline status={r.status} />
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -344,6 +431,9 @@ export default function ClientDetail() {
           </div>
         )}
       </div>
+
+      {/* Referrals (partner program) */}
+      {(enrolled || referralCount > 0) && <ClientReferrals clientId={id!} />}
 
       {/* Call log */}
       <Card id="cd-calls" data-section className="scroll-mt-20 space-y-3 p-5">
