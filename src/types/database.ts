@@ -15,9 +15,10 @@ export type Json =
 export type UserRole = "admin" | "client" | "partner";
 export type PartnerLeadStatus =
   | "submitted"
-  | "in_review"
+  | "awaiting_intro"
+  | "intro_done"
   | "quote_sent"
-  | "interested"
+  | "client_approved"
   | "closed"
   | "not_relevant";
 export type PartnerProjectType =

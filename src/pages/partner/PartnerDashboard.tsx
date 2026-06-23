@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, MousePointerClick, Users, Briefcase, Wallet, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -25,22 +25,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
 import { leadStatusHe, leadStatusVariant, projectTypeHe } from "@/lib/status";
 import { referralDisplay, referralUrl } from "@/lib/referral";
+import { celebrateBig } from "@/lib/confetti";
 import { cn } from "@/lib/utils";
-import type { PartnerLeadStatus } from "@/types/database";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { PartnerLead, PartnerLeadStatus } from "@/types/database";
 
 // The funnel a lead moves through, shown as a mini progress bar on each card so
 // the partner sees exactly where things stand (instead of a single status word).
 const LEAD_STAGES: { key: PartnerLeadStatus; label: string }[] = [
   { key: "submitted", label: "התקבל" },
-  { key: "in_review", label: "בבדיקה" },
-  { key: "quote_sent", label: "הצעה" },
-  { key: "interested", label: "מתעניין" },
-  { key: "closed", label: "נסגר" },
+  { key: "awaiting_intro", label: "ממתין לשיחה" },
+  { key: "intro_done", label: "שיחה בוצעה" },
+  { key: "quote_sent", label: "הצעה נשלחה" },
+  { key: "client_approved", label: "לקוח אישר" },
+  { key: "closed", label: "אושר לעבודה" },
 ];
 
 function LeadPipeline({ status }: { status: PartnerLeadStatus }) {
   if (status === "not_relevant") {
-    return <p className="text-xs text-muted-foreground">סומן כלא רלוונטי כרגע</p>;
+    return (
+      <p className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
+        <span className="size-1.5 rounded-full bg-destructive" />
+        הליד נפל / לא רלוונטי
+      </p>
+    );
   }
   const current = Math.max(0, LEAD_STAGES.findIndex((s) => s.key === status));
   return (
@@ -65,6 +80,81 @@ function LeadPipeline({ status }: { status: PartnerLeadStatus }) {
   );
 }
 
+
+type Celebration = { id: string; kind: "won" | "paid"; amount: number; name: string };
+
+const seenKey = (kind: "won" | "paid", id: string) => `sog-lead-${kind}-${id}`;
+const wasCelebrated = (kind: "won" | "paid", id: string) =>
+  localStorage.getItem(seenKey(kind, id)) === "1";
+
+// One pending celebration per lead: "paid" (money transferred) takes priority over
+// "won" (approved, awaiting payment). Only events not yet celebrated on this device.
+function buildCelebrations(leads: PartnerLead[]): Celebration[] {
+  const out: Celebration[] = [];
+  for (const l of leads) {
+    const amount = l.commission_amount ?? 0;
+    if (amount <= 0) continue;
+    if (l.payment_confirmed_at) {
+      if (!wasCelebrated("paid", l.id)) out.push({ id: l.id, kind: "paid", amount, name: l.lead_name });
+    } else if (l.status === "closed") {
+      if (!wasCelebrated("won", l.id)) out.push({ id: l.id, kind: "won", amount, name: l.lead_name });
+    }
+  }
+  return out;
+}
+
+/** Celebrates a partner's lead the moment it's approved (pending payout) and again,
+ *  with fireworks, when the commission is actually paid. Shown once per device. */
+function LeadCelebration({ leads }: { leads: PartnerLead[] }) {
+  const queue = useMemo(() => buildCelebrations(leads), [leads]);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => setIdx(0), [queue]);
+  const active = queue[idx] ?? null;
+
+  useEffect(() => {
+    if (active?.kind === "paid") celebrateBig();
+  }, [active?.id, active?.kind]);
+
+  function dismiss() {
+    if (active) {
+      markSeenForAdvance(active);
+    }
+    setIdx((i) => i + 1);
+  }
+  function markSeenForAdvance(c: Celebration) {
+    localStorage.setItem(seenKey(c.kind, c.id), "1");
+    // Once paid is celebrated, never show the "approved, pending" popup for it.
+    if (c.kind === "paid") localStorage.setItem(seenKey("won", c.id), "1");
+  }
+
+  if (!active) return null;
+  const won = active.kind === "won";
+  const ils = `₪${active.amount.toLocaleString("he-IL")}`;
+  return (
+    <Dialog open onOpenChange={(o) => !o && dismiss()}>
+      <DialogContent className="text-center sm:max-w-md">
+        <DialogHeader className="text-center">
+          <DialogTitle>{won ? "מזל טוב, העסקה אושרה! 🎉" : "הכסף בדרך אליך! 🎉"}</DialogTitle>
+          <DialogDescription>
+            {won
+              ? `העסקה של ${active.name} אושרה לעבודה.`
+              : `העמלה על ${active.name} שולמה. תודה על השותפות!`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-1">
+          <p className="text-sm text-muted-foreground">{won ? "עמלה שממתינה לך" : "סכום ששולם"}</p>
+          <p className="font-heading text-3xl font-black text-primary">{ils}</p>
+          {won && <p className="mt-1 text-xs text-muted-foreground">אעדכן אותך ברגע שהכסף יועבר.</p>}
+        </div>
+        <DialogFooter>
+          <Button onClick={dismiss} className="w-full">
+            {won ? "מעולה" : "אש, תודה 🙌"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string | number }) {
   return (
@@ -117,6 +207,7 @@ export default function PartnerDashboard() {
 
   return (
     <div className="space-y-6">
+      <LeadCelebration leads={leads} />
       <GiftPopup />
       <WhatsNew audience="partner" />
       <PendingRedemptionsBanner />

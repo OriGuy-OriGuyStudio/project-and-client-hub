@@ -61,12 +61,13 @@ export const paymentStatusHe: Record<PaymentStatus, string> = {
 };
 
 export const leadStatusHe: Record<PartnerLeadStatus, string> = {
-  submitted: "הוגש",
-  in_review: "בטיפול",
-  quote_sent: "הצעת מחיר נשלחה",
-  interested: "הלקוח מעוניין",
-  closed: "נסגר",
-  not_relevant: "לא רלוונטי",
+  submitted: "התקבל",
+  awaiting_intro: "ממתין לשיחת היכרות",
+  intro_done: "שיחת היכרות בוצעה",
+  quote_sent: "נשלחה הצעת מחיר",
+  client_approved: "הלקוח אישר",
+  closed: "אושר לעבודה",
+  not_relevant: "נפל / לא רלוונטי",
 };
 
 export const leadStatusVariant: Record<
@@ -74,9 +75,10 @@ export const leadStatusVariant: Record<
   "secondary" | "warning" | "cyan" | "success" | "destructive"
 > = {
   submitted: "secondary",
-  in_review: "warning",
+  awaiting_intro: "warning",
+  intro_done: "cyan",
   quote_sent: "cyan",
-  interested: "cyan",
+  client_approved: "cyan",
   closed: "success",
   not_relevant: "destructive",
 };

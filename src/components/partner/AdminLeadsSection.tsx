@@ -16,7 +16,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/sheet";
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,9 +30,10 @@ import type { PartnerLead, PartnerLeadStatus } from "@/types/database";
 
 const STATUSES: PartnerLeadStatus[] = [
   "submitted",
-  "in_review",
+  "awaiting_intro",
+  "intro_done",
   "quote_sent",
-  "interested",
+  "client_approved",
   "closed",
   "not_relevant",
 ];
@@ -182,7 +183,7 @@ function ManageLeadDialog({
 
   return (
     <Dialog open={!!lead} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>ניהול ליד</DialogTitle>
           <DialogDescription>
