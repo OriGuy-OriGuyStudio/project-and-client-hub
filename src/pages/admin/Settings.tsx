@@ -11,6 +11,7 @@ import {
   MailWarning,
   MailPlus,
   Send,
+  Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { sendTestEmail } from "@/lib/invite";
+import { uploadPartnerResource, validatePartnerResource } from "@/lib/files";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { clampText } from "@/lib/sanitize";
 import type {
@@ -495,6 +497,25 @@ function PartnerResourcesSection() {
 function ResourceEditor({ resource }: { resource: PartnerResource }) {
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const err = validatePartnerResource(file);
+    if (err) return toastError(err);
+    setUploading(true);
+    try {
+      const url = await uploadPartnerResource(file);
+      setForm((f) => ({ ...f, file_url: url }));
+      toast({ title: "הקובץ הועלה, אל תשכח לשמור", variant: "success" });
+    } catch {
+      toastError("העלאת הקובץ נכשלה.");
+    } finally {
+      setUploading(false);
+    }
+  }
   const [form, setForm] = useState({
     title: resource.title,
     description: resource.description ?? "",
@@ -580,8 +601,38 @@ function ResourceEditor({ resource }: { resource: PartnerResource }) {
           </>
         ) : (
           <>
-            <Label>כתובת הקובץ</Label>
-            <Input dir="ltr" value={form.file_url} maxLength={1000} onChange={(e) => update("file_url", e.target.value)} />
+            <Label>קובץ (PDF, מצגת, מסמך או תמונה)</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id={`res-file-${resource.id}`}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.doc,.docx"
+                className="hidden"
+                onChange={onFile}
+              />
+              <Button variant="secondary" size="sm" asChild>
+                <label htmlFor={`res-file-${resource.id}`} className="cursor-pointer">
+                  <Upload className="size-4" /> {uploading ? "מעלה…" : "העלאת קובץ"}
+                </label>
+              </Button>
+              {form.file_url && (
+                <a
+                  href={form.file_url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="truncate text-sm text-primary underline"
+                >
+                  הקובץ הנוכחי
+                </a>
+              )}
+            </div>
+            <Input
+              dir="ltr"
+              value={form.file_url}
+              maxLength={1000}
+              placeholder="או הדבק כתובת קובץ חיצונית"
+              onChange={(e) => update("file_url", e.target.value)}
+            />
           </>
         )}
       </div>

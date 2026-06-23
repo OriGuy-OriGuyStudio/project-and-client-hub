@@ -1,4 +1,10 @@
-import { supabase, PROJECT_FILES_BUCKET, BRAND_ASSETS_BUCKET, SIGNED_URL_TTL } from "./supabase";
+import {
+  supabase,
+  PROJECT_FILES_BUCKET,
+  BRAND_ASSETS_BUCKET,
+  PARTNER_RESOURCES_BUCKET,
+  SIGNED_URL_TTL,
+} from "./supabase";
 import type { FileRow } from "@/types/database";
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -42,6 +48,44 @@ export async function uploadBrandAsset(params: {
   if (error) throw error;
 
   return supabase.storage.from(BRAND_ASSETS_BUCKET).getPublicUrl(storagePath).data
+    .publicUrl;
+}
+
+/** Sales materials: PDFs, decks, docs and images, up to 25MB. */
+export const MAX_PARTNER_RESOURCE_BYTES = 25 * 1024 * 1024; // 25MB
+const PARTNER_RESOURCE_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+export function validatePartnerResource(file: File): string | null {
+  if (file.size > MAX_PARTNER_RESOURCE_BYTES) {
+    return "הקובץ גדול מדי. הגודל המרבי הוא 25MB.";
+  }
+  if (!PARTNER_RESOURCE_MIME.has(file.type)) {
+    return "סוג קובץ לא נתמך. אפשר PDF, מצגת, מסמך Word או תמונה.";
+  }
+  return null;
+}
+
+/**
+ * Upload a partner sales material to the PUBLIC partner-resources bucket and
+ * return its stable public URL. Admin-only per the storage RLS.
+ */
+export async function uploadPartnerResource(file: File): Promise<string> {
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const storagePath = `${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(PARTNER_RESOURCES_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from(PARTNER_RESOURCES_BUCKET).getPublicUrl(storagePath).data
     .publicUrl;
 }
 

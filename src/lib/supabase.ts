@@ -25,5 +25,8 @@ export const PROJECT_FILES_BUCKET = "project-files";
 /** Public bucket for client brand assets (logos). Served via stable public URLs. */
 export const BRAND_ASSETS_BUCKET = "brand-assets";
 
+/** Public bucket for partner sales materials (PDFs, decks, images). Public URLs. */
+export const PARTNER_RESOURCES_BUCKET = "partner-resources";
+
 /** Signed URL lifetime, in seconds (1 hour, per security spec). */
 export const SIGNED_URL_TTL = 60 * 60;
