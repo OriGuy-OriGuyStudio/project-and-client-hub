@@ -30,7 +30,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/sheet";
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -78,6 +78,7 @@ export default function PartnerDetail() {
   const qc = useQueryClient();
   const { data, isLoading } = usePartnerDetail(id);
   const [addOpen, setAddOpen] = useState(false);
+  const [closeLead, setCloseLead] = useState<{ id: string; name: string } | null>(null);
   const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<{ id: string; name?: string } | null>(null);
@@ -264,8 +265,14 @@ export default function PartnerDetail() {
                         ariaLabel="סטטוס הליד"
                         variant="field"
                         value={l.status}
-                        onChange={(v) => updateLeadStatus(l.id, v as PartnerLeadStatus)}
-                        options={LEAD_EDIT_STATUSES.map((s) => ({ value: s, label: leadStatusHe[s] }))}
+                        onChange={(v) => {
+                          if (v === "closed") setCloseLead({ id: l.id, name: l.lead_name });
+                          else updateLeadStatus(l.id, v as PartnerLeadStatus);
+                        }}
+                        options={[...LEAD_EDIT_STATUSES, "closed" as PartnerLeadStatus].map((s) => ({
+                          value: s,
+                          label: leadStatusHe[s],
+                        }))}
                       />
                     </div>
                   )}
@@ -360,6 +367,12 @@ export default function PartnerDetail() {
         onClose={() => setAddOpen(false)}
       />
 
+      <CloseLeadDialog
+        lead={closeLead}
+        partnerId={id!}
+        onClose={() => setCloseLead(null)}
+      />
+
       <GrantCoinsDialog
         open={giftOpen}
         onClose={() => setGiftOpen(false)}
@@ -402,6 +415,120 @@ export default function PartnerDetail() {
         onConfirm={() => releaseTarget && releaseReward(releaseTarget.id, releaseTarget.name)}
       />
     </div>
+  );
+}
+
+/** Close an EXISTING lead as won: captures deal value + commission + payment.
+ *  Setting status='closed' fires the +20 partner-coins trigger automatically. */
+function CloseLeadDialog({
+  lead,
+  partnerId,
+  onClose,
+}: {
+  lead: { id: string; name: string } | null;
+  partnerId: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [seeded, setSeeded] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    deal_value: "",
+    commission_amount: "",
+    payment_method: "bank_transfer" as "bit" | "bank_transfer",
+    paid: false,
+    payment_date: new Date().toISOString().slice(0, 10),
+  });
+
+  if (lead && lead.id !== seeded) {
+    setForm({
+      deal_value: "",
+      commission_amount: "",
+      payment_method: "bank_transfer",
+      paid: false,
+      payment_date: new Date().toISOString().slice(0, 10),
+    });
+    setSeeded(lead.id);
+  }
+
+  async function save() {
+    if (!lead) return;
+    const deal = Number(form.deal_value);
+    if (Number.isNaN(deal) || deal <= 0) return toastError("צריך ערך עסקה.");
+    const commission = form.commission_amount.trim() ? Number(form.commission_amount) : null;
+    if (commission != null && (Number.isNaN(commission) || commission < 0))
+      return toastError("סכום עמלה לא תקין.");
+    setSaving(true);
+    const { error } = await supabase
+      .from("partner_leads")
+      .update({
+        status: "closed",
+        deal_value: deal,
+        commission_rate_at_close:
+          commission != null && deal > 0 ? Math.round((commission / deal) * 10000) / 100 : null,
+        commission_amount: commission,
+        payment_method: form.paid ? form.payment_method : null,
+        payment_confirmed_at: form.paid ? new Date(form.payment_date).toISOString() : null,
+        payment_confirmed_by: form.paid ? user?.id ?? null : null,
+      })
+      .eq("id", lead.id);
+    setSaving(false);
+    if (error) return toastError("סגירת העסקה נכשלה.");
+    toast({ title: "העסקה נסגרה ✓", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["partner-detail", partnerId] });
+    onClose();
+  }
+
+  return (
+    <Dialog open={!!lead} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>סגירת עסקה</DialogTitle>
+          <DialogDescription>{lead?.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label>ערך העסקה (₪)</Label>
+              <Input dir="ltr" type="number" min="0" value={form.deal_value}
+                onChange={(e) => setForm((f) => ({ ...f, deal_value: e.target.value }))} placeholder="₪" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>עמלה לשותף (₪)</Label>
+              <Input dir="ltr" type="number" min="0" value={form.commission_amount}
+                onChange={(e) => setForm((f) => ({ ...f, commission_amount: e.target.value }))} placeholder="₪" />
+            </div>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <input type="checkbox" checked={form.paid}
+              onChange={(e) => setForm((f) => ({ ...f, paid: e.target.checked }))}
+              className="size-4 accent-[var(--primary)]" />
+            העמלה כבר שולמה
+          </label>
+          {form.paid && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>אמצעי תשלום</Label>
+                <SelectMenu variant="field" ariaLabel="אמצעי תשלום" value={form.payment_method}
+                  onChange={(v) => setForm((f) => ({ ...f, payment_method: v as "bit" | "bank_transfer" }))}
+                  options={[{ value: "bank_transfer", label: "העברה בנקאית" }, { value: "bit", label: "ביט" }]} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>תאריך תשלום</Label>
+                <Input type="date" value={form.payment_date}
+                  onChange={(e) => setForm((f) => ({ ...f, payment_date: e.target.value }))} />
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">סגירת העסקה מזכה את השותף ב-20 מטבעות אוטומטית.</p>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={saving}>{saving ? "שומר…" : "סגירת עסקה"}</Button>
+          <Button variant="ghost" onClick={onClose}>ביטול</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -33,6 +33,17 @@ import {
 } from "@/components/brand/social";
 import { useClientDetail, type ClientDetailData } from "@/hooks/useClientDetail";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
 import { StatusPipeline } from "@/components/partner/StatusPipeline";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 import type { Referral, ReferralStatus } from "@/types/database";
@@ -76,6 +87,7 @@ const REFERRAL_EDIT_STATUSES: ReferralStatus[] = [
 
 function ClientReferrals({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
+  const [closeRef, setCloseRef] = useState<{ id: string; name: string } | null>(null);
   const { data: referrals, isLoading } = useQuery({
     queryKey: ["client-referrals", clientId],
     queryFn: async (): Promise<Referral[]> => {
@@ -128,8 +140,11 @@ function ClientReferrals({ clientId }: { clientId: string }) {
                       ariaLabel="סטטוס ההפניה"
                       variant="field"
                       value={r.status}
-                      onChange={(v) => updateStatus(r.id, v as ReferralStatus)}
-                      options={REFERRAL_EDIT_STATUSES.map((s) => ({
+                      onChange={(v) => {
+                        if (v === "closed") setCloseRef({ id: r.id, name: r.referred_name });
+                        else updateStatus(r.id, v as ReferralStatus);
+                      }}
+                      options={[...REFERRAL_EDIT_STATUSES, "closed" as ReferralStatus].map((s) => ({
                         value: s,
                         label: referralStatusHe[s],
                       }))}
@@ -142,7 +157,143 @@ function ClientReferrals({ clientId }: { clientId: string }) {
           ))}
         </div>
       )}
+      <CloseReferralDialog referral={closeRef} clientId={clientId} onClose={() => setCloseRef(null)} />
     </div>
+  );
+}
+
+/** Close a client referral as won: captures deal value (+ payment) and grants the
+ *  one-time +5 credits, mirroring the Referrals page close form. */
+function CloseReferralDialog({
+  referral,
+  clientId,
+  onClose,
+}: {
+  referral: { id: string; name: string } | null;
+  clientId: string;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [seeded, setSeeded] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    deal_value: "",
+    paid: false,
+    payment_method: "bank_transfer" as "bit" | "bank_transfer",
+    payment_date: new Date().toISOString().slice(0, 10),
+  });
+
+  if (referral && referral.id !== seeded) {
+    setForm({
+      deal_value: "",
+      paid: false,
+      payment_method: "bank_transfer",
+      payment_date: new Date().toISOString().slice(0, 10),
+    });
+    setSeeded(referral.id);
+  }
+
+  async function save() {
+    if (!referral) return;
+    const deal = Number(form.deal_value);
+    if (Number.isNaN(deal) || deal <= 0) return toastError("צריך ערך עסקה.");
+    setSaving(true);
+    const { error } = await supabase
+      .from("referrals")
+      .update({
+        status: "closed",
+        deal_value: deal,
+        payment_method: form.paid ? form.payment_method : null,
+        payment_confirmed_at: form.paid ? new Date(form.payment_date).toISOString() : null,
+        payment_confirmed_by: form.paid ? user?.id ?? null : null,
+      })
+      .eq("id", referral.id);
+    if (error) {
+      setSaving(false);
+      return toastError("סגירת ההפניה נכשלה.");
+    }
+    // Grant +5 credits once (idempotent).
+    const { count } = await supabase
+      .from("credit_transactions")
+      .select("*", { count: "exact", head: true })
+      .eq("referral_id", referral.id)
+      .eq("reason", "deal_closed");
+    if (!count) {
+      await supabase.from("credit_transactions").insert({
+        client_id: clientId,
+        amount: 5,
+        reason: "deal_closed",
+        referral_id: referral.id,
+        note: "עסקה נסגרה",
+        created_by: user?.id ?? null,
+      });
+    }
+    setSaving(false);
+    toast({ title: "ההפניה נסגרה ✓ הלקוח זוכה ב-5 קרדיטים", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["client-referrals", clientId] });
+    qc.invalidateQueries({ queryKey: ["client-detail", clientId] });
+    onClose();
+  }
+
+  return (
+    <Dialog open={!!referral} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>סגירת הפניה</DialogTitle>
+          <DialogDescription>{referral?.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>ערך העסקה (₪)</Label>
+            <Input
+              dir="ltr"
+              type="number"
+              min="0"
+              value={form.deal_value}
+              onChange={(e) => setForm((f) => ({ ...f, deal_value: e.target.value }))}
+              placeholder="₪"
+            />
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={form.paid}
+              onChange={(e) => setForm((f) => ({ ...f, paid: e.target.checked }))}
+              className="size-4 accent-[var(--primary)]"
+            />
+            התשלום ללקוח כבר בוצע
+          </label>
+          {form.paid && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>אמצעי תשלום</Label>
+                <SelectMenu
+                  variant="field"
+                  ariaLabel="אמצעי תשלום"
+                  value={form.payment_method}
+                  onChange={(v) => setForm((f) => ({ ...f, payment_method: v as "bit" | "bank_transfer" }))}
+                  options={[{ value: "bank_transfer", label: "העברה בנקאית" }, { value: "bit", label: "ביט" }]}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>תאריך תשלום</Label>
+                <Input
+                  type="date"
+                  value={form.payment_date}
+                  onChange={(e) => setForm((f) => ({ ...f, payment_date: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">סגירת ההפניה מזכה את הלקוח ב-5 קרדיטים אוטומטית.</p>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={saving}>{saving ? "שומר…" : "סגירת הפניה"}</Button>
+          <Button variant="ghost" onClick={onClose}>ביטול</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
