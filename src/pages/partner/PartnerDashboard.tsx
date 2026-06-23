@@ -275,7 +275,7 @@ export default function PartnerDashboard() {
           </Card>
 
           {/* Leads table */}
-          <div data-section className="scroll-mt-20">
+          <div data-tour="partner-leads" data-section className="scroll-mt-20">
             <h2 className="mb-3 font-heading text-lg font-bold text-foreground">
               הלידים שלך
             </h2>
