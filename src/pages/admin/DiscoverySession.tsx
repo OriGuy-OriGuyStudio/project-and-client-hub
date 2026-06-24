@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -525,9 +526,10 @@ export default function DiscoverySessionPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Sticky general-notes scratchpad — stays on screen while scrolling the
-          questions, autosaves on its own. Internal only. */}
-      {notesOpen ? (
+      {/* Sticky notepad — portal to <body> so a transformed ancestor (page
+          transitions) can't break position:fixed; stays pinned everywhere. */}
+      {createPortal(
+        notesOpen ? (
         <div className="fixed bottom-4 start-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-lift backdrop-blur">
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
@@ -568,6 +570,8 @@ export default function DiscoverySessionPage() {
             <span className="size-2 rounded-full bg-primary" aria-hidden />
           )}
         </button>
+        ),
+        document.body
       )}
     </div>
   );
