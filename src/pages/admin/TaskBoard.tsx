@@ -1006,13 +1006,13 @@ function TaskCard({
           className="size-4 shrink-0 accent-[var(--primary)]"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start gap-2">
-            <Badge variant={URGENCY[task.urgency].variant} className="mt-0.5 shrink-0">
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            <Badge variant={URGENCY[task.urgency].variant} className="shrink-0">
               {URGENCY[task.urgency].label}
             </Badge>
             <span
               className={cn(
-                "min-w-0 font-medium [overflow-wrap:anywhere] line-clamp-2 sm:truncate",
+                "w-full font-medium [overflow-wrap:anywhere] line-clamp-2 sm:truncate",
                 done ? "text-muted-foreground line-through" : "text-foreground"
               )}
             >

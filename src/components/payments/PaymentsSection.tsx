@@ -184,13 +184,13 @@ export function PaymentsSection({
               <div
                 key={p.id}
                 className={cn(
-                  "flex items-center justify-between gap-3 rounded-xl border px-4 py-3",
+                  "flex flex-col gap-2 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
                   isNext
                     ? "border-primary/40 bg-primary/5"
                     : "border-border bg-background/30"
                 )}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-foreground">
                     {p.label}
                     {isNext && (
@@ -204,7 +204,7 @@ export function PaymentsSection({
                       : ""}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 ps-0 sm:ps-0">
                   {p.payment_link && p.status !== "paid" && (
                     <>
                       <Button variant="secondary" size="sm" asChild>

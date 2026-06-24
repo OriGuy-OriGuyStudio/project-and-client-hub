@@ -185,14 +185,14 @@ function ApprovalRow({
 
   return (
     <div className="rounded-xl border border-border bg-background/30 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-medium text-foreground">{approval.title}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium text-foreground [overflow-wrap:anywhere]">{approval.title}</p>
           {approval.description && (
-            <p className="text-sm text-muted-foreground">{approval.description}</p>
+            <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{approval.description}</p>
           )}
         </div>
-        <Badge variant={variant}>{approvalStatusHe[approval.status]}</Badge>
+        <Badge variant={variant} className="shrink-0">{approvalStatusHe[approval.status]}</Badge>
       </div>
 
       {approval.client_notes && (

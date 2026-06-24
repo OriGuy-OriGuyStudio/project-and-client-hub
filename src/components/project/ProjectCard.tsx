@@ -35,8 +35,8 @@ export function ProjectCard({
             </span>
           )}
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center overflow-hidden rounded-xl bg-brand-purple-base/30">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-purple-base/30">
                 {project.logo_url ? (
                   <BrandLogo
                     src={project.logo_url}
@@ -56,7 +56,7 @@ export function ProjectCard({
                 </p>
               </div>
             </div>
-            <Badge variant={projectStatusVariant[project.status]}>
+            <Badge variant={projectStatusVariant[project.status]} className="shrink-0">
               {projectStatusHe[project.status]}
             </Badge>
           </div>
