@@ -569,6 +569,8 @@ export type DiscoverySession = {
   answers: Record<string, DiscoveryAnswer>;
   client_summary: string | null;
   follow_up: string | null;
+  /** Free-text admin scratchpad jotted during the call (internal, never shown to the client). */
+  admin_notes: string | null;
   status: "draft" | "done";
   share_token: string;
   created_at: string;

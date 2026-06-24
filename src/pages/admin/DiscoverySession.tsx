@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,7 +12,9 @@ import {
   Loader2,
   Save,
   Sparkles,
+  StickyNote,
   Trash2,
+  X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,12 +51,17 @@ export default function DiscoverySessionPage() {
   const [confirmDel, setConfirmDel] = useState(false);
   const [fullOpen, setFullOpen] = useState(false);
   const [aiBusy, setAiBusy] = useState<null | "client" | "follow_up">(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedNotes = useRef<string>("");
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
   const [draft, setDraft] = useState({
     answers: {} as Record<string, DiscoveryAnswer>,
     client_summary: "",
     follow_up: "",
+    admin_notes: "",
     status: "draft" as "draft" | "done",
     client_id: "",
     project_id: "",
@@ -79,12 +86,34 @@ export default function DiscoverySessionPage() {
       answers: session.answers ?? {},
       client_summary: session.client_summary ?? "",
       follow_up: session.follow_up ?? "",
+      admin_notes: session.admin_notes ?? "",
       status: session.status,
       client_id: session.client_id ?? "",
       project_id: session.project_id ?? "",
     });
+    lastSavedNotes.current = session.admin_notes ?? "";
     setSeeded(true);
   }
+
+  // Sticky notepad autosaves on its own (debounced) so call notes are never lost.
+  useEffect(() => {
+    if (!seeded || !id) return;
+    if (draft.admin_notes === lastSavedNotes.current) return;
+    setNotesSaving(true);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(async () => {
+      const value = clampText(draft.admin_notes.trim(), 8000);
+      const { error } = await supabase
+        .from("discovery_sessions")
+        .update({ admin_notes: value || null })
+        .eq("id", id);
+      if (!error) lastSavedNotes.current = draft.admin_notes;
+      setNotesSaving(false);
+    }, 800);
+    return () => {
+      if (notesTimer.current) clearTimeout(notesTimer.current);
+    };
+  }, [draft.admin_notes, seeded, id]);
 
   if (isLoading) return <CenteredLoader label="טוען שיחה…" />;
   if (isError || !session) {
@@ -155,6 +184,7 @@ export default function DiscoverySessionPage() {
         answers,
         client_summary: clampText(draft.client_summary.trim(), 6000) || null,
         follow_up: clampText(draft.follow_up.trim(), 6000) || null,
+        admin_notes: clampText(draft.admin_notes.trim(), 8000) || null,
         status: draft.status,
         client_id: draft.client_id || null,
         project_id: draft.project_id || null,
@@ -163,6 +193,7 @@ export default function DiscoverySessionPage() {
       .eq("id", session!.id);
     setSaving(false);
     if (error) return toastError("השמירה נכשלה.");
+    lastSavedNotes.current = draft.admin_notes;
     toast({ title: "נשמר", variant: "success" });
     qc.invalidateQueries({ queryKey: ["discovery-session", id] });
     qc.invalidateQueries({ queryKey: ["discovery-sessions"] });
@@ -493,6 +524,51 @@ export default function DiscoverySessionPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Sticky general-notes scratchpad — stays on screen while scrolling the
+          questions, autosaves on its own. Internal only. */}
+      {notesOpen ? (
+        <div className="fixed bottom-4 start-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-lift backdrop-blur">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <StickyNote className="size-4 text-brand-cyan-base" /> פתק כללי
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                {notesSaving ? "שומר…" : "נשמר ✓"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setNotesOpen(false)}
+                aria-label="כיווץ הפתק"
+                className="text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+          <Textarea
+            rows={7}
+            value={draft.admin_notes}
+            maxLength={8000}
+            onChange={(e) => setDraft((d) => ({ ...d, admin_notes: e.target.value }))}
+            placeholder="הערות כלליות מהשיחה… נשמר אוטומטית, פנימי בלבד"
+            className="resize-none rounded-none border-0 bg-transparent focus-visible:ring-0"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setNotesOpen(true)}
+          className="fixed bottom-4 start-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 px-3.5 py-2 text-sm font-medium text-foreground shadow-lift backdrop-blur transition-colors hover:border-primary/50"
+        >
+          <StickyNote className="size-4 text-brand-cyan-base" />
+          פתק כללי
+          {draft.admin_notes.trim() && (
+            <span className="size-2 rounded-full bg-primary" aria-hidden />
+          )}
+        </button>
+      )}
     </div>
   );
 }
