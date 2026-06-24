@@ -419,6 +419,97 @@ const SYSTEM_EXT: DiscoverySection = {
   ],
 };
 
+/** Short 15-minute FIRST intro call — get to know + scope, then send a quote.
+ *  Deliberately compact (not the full characterization) so it's fillable live. */
+const INTRO_KNOW: DiscoverySection = {
+  key: "intro_know",
+  title: "היכרות וצורך",
+  questions: [
+    {
+      id: "intro_about",
+      q: "ספר/י לי קצת על העסק , מה את/ה עושה ולמי",
+      hint: "מי הלקוחות, מה הסיפור מאחורי העסק",
+    },
+    {
+      id: "intro_origin",
+      q: "איך הגעת אליי?",
+      chips: ["המלצה", "חיפוש בגוגל", "רשתות חברתיות", "פרויקט שראית", "שותף / משווק"],
+    },
+    {
+      id: "intro_pain",
+      q: "מה הכי מפריע לך היום באונליין שלך?",
+      hint: "הכאב שבגללו פנה עכשיו",
+    },
+    {
+      id: "intro_today",
+      q: "יש אתר קיים? מה עובד ומה לא?",
+      chips: ["אין אתר", "אתר ישן / מיושן", "רק עמוד פייסבוק / אינסטגרם", "יש אתר, רוצה שדרוג"],
+    },
+    {
+      id: "intro_success",
+      q: "אם הפרויקט מצליח בענק , איך זה נראה?",
+      hint: "מה משתנה לו בעסק. עוזר למקד את ההצעה",
+    },
+  ],
+};
+
+const INTRO_SCOPE: DiscoverySection = {
+  key: "intro_scope",
+  title: "היקף, תקציב ולוז",
+  questions: [
+    {
+      id: "intro_type",
+      q: "מה את/ה מדמיין/ת?",
+      chips: ["דף נחיתה", "אתר תדמית", "חנות אונליין", "מערכת / אפליקציה", "עדיין לא בטוח/ה"],
+    },
+    {
+      id: "intro_features",
+      q: "פיצ'רים שחייבים?",
+      hint: "מה לא יכול להיעדר בגרסה הראשונה",
+      chips: [
+        "טפסים / יצירת קשר",
+        "תשלומים אונליין",
+        "אזור אישי ללקוחות",
+        "יומן / קביעת תורים",
+        "בלוג / תוכן",
+        "רב-לשוני",
+        "אינטגרציות (CRM, וואטסאפ)",
+      ],
+    },
+    {
+      id: "intro_content",
+      q: "התוכן מוכן (טקסטים, תמונות, לוגו)?",
+      chips: ["הכל מוכן", "חלקי", "צריך גם תוכן ועיצוב לוגו"],
+    },
+    {
+      id: "intro_refs",
+      q: "אתרים שאהבת (לבקש קישור)",
+      hint: "רוח כללית שמתאימה לו, לשלוח אחרי השיחה",
+    },
+    {
+      id: "intro_budget",
+      q: "טווח תקציב בראש?",
+      hint: "גם הערכה גסה עוזרת לי להתאים את ההצעה",
+      chips: ["עד 5K", "5K–10K", "10K–20K", "20K+", "עדיין לא יודע/ת"],
+    },
+    {
+      id: "intro_timeline",
+      q: "מתי תרצה/י שזה יהיה באוויר?",
+      chips: ["דחוף (עד חודש)", "1–2 חודשים", "גמיש", "לפני אירוע / תאריך יעד"],
+    },
+    {
+      id: "intro_decision",
+      q: "מי עוד מעורב בהחלטה?",
+      chips: ["רק אני", "שותף/ה", "צוות שצריך לאשר"],
+    },
+    {
+      id: "intro_next",
+      q: "סיכום והשלב הבא",
+      hint: "מה הבנתי בקצרה + מתי אשלח הצעת מחיר",
+    },
+  ],
+};
+
 export interface DiscoveryTemplate {
   key: string;
   label: string;
@@ -426,6 +517,7 @@ export interface DiscoveryTemplate {
 }
 
 export const DISCOVERY_TEMPLATES: DiscoveryTemplate[] = [
+  { key: "intro", label: "שיחת היכרות ראשונה (15 דק׳)", sections: [INTRO_KNOW, INTRO_SCOPE] },
   { key: "landing", label: "אתר תדמית / דף נחיתה", sections: [PERSONAL, DISCOVERY, BASIC, LANDING_EXT] },
   { key: "store", label: "אתר חנות", sections: [PERSONAL, DISCOVERY, BASIC, STORE_EXT] },
   { key: "system", label: "מערכת / אפליקציה מורכבת", sections: [PERSONAL, DISCOVERY, BASIC, SYSTEM_EXT] },
