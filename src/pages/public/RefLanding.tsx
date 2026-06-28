@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   motion,
   useScroll,
@@ -32,11 +33,14 @@ import Magnet from "@/components/ui/magnet";
 import FallingEasterEgg from "@/components/ui/falling-easter-egg";
 import { WelcomingWords } from "@/components/layout/WelcomingWords";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { cn } from "@/lib/utils";
 import { resolveReferral, trackReferralClick, submitReferralLead } from "@/lib/referral";
 import { projectTypeHe } from "@/lib/status";
 import { celebrate } from "@/lib/confetti";
 import { isPhone, isEmail } from "@/lib/validation";
 import type { PartnerProjectType } from "@/types/database";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const TYPES: PartnerProjectType[] = ["business_site", "ecommerce", "system", "other"];
@@ -1005,18 +1009,79 @@ const TYPE_CARDS: {
 ];
 
 function ProjectTypes() {
+  const reduced = usePrefersReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Stacking sticky cards: each card pins under the nav and the next fans over it
+  // (rotate + slight offset) with an elastic bounce as it locks. Desktop/tablet only;
+  // reduced-motion and mobile fall back to a clean vertical stack.
+  useEffect(() => {
+    if (reduced) return;
+    if (!window.matchMedia("(min-width: 640px)").matches) return;
+    const root = ref.current;
+    if (!root) return;
+    const ctx = gsap.context(() => {
+      const cards = gsap.utils.toArray<HTMLElement>("[data-stack-card]", root);
+      const xs = [-6, 3, -3, 5];
+      const ys = [2, 0, 3.5, 1];
+      const rots = [-5, 3, 6, -3];
+      cards.forEach((card, i) => {
+        const t = card.querySelector<HTMLElement>("[data-stack-target]");
+        if (!t) return;
+        gsap.set(t, { zIndex: cards.length - i, transformOrigin: "center center" });
+        gsap.fromTo(
+          t,
+          { rotate: 0, x: 0, y: 0 },
+          {
+            rotate: rots[i % rots.length],
+            // RTL: flip the horizontal fan direction.
+            x: `${-xs[i % xs.length]}em`,
+            y: `${ys[i % ys.length]}em`,
+            ease: "power1.in",
+            scrollTrigger: { trigger: card, start: "top 78%", end: "top 96px", scrub: true },
+          }
+        );
+        ScrollTrigger.create({ trigger: card, start: "top 96px", onEnter: () => bounceStack(t) });
+      });
+      ScrollTrigger.refresh();
+    }, root);
+    return () => ctx.revert();
+  }, [reduced]);
+
   return (
     <Section title="מה אתה צריך?">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div ref={ref} className="mx-auto flex max-w-sm flex-col items-center gap-8 sm:max-w-md sm:gap-24">
         {TYPE_CARDS.map((c, i) => (
-          <GradientTypeCard key={c.title} {...c} index={i} />
+          <div
+            key={c.title}
+            data-stack-card
+            className={cn("w-full", !reduced && "sm:sticky sm:top-24")}
+          >
+            <StackCard {...c} index={i} />
+          </div>
         ))}
       </div>
     </Section>
   );
 }
 
-function GradientTypeCard({
+/** Quick elastic stretch when a stacking card locks into place. */
+function bounceStack(el: HTMLElement) {
+  const w = el.offsetWidth || 1;
+  const h = el.offsetHeight || 1;
+  const stretch = 0.045 * w;
+  gsap
+    .timeline()
+    .to(el, {
+      scaleX: (w + stretch) / w,
+      scaleY: (h - stretch * 0.4) / h,
+      duration: 0.1,
+      ease: "power1.out",
+    })
+    .to(el, { scaleX: 1, scaleY: 1, duration: 1, ease: "elastic.out(1, 0.3)" });
+}
+
+function StackCard({
   title,
   desc,
   accent,
@@ -1029,28 +1094,14 @@ function GradientTypeCard({
   Visual: (p: { accent: string }) => React.ReactNode;
   index: number;
 }) {
-  const reduced = usePrefersReducedMotion();
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [glow, setGlow] = useState(0);
   return (
-    <motion.div
-      initial={
-        reduced ? false : { opacity: 0, y: 50, scale: 0.9, rotate: index % 2 ? 3 : -3 }
-      }
-      whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-      viewport={{ once: false, margin: "-70px" }}
-      transition={{ delay: index * 0.1, type: "spring", stiffness: 130, damping: 13 }}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
-      }}
-      onMouseEnter={() => setGlow(1)}
-      onMouseLeave={() => setGlow(0)}
-      className="group relative flex h-80 flex-col justify-end overflow-hidden rounded-2xl border border-border bg-[#0c0b11] p-5 text-right transition-transform hover:-translate-y-1"
+    <div
+      data-stack-target
+      className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-[#0c0b11] p-6 text-right shadow-lift sm:p-8"
     >
       <div
         className="absolute inset-x-0 top-0 h-2/3"
-        style={{ background: `radial-gradient(120% 100% at 50% 0%, ${accent}3d, ${accent}12 45%, transparent 72%)` }}
+        style={{ background: `radial-gradient(120% 100% at 50% 0%, ${accent}45, ${accent}14 45%, transparent 72%)` }}
       />
       <div
         className="absolute inset-0"
@@ -1061,22 +1112,19 @@ function GradientTypeCard({
           WebkitMaskImage: "radial-gradient(circle at 50% 0%, #000, transparent 70%)",
         }}
       />
-      {/* cursor-follow accent spotlight */}
-      <div
-        className="pointer-events-none absolute inset-0 transition-opacity duration-500"
-        style={{
-          opacity: glow,
-          background: `radial-gradient(circle at ${pos.x}px ${pos.y}px, ${accent}33, transparent 55%)`,
-        }}
-      />
-      <div className="relative flex flex-1 items-center justify-center transition-transform duration-500 group-hover:scale-105">
+      <div className="relative flex items-start justify-between">
+        <span className="font-heading text-6xl font-bold leading-none text-white/90 sm:text-7xl">
+          {index + 1}.
+        </span>
+      </div>
+      <div className="relative flex flex-1 items-center justify-center py-4">
         <Visual accent={accent} />
       </div>
       <div className="relative">
-        <h3 className="font-heading text-base font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm text-white/60">{desc}</p>
+        <h3 className="font-heading text-2xl font-bold text-white sm:text-3xl">{title}</h3>
+        <p className="mt-1.5 text-white/60">{desc}</p>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
