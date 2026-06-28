@@ -14,6 +14,7 @@ import { ProjectHero } from "@/components/project/ProjectHero";
 import { BrandGuidelines } from "@/components/brand/BrandGuidelines";
 import { ProgressTimeline } from "@/components/project/ProgressTimeline";
 import { ApprovalsSection } from "@/components/project/ApprovalsSection";
+import { DevFeedbackSection } from "@/components/project/DevFeedbackSection";
 import { ChecklistSection } from "@/components/project/ChecklistSection";
 import { TasksSection } from "@/components/tasks/TasksSection";
 import { DocsSection } from "@/components/project/DocsSection";
@@ -146,6 +147,9 @@ export default function ProjectDetail() {
           <div data-reveal data-section className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("approval")} />
             <ApprovalsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
+          </div>
+          <div data-reveal data-section className="scroll-mt-20">
+            <DevFeedbackSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
           <div data-reveal data-section className="scroll-mt-20">
             <SectionUpdated show={updatedSections.has("checklist")} />
