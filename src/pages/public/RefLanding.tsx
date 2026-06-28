@@ -1013,39 +1013,41 @@ function ProjectTypes() {
   const ref = useRef<HTMLDivElement>(null);
 
   // Stacking sticky cards: each card pins under the nav and the next fans over it
-  // (rotate + slight offset) with an elastic bounce as it locks. Desktop/tablet only;
-  // reduced-motion and mobile fall back to a clean vertical stack.
+  // (rotate + slight offset) with an elastic bounce as it locks. Runs on every
+  // breakpoint via gsap.matchMedia (smaller fan on mobile so nothing overflows);
+  // reduced-motion falls back to a plain vertical stack.
   useEffect(() => {
     if (reduced) return;
-    if (!window.matchMedia("(min-width: 640px)").matches) return;
     const root = ref.current;
     if (!root) return;
-    const ctx = gsap.context(() => {
-      const cards = gsap.utils.toArray<HTMLElement>("[data-stack-card]", root);
-      const xs = [-6, 3, -3, 5];
-      const ys = [2, 0, 3.5, 1];
-      const rots = [-5, 3, 6, -3];
-      cards.forEach((card, i) => {
-        const t = card.querySelector<HTMLElement>("[data-stack-target]");
-        if (!t) return;
-        gsap.set(t, { zIndex: cards.length - i, transformOrigin: "center center" });
-        gsap.fromTo(
-          t,
-          { rotate: 0, x: 0, y: 0 },
-          {
-            rotate: rots[i % rots.length],
-            // RTL: flip the horizontal fan direction.
-            x: `${-xs[i % xs.length]}em`,
-            y: `${ys[i % ys.length]}em`,
-            ease: "power1.in",
-            scrollTrigger: { trigger: card, start: "top 78%", end: "top 96px", scrub: true },
-          }
-        );
-        ScrollTrigger.create({ trigger: card, start: "top 96px", onEnter: () => bounceStack(t) });
-      });
-      ScrollTrigger.refresh();
-    }, root);
-    return () => ctx.revert();
+    const mm = gsap.matchMedia();
+    const build =
+      (xs: number[], ys: number[], rots: number[]) =>
+      () => {
+        const cards = gsap.utils.toArray<HTMLElement>("[data-stack-card]", root);
+        cards.forEach((card, i) => {
+          const t = card.querySelector<HTMLElement>("[data-stack-target]");
+          if (!t) return;
+          const stickyTop = parseFloat(getComputedStyle(card).top) || 88;
+          gsap.set(t, { zIndex: cards.length - i, transformOrigin: "center center" });
+          gsap.fromTo(
+            t,
+            { rotate: 0, x: 0, y: 0 },
+            {
+              rotate: rots[i % rots.length],
+              // RTL: flip the horizontal fan direction.
+              x: `${-xs[i % xs.length]}em`,
+              y: `${ys[i % ys.length]}em`,
+              ease: "power1.in",
+              scrollTrigger: { trigger: card, start: "top 80%", end: `top ${stickyTop}px`, scrub: true },
+            }
+          );
+          ScrollTrigger.create({ trigger: card, start: `top ${stickyTop}px`, onEnter: () => bounceStack(t) });
+        });
+      };
+    mm.add("(min-width: 640px)", build([-6, 3, -3, 5], [2, 0, 3.5, 1], [-5, 3, 6, -3]));
+    mm.add("(max-width: 639px)", build([-2, 1.3, -1.3, 2], [1.2, 0, 2, 0.8], [-3, 2, 4, -2]));
+    return () => mm.revert();
   }, [reduced]);
 
   return (
@@ -1055,7 +1057,7 @@ function ProjectTypes() {
           <div
             key={c.title}
             data-stack-card
-            className={cn("w-full", !reduced && "sm:sticky sm:top-24")}
+            className={cn("w-full", !reduced && "sticky top-20 sm:top-24")}
           >
             <StackCard {...c} index={i} />
           </div>
