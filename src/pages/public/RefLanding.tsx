@@ -1130,8 +1130,10 @@ function StackCard({
   );
 }
 
-/* Brand CSS motifs (no AI imagery) for the project-type cards. */
+/* Brand CSS motifs (no AI imagery) for the project-type cards. Each has a subtle
+   looping animation, gated on prefers-reduced-motion. No video, no extra assets. */
 function BrowserMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="w-40 rounded-xl border border-white/10 bg-white/[0.04] p-2 shadow-lift backdrop-blur" dir="ltr">
       <div className="mb-2 flex gap-1">
@@ -1139,43 +1141,89 @@ function BrowserMotif({ accent }: { accent: string }) {
         <span className="size-1.5 rounded-full bg-white/30" />
         <span className="size-1.5 rounded-full bg-white/30" />
       </div>
-      <div className="h-7 rounded" style={{ background: `linear-gradient(90deg, ${accent}66, ${accent}22)` }} />
+      <div className="relative h-7 overflow-hidden rounded" style={{ background: `linear-gradient(90deg, ${accent}66, ${accent}22)` }}>
+        {!reduced && (
+          <motion.div
+            className="absolute inset-y-0 left-0 w-1/3 -skew-x-12"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }}
+            animate={{ x: ["-120%", "430%"] }}
+            transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.2, ease: "easeInOut" }}
+          />
+        )}
+      </div>
       <div className="mt-1.5 h-1.5 w-2/3 rounded bg-white/15" />
       <div className="mt-1 h-1.5 w-1/2 rounded bg-white/10" />
       <div className="mt-1.5 grid grid-cols-3 gap-1">
-        <div className="h-6 rounded bg-white/[0.06]" />
-        <div className="h-6 rounded bg-white/[0.06]" />
-        <div className="h-6 rounded bg-white/[0.06]" />
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="h-6 rounded bg-white/[0.06]"
+            animate={reduced ? undefined : { opacity: [0.35, 1, 0.35] }}
+            transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.3, ease: "easeInOut" }}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
 function ShopMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="w-32 rounded-xl border border-white/10 bg-white/[0.04] p-2 shadow-lift" dir="ltr">
-      <div className="h-16 rounded-lg" style={{ background: `linear-gradient(135deg, ${accent}55, ${accent}15)` }} />
+      <div className="relative h-16 overflow-hidden rounded-lg" style={{ background: `linear-gradient(135deg, ${accent}55, ${accent}15)` }}>
+        {!reduced && (
+          <motion.div
+            className="absolute inset-y-0 left-0 w-1/3 -skew-x-12"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }}
+            animate={{ x: ["-120%", "430%"] }}
+            transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }}
+          />
+        )}
+      </div>
       <div className="mt-2 h-1.5 w-3/4 rounded bg-white/15" />
       <div className="mt-2 flex items-center justify-between">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: accent, background: `${accent}22` }}>
           ₪199
         </span>
-        <span className="text-sm leading-none" style={{ color: accent }}>＋</span>
+        <motion.span
+          className="text-sm leading-none"
+          style={{ color: accent }}
+          animate={reduced ? undefined : { scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          ＋
+        </motion.span>
       </div>
     </div>
   );
 }
 
 function AppMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
+  const onPattern = [true, false, true];
   return (
     <div className="w-36 rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-lift" dir="ltr">
       <div className="mb-2.5 h-1.5 w-1/2 rounded bg-white/15" />
-      {[true, false, true].map((on, i) => (
+      {[0, 1, 2].map((i) => (
         <div key={i} className="mb-2 flex items-center justify-between">
           <div className="h-1.5 w-1/2 rounded bg-white/10" />
-          <div className="flex h-3.5 w-7 items-center rounded-full p-0.5" style={{ background: `${accent}33` }}>
-            <div className="size-2.5 rounded-full" style={{ background: accent, marginInlineStart: on ? "auto" : 0 }} />
-          </div>
+          <motion.div
+            className="flex h-3.5 w-7 items-center rounded-full p-0.5"
+            animate={
+              reduced
+                ? { backgroundColor: onPattern[i] ? `${accent}66` : `${accent}22` }
+                : { backgroundColor: [`${accent}22`, `${accent}66`, `${accent}66`, `${accent}22`] }
+            }
+            transition={{ duration: 3, times: [0, 0.3, 0.7, 1], repeat: Infinity, delay: i * 0.5, ease: "easeInOut" }}
+          >
+            <motion.div
+              className="size-2.5 rounded-full"
+              style={{ background: accent }}
+              animate={reduced ? { x: onPattern[i] ? 14 : 0 } : { x: [0, 14, 14, 0] }}
+              transition={{ duration: 3, times: [0, 0.3, 0.7, 1], repeat: Infinity, delay: i * 0.5, ease: "easeInOut" }}
+            />
+          </motion.div>
         </div>
       ))}
     </div>
@@ -1183,10 +1231,22 @@ function AppMotif({ accent }: { accent: string }) {
 }
 
 function IdeaMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="relative flex size-24 items-center justify-center">
-      <div className="absolute inset-0 rounded-full blur-2xl" style={{ background: `${accent}33` }} />
-      <Sparkles className="relative size-14" style={{ color: accent }} />
+      <motion.div
+        className="absolute inset-0 rounded-full blur-2xl"
+        style={{ background: `${accent}33` }}
+        animate={reduced ? undefined : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="relative"
+        animate={reduced ? undefined : { scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles className="size-14" style={{ color: accent }} />
+      </motion.div>
     </div>
   );
 }
