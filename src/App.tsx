@@ -43,6 +43,7 @@ const Settings = lazy(() => import("@/pages/admin/Settings"));
 const Announcements = lazy(() => import("@/pages/admin/Announcements"));
 const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
+const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
@@ -77,6 +78,7 @@ function App() {
               <Route element={<AppShell />}>
                 {/* Shared (admin + client) */}
                 <Route path="/projects/:id" element={<ProjectDetail />} />
+                <Route path="/projects/:id/guide" element={<ProjectGuide />} />
 
                 {/* Client-only - dashboard lives at the root slug */}
                 <Route element={<RequireClient />}>

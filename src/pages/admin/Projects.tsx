@@ -152,7 +152,7 @@ function CreateProjectDialog() {
                 onChange={(v) => update("client_id", v)}
                 options={activeClients.map((c) => ({
                   value: c.id,
-                  label: c.full_name || c.email,
+                  label: c.full_name ? `${c.full_name} · ${c.email}` : c.email,
                 }))}
               />
             )}

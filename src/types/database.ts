@@ -323,6 +323,50 @@ export type ProjectDoc = {
   updated_at: string;
 }
 
+export type GuideTemplate = {
+  id: string;
+  title: string;
+  category: string | null;
+  icon: string | null;
+  media_url: string | null;
+  images: string[];
+  body_html: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GuideArticle = {
+  id: string;
+  project_id: string;
+  template_id: string | null;
+  title: string;
+  category: string | null;
+  icon: string | null;
+  media_url: string | null;
+  images: string[];
+  body_html: string;
+  order_index: number;
+  is_published: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProjectSiteCredential = {
+  id: string;
+  project_id: string;
+  label: string;
+  login_url: string | null;
+  username: string | null;
+  password_reset_url: string | null;
+  note: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Payment = {
   id: string;
   project_id: string;
@@ -577,6 +621,20 @@ export type DiscoverySession = {
   updated_at: string;
 };
 
+export type DevFeedback = {
+  id: string;
+  project_id: string;
+  author_id: string | null;
+  page: string | null;
+  body: string;
+  screenshot_path: string | null;
+  priority: "normal" | "urgent";
+  status: "received" | "in_progress" | "done";
+  task_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AdminTask = {
   id: string;
   title: string;
@@ -648,6 +706,9 @@ export interface Database {
       checklist_items: TableShape<ChecklistItem>;
       tasks: TableShape<Task>;
       project_docs: TableShape<ProjectDoc>;
+      guide_templates: TableShape<GuideTemplate>;
+      guide_articles: TableShape<GuideArticle>;
+      project_site_credentials: TableShape<ProjectSiteCredential>;
       payments: TableShape<Payment>;
       messages: TableShape<Message>;
       activity_log: TableShape<ActivityLog>;
@@ -678,10 +739,16 @@ export interface Database {
       admin_task_groups: TableShape<AdminTaskGroup>;
       admin_tasks: TableShape<AdminTask>;
       discovery_sessions: TableShape<DiscoverySession>;
+      dev_feedback: TableShape<DevFeedback>;
     };
     Views: Record<string, never>;
     Functions: {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
+      clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
+      reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
+      is_demo_account: { Args: { p_uid: string }; Returns: boolean };
+      promote_dev_feedback: { Args: { p_id: string }; Returns: string };
+      apply_guide_template: { Args: { p_project_id: string; p_template_id: string }; Returns: string };
       log_usage_event: {
         Args: { p_event: string; p_path?: string | null; p_meta?: Record<string, unknown> | null };
         Returns: undefined;

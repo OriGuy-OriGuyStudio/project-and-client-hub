@@ -620,7 +620,7 @@ export default function TaskBoard() {
                 onOpenChange={(o) => toggleCollapse(g.id, !o)}
               >
                 <Card className="overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 px-4 py-3">
+                  <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-start">
                       <ChevronDown
                         className={cn(
@@ -635,7 +635,7 @@ export default function TaskBoard() {
                         {doneCount}/{list.length}
                       </Badge>
                     </CollapsibleTrigger>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
                       <Button
                         size="sm"
                         variant="secondary"
@@ -968,7 +968,7 @@ function TaskCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-[background-color,box-shadow,border-color,opacity] duration-700",
+        "flex flex-col gap-2 rounded-xl border px-3 py-2.5 transition-[background-color,box-shadow,border-color,opacity] duration-700 sm:flex-row sm:items-center sm:justify-between sm:gap-3",
         dragging && "relative z-10 shadow-lift",
         // Completed → faded "disabled" look so it's clearly done.
         done && "opacity-55",
@@ -1006,13 +1006,13 @@ function TaskCard({
           className="size-4 shrink-0 accent-[var(--primary)]"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Badge variant={URGENCY[task.urgency].variant}>
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            <Badge variant={URGENCY[task.urgency].variant} className="shrink-0">
               {URGENCY[task.urgency].label}
             </Badge>
             <span
               className={cn(
-                "truncate font-medium",
+                "w-full font-medium [overflow-wrap:anywhere] line-clamp-2 sm:truncate",
                 done ? "text-muted-foreground line-through" : "text-foreground"
               )}
             >
@@ -1099,7 +1099,7 @@ function TaskCard({
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5 ps-6 sm:ps-0">
         <SelectMenu
           ariaLabel="סטטוס"
           value={task.status}

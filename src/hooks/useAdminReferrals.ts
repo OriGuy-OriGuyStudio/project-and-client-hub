@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { isDemoEmail } from "@/lib/demo";
 import type { Referral, Reward } from "@/types/database";
 
 export interface AdminReferral extends Referral {
@@ -31,11 +32,15 @@ export function useAdminReferrals() {
       const nameById = new Map(
         (profiles ?? []).map((p) => [p.id, p.full_name || p.email])
       );
+      const emailById = new Map((profiles ?? []).map((p) => [p.id, p.email]));
       return {
-        referrals: (refs ?? []).map((r) => ({
-          ...r,
-          referrer_name: nameById.get(r.referrer_id) ?? "-",
-        })),
+        referrals: (refs ?? [])
+          // Demo-account referrals are QA clones — hide from the real list.
+          .filter((r) => !isDemoEmail(emailById.get(r.referrer_id)))
+          .map((r) => ({
+            ...r,
+            referrer_name: nameById.get(r.referrer_id) ?? "-",
+          })),
         rewards: rewards ?? [],
         ilsPerCoin: settings?.ils_per_coin ?? 1,
         giftValuePct: settings?.gift_value_pct ?? 75,

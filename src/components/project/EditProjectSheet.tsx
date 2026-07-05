@@ -20,6 +20,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
+import { useClients } from "@/hooks/useClients";
 import { projectStatusHe } from "@/lib/status";
 import type { Project, ProjectStatus } from "@/types/database";
 
@@ -33,9 +34,12 @@ const STATUSES: ProjectStatus[] = ["active", "on_hold", "completed", "cancelled"
 export function EditProjectSheet({ project }: { project: Project }) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { data: clients } = useClients();
+  const activeClients = clients?.active ?? [];
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
+    client_id: project.client_id,
     title: project.title,
     description: project.description ?? "",
     status: project.status,
@@ -54,6 +58,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
     const { error } = await supabase
       .from("projects")
       .update({
+        client_id: draft.client_id,
         title,
         description: clampText(draft.description.trim(), 2000) || null,
         status: draft.status,
@@ -93,6 +98,25 @@ export function EditProjectSheet({ project }: { project: Project }) {
         </SheetHeader>
 
         <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ep-client">לקוח משויך</Label>
+            <SelectMenu
+              id="ep-client"
+              variant="field"
+              ariaLabel="לקוח"
+              placeholder="בחר לקוח…"
+              value={draft.client_id}
+              onChange={(v) => update("client_id", v)}
+              options={activeClients.map((c) => ({
+                value: c.id,
+                label: c.full_name ? `${c.full_name} · ${c.email}` : c.email,
+              }))}
+            />
+            <p className="text-xs text-muted-foreground">
+              שינוי הלקוח מעביר את הפרויקט לחשבון אחר, והלקוח הקודם יפסיק לראות אותו.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ep-title">שם הפרויקט</Label>
             <Input

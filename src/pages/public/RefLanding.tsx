@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   motion,
   useScroll,
@@ -32,11 +33,14 @@ import Magnet from "@/components/ui/magnet";
 import FallingEasterEgg from "@/components/ui/falling-easter-egg";
 import { WelcomingWords } from "@/components/layout/WelcomingWords";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { cn } from "@/lib/utils";
 import { resolveReferral, trackReferralClick, submitReferralLead } from "@/lib/referral";
 import { projectTypeHe } from "@/lib/status";
 import { celebrate } from "@/lib/confetti";
 import { isPhone, isEmail } from "@/lib/validation";
 import type { PartnerProjectType } from "@/types/database";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const TYPES: PartnerProjectType[] = ["business_site", "ecommerce", "system", "other"];
@@ -1005,18 +1009,81 @@ const TYPE_CARDS: {
 ];
 
 function ProjectTypes() {
+  const reduced = usePrefersReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Stacking sticky cards: each card pins under the nav and the next fans over it
+  // (rotate + slight offset) with an elastic bounce as it locks. Runs on every
+  // breakpoint via gsap.matchMedia (smaller fan on mobile so nothing overflows);
+  // reduced-motion falls back to a plain vertical stack.
+  useEffect(() => {
+    if (reduced) return;
+    const root = ref.current;
+    if (!root) return;
+    const mm = gsap.matchMedia();
+    const build =
+      (xs: number[], ys: number[], rots: number[]) =>
+      () => {
+        const cards = gsap.utils.toArray<HTMLElement>("[data-stack-card]", root);
+        cards.forEach((card, i) => {
+          const t = card.querySelector<HTMLElement>("[data-stack-target]");
+          if (!t) return;
+          const stickyTop = parseFloat(getComputedStyle(card).top) || 88;
+          gsap.set(t, { zIndex: cards.length - i, transformOrigin: "center center" });
+          gsap.fromTo(
+            t,
+            { rotate: 0, x: 0, y: 0 },
+            {
+              rotate: rots[i % rots.length],
+              // RTL: flip the horizontal fan direction.
+              x: `${-xs[i % xs.length]}em`,
+              y: `${ys[i % ys.length]}em`,
+              ease: "power1.in",
+              scrollTrigger: { trigger: card, start: "top 80%", end: `top ${stickyTop}px`, scrub: true },
+            }
+          );
+          ScrollTrigger.create({ trigger: card, start: `top ${stickyTop}px`, onEnter: () => bounceStack(t) });
+        });
+      };
+    mm.add("(min-width: 640px)", build([-6, 3, -3, 5], [2, 0, 3.5, 1], [-5, 3, 6, -3]));
+    mm.add("(max-width: 639px)", build([-2, 1.3, -1.3, 2], [1.2, 0, 2, 0.8], [-3, 2, 4, -2]));
+    return () => mm.revert();
+  }, [reduced]);
+
   return (
     <Section title="מה אתה צריך?">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div ref={ref} className="mx-auto flex max-w-sm flex-col items-center gap-8 sm:max-w-md sm:gap-24">
         {TYPE_CARDS.map((c, i) => (
-          <GradientTypeCard key={c.title} {...c} index={i} />
+          <div
+            key={c.title}
+            data-stack-card
+            className={cn("w-full", !reduced && "sticky top-20 sm:top-24")}
+          >
+            <StackCard {...c} index={i} />
+          </div>
         ))}
       </div>
     </Section>
   );
 }
 
-function GradientTypeCard({
+/** Quick elastic stretch when a stacking card locks into place. */
+function bounceStack(el: HTMLElement) {
+  const w = el.offsetWidth || 1;
+  const h = el.offsetHeight || 1;
+  const stretch = 0.045 * w;
+  gsap
+    .timeline()
+    .to(el, {
+      scaleX: (w + stretch) / w,
+      scaleY: (h - stretch * 0.4) / h,
+      duration: 0.1,
+      ease: "power1.out",
+    })
+    .to(el, { scaleX: 1, scaleY: 1, duration: 1, ease: "elastic.out(1, 0.3)" });
+}
+
+function StackCard({
   title,
   desc,
   accent,
@@ -1029,28 +1096,14 @@ function GradientTypeCard({
   Visual: (p: { accent: string }) => React.ReactNode;
   index: number;
 }) {
-  const reduced = usePrefersReducedMotion();
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [glow, setGlow] = useState(0);
   return (
-    <motion.div
-      initial={
-        reduced ? false : { opacity: 0, y: 50, scale: 0.9, rotate: index % 2 ? 3 : -3 }
-      }
-      whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-      viewport={{ once: false, margin: "-70px" }}
-      transition={{ delay: index * 0.1, type: "spring", stiffness: 130, damping: 13 }}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
-      }}
-      onMouseEnter={() => setGlow(1)}
-      onMouseLeave={() => setGlow(0)}
-      className="group relative flex h-80 flex-col justify-end overflow-hidden rounded-2xl border border-border bg-[#0c0b11] p-5 text-right transition-transform hover:-translate-y-1"
+    <div
+      data-stack-target
+      className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-[#0c0b11] p-6 text-right shadow-lift sm:p-8"
     >
       <div
         className="absolute inset-x-0 top-0 h-2/3"
-        style={{ background: `radial-gradient(120% 100% at 50% 0%, ${accent}3d, ${accent}12 45%, transparent 72%)` }}
+        style={{ background: `radial-gradient(120% 100% at 50% 0%, ${accent}45, ${accent}14 45%, transparent 72%)` }}
       />
       <div
         className="absolute inset-0"
@@ -1061,27 +1114,26 @@ function GradientTypeCard({
           WebkitMaskImage: "radial-gradient(circle at 50% 0%, #000, transparent 70%)",
         }}
       />
-      {/* cursor-follow accent spotlight */}
-      <div
-        className="pointer-events-none absolute inset-0 transition-opacity duration-500"
-        style={{
-          opacity: glow,
-          background: `radial-gradient(circle at ${pos.x}px ${pos.y}px, ${accent}33, transparent 55%)`,
-        }}
-      />
-      <div className="relative flex flex-1 items-center justify-center transition-transform duration-500 group-hover:scale-105">
+      <div className="relative flex items-start justify-between">
+        <span className="font-heading text-6xl font-bold leading-none text-white/90 sm:text-7xl">
+          {index + 1}.
+        </span>
+      </div>
+      <div className="relative flex flex-1 items-center justify-center py-4">
         <Visual accent={accent} />
       </div>
       <div className="relative">
-        <h3 className="font-heading text-base font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm text-white/60">{desc}</p>
+        <h3 className="font-heading text-2xl font-bold text-white sm:text-3xl">{title}</h3>
+        <p className="mt-1.5 text-white/60">{desc}</p>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-/* Brand CSS motifs (no AI imagery) for the project-type cards. */
+/* Brand CSS motifs (no AI imagery) for the project-type cards. Each has a subtle
+   looping animation, gated on prefers-reduced-motion. No video, no extra assets. */
 function BrowserMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="w-40 rounded-xl border border-white/10 bg-white/[0.04] p-2 shadow-lift backdrop-blur" dir="ltr">
       <div className="mb-2 flex gap-1">
@@ -1089,43 +1141,89 @@ function BrowserMotif({ accent }: { accent: string }) {
         <span className="size-1.5 rounded-full bg-white/30" />
         <span className="size-1.5 rounded-full bg-white/30" />
       </div>
-      <div className="h-7 rounded" style={{ background: `linear-gradient(90deg, ${accent}66, ${accent}22)` }} />
+      <div className="relative h-7 overflow-hidden rounded" style={{ background: `linear-gradient(90deg, ${accent}66, ${accent}22)` }}>
+        {!reduced && (
+          <motion.div
+            className="absolute inset-y-0 left-0 w-1/3 -skew-x-12"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }}
+            animate={{ x: ["-120%", "430%"] }}
+            transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.2, ease: "easeInOut" }}
+          />
+        )}
+      </div>
       <div className="mt-1.5 h-1.5 w-2/3 rounded bg-white/15" />
       <div className="mt-1 h-1.5 w-1/2 rounded bg-white/10" />
       <div className="mt-1.5 grid grid-cols-3 gap-1">
-        <div className="h-6 rounded bg-white/[0.06]" />
-        <div className="h-6 rounded bg-white/[0.06]" />
-        <div className="h-6 rounded bg-white/[0.06]" />
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="h-6 rounded bg-white/[0.06]"
+            animate={reduced ? undefined : { opacity: [0.35, 1, 0.35] }}
+            transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.3, ease: "easeInOut" }}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
 function ShopMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="w-32 rounded-xl border border-white/10 bg-white/[0.04] p-2 shadow-lift" dir="ltr">
-      <div className="h-16 rounded-lg" style={{ background: `linear-gradient(135deg, ${accent}55, ${accent}15)` }} />
+      <div className="relative h-16 overflow-hidden rounded-lg" style={{ background: `linear-gradient(135deg, ${accent}55, ${accent}15)` }}>
+        {!reduced && (
+          <motion.div
+            className="absolute inset-y-0 left-0 w-1/3 -skew-x-12"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }}
+            animate={{ x: ["-120%", "430%"] }}
+            transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }}
+          />
+        )}
+      </div>
       <div className="mt-2 h-1.5 w-3/4 rounded bg-white/15" />
       <div className="mt-2 flex items-center justify-between">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ color: accent, background: `${accent}22` }}>
           ₪199
         </span>
-        <span className="text-sm leading-none" style={{ color: accent }}>＋</span>
+        <motion.span
+          className="text-sm leading-none"
+          style={{ color: accent }}
+          animate={reduced ? undefined : { scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          ＋
+        </motion.span>
       </div>
     </div>
   );
 }
 
 function AppMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
+  const onPattern = [true, false, true];
   return (
     <div className="w-36 rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-lift" dir="ltr">
       <div className="mb-2.5 h-1.5 w-1/2 rounded bg-white/15" />
-      {[true, false, true].map((on, i) => (
+      {[0, 1, 2].map((i) => (
         <div key={i} className="mb-2 flex items-center justify-between">
           <div className="h-1.5 w-1/2 rounded bg-white/10" />
-          <div className="flex h-3.5 w-7 items-center rounded-full p-0.5" style={{ background: `${accent}33` }}>
-            <div className="size-2.5 rounded-full" style={{ background: accent, marginInlineStart: on ? "auto" : 0 }} />
-          </div>
+          <motion.div
+            className="flex h-3.5 w-7 items-center rounded-full p-0.5"
+            animate={
+              reduced
+                ? { backgroundColor: onPattern[i] ? `${accent}66` : `${accent}22` }
+                : { backgroundColor: [`${accent}22`, `${accent}66`, `${accent}66`, `${accent}22`] }
+            }
+            transition={{ duration: 3, times: [0, 0.3, 0.7, 1], repeat: Infinity, delay: i * 0.5, ease: "easeInOut" }}
+          >
+            <motion.div
+              className="size-2.5 rounded-full"
+              style={{ background: accent }}
+              animate={reduced ? { x: onPattern[i] ? 14 : 0 } : { x: [0, 14, 14, 0] }}
+              transition={{ duration: 3, times: [0, 0.3, 0.7, 1], repeat: Infinity, delay: i * 0.5, ease: "easeInOut" }}
+            />
+          </motion.div>
         </div>
       ))}
     </div>
@@ -1133,10 +1231,22 @@ function AppMotif({ accent }: { accent: string }) {
 }
 
 function IdeaMotif({ accent }: { accent: string }) {
+  const reduced = usePrefersReducedMotion();
   return (
     <div className="relative flex size-24 items-center justify-center">
-      <div className="absolute inset-0 rounded-full blur-2xl" style={{ background: `${accent}33` }} />
-      <Sparkles className="relative size-14" style={{ color: accent }} />
+      <motion.div
+        className="absolute inset-0 rounded-full blur-2xl"
+        style={{ background: `${accent}33` }}
+        animate={reduced ? undefined : { opacity: [0.5, 1, 0.5], scale: [0.9, 1.1, 0.9] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="relative"
+        animate={reduced ? undefined : { scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles className="size-14" style={{ color: accent }} />
+      </motion.div>
     </div>
   );
 }

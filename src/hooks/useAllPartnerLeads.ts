@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { isDemoEmail } from "@/lib/demo";
 import type { PartnerLead } from "@/types/database";
 
 export interface AdminLead extends PartnerLead {
@@ -33,14 +34,17 @@ export function useAllPartnerLeads() {
       );
       const rateById = new Map((pp ?? []).map((p) => [p.id, p]));
 
-      return (leads ?? []).map((l) => ({
-        ...l,
-        partner_name: nameById.get(l.partner_id)?.name ?? "-",
-        partner_email: nameById.get(l.partner_id)?.email ?? "",
-        partner_commission_rate: rateById.get(l.partner_id)?.commission_rate ?? null,
-        partner_rate_min: rateById.get(l.partner_id)?.commission_rate_min ?? null,
-        partner_rate_max: rateById.get(l.partner_id)?.commission_rate_max ?? null,
-      }));
+      return (leads ?? [])
+        // Demo-account leads are clones for QA — keep them out of the real pipeline.
+        .filter((l) => !isDemoEmail(nameById.get(l.partner_id)?.email))
+        .map((l) => ({
+          ...l,
+          partner_name: nameById.get(l.partner_id)?.name ?? "-",
+          partner_email: nameById.get(l.partner_id)?.email ?? "",
+          partner_commission_rate: rateById.get(l.partner_id)?.commission_rate ?? null,
+          partner_rate_min: rateById.get(l.partner_id)?.commission_rate_min ?? null,
+          partner_rate_max: rateById.get(l.partner_id)?.commission_rate_max ?? null,
+        }));
     },
   });
 }

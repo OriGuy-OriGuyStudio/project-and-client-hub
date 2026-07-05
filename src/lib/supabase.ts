@@ -28,5 +28,8 @@ export const BRAND_ASSETS_BUCKET = "brand-assets";
 /** Public bucket for partner sales materials (PDFs, decks, images). Public URLs. */
 export const PARTNER_RESOURCES_BUCKET = "partner-resources";
 
+/** Public bucket for site-guide screenshots. Public URLs, admin-only writes. */
+export const GUIDE_MEDIA_BUCKET = "guide-media";
+
 /** Signed URL lifetime, in seconds (1 hour, per security spec). */
 export const SIGNED_URL_TTL = 60 * 60;

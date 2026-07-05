@@ -384,7 +384,7 @@ function PhaseItem({
         selected && "ring-1 ring-destructive/50"
       )}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isAdmin && (
             <>
@@ -432,7 +432,7 @@ function PhaseItem({
               )}
             </span>
             <span className="min-w-0">
-              <span className="block truncate font-heading text-sm font-semibold text-foreground">
+              <span className="block font-heading text-sm font-semibold text-foreground [overflow-wrap:anywhere] line-clamp-2 sm:truncate">
                 {stage.title}
               </span>
               <span className="block text-xs text-muted-foreground">
@@ -560,14 +560,14 @@ function StageTasks({
   if (!isAdmin && tasks.length === 0) return null;
 
   return (
-    <div className="mt-2 space-y-1.5 ps-11">
+    <div className="mt-2 space-y-1.5 ps-6 sm:ps-11">
       {tasks.length > 0 && (
         <ul className="space-y-1">
           {tasks.map((t) => (
             <li key={t.id} className="group flex items-center gap-2 text-sm">
               <span
                 className={cn(
-                  "flex-1",
+                  "min-w-0 flex-1 [overflow-wrap:anywhere]",
                   t.status === "done"
                     ? "text-muted-foreground line-through"
                     : "text-foreground"
