@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { AlertCircle, Sparkles } from "lucide-react";
+import { AlertCircle, Sparkles, BookOpen, ChevronLeft } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { useProject } from "@/hooks/useProject";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -60,6 +61,21 @@ export default function ProjectDetail() {
         .eq("id", data!.project.client_id)
         .single();
       return profile;
+    },
+  });
+
+  // The client sees the guide entry only once it holds content (a published
+  // article or saved login details). The admin always sees it, to author it.
+  const { data: guideHasContent } = useQuery({
+    enabled: !isAdmin && !!data?.project.id,
+    queryKey: ["guide-has-content", data?.project.id],
+    queryFn: async () => {
+      const pid = data!.project.id;
+      const [{ count: articles }, { count: creds }] = await Promise.all([
+        supabase.from("guide_articles").select("id", { count: "exact", head: true }).eq("project_id", pid),
+        supabase.from("project_site_credentials").select("id", { count: "exact", head: true }).eq("project_id", pid),
+      ]);
+      return (articles ?? 0) + (creds ?? 0) > 0;
     },
   });
   // Which sections the client updated since the admin last looked. Snapshotted
@@ -138,6 +154,24 @@ export default function ProjectDetail() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
+          {/* Most relevant to the client after handover, so it leads the page.
+              Client sees it only once it has content; admin always (to author). */}
+          {(isAdmin || guideHasContent) && (
+            <div data-reveal data-section className="scroll-mt-20">
+              <Link to={`/projects/${project.id}/guide`} className="group block">
+                <Card className="flex items-center gap-4 p-5 transition-colors hover:border-primary/40">
+                  <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <BookOpen className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-heading text-lg font-semibold text-foreground">מדריך שימוש לאתר</h2>
+                    <p className="text-sm text-muted-foreground">פרטי התחברות ומדריכים להפעלת האתר שלך</p>
+                  </div>
+                  <ChevronLeft className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-x-1" />
+                </Card>
+              </Link>
+            </div>
+          )}
           <div data-reveal data-section className="scroll-mt-20">
             <BrandGuidelines brand={brand} colors={colors} />
           </div>

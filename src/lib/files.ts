@@ -3,6 +3,7 @@ import {
   PROJECT_FILES_BUCKET,
   BRAND_ASSETS_BUCKET,
   PARTNER_RESOURCES_BUCKET,
+  GUIDE_MEDIA_BUCKET,
   SIGNED_URL_TTL,
 } from "./supabase";
 import type { FileRow } from "@/types/database";
@@ -87,6 +88,41 @@ export async function uploadPartnerResource(file: File): Promise<string> {
   if (error) throw error;
   return supabase.storage.from(PARTNER_RESOURCES_BUCKET).getPublicUrl(storagePath).data
     .publicUrl;
+}
+
+/** Guide screenshots: images only, up to 10MB (mirrors the guide-media bucket). */
+export const MAX_GUIDE_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const GUIDE_IMAGE_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/svg+xml",
+]);
+
+export function validateGuideImage(file: File): string | null {
+  if (file.size > MAX_GUIDE_IMAGE_BYTES) {
+    return "התמונה גדולה מדי. הגודל המרבי הוא 10MB.";
+  }
+  if (!GUIDE_IMAGE_MIME.has(file.type)) {
+    return "סוג קובץ לא נתמך. אפשר PNG, JPG, WEBP, GIF או SVG.";
+  }
+  return null;
+}
+
+/**
+ * Upload a guide screenshot to the PUBLIC guide-media bucket and return its
+ * stable public URL (persisted in guide_articles.images). Admin-only per RLS.
+ */
+export async function uploadGuideImage(file: File): Promise<string> {
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const storagePath = `${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(GUIDE_MEDIA_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from(GUIDE_MEDIA_BUCKET).getPublicUrl(storagePath).data.publicUrl;
 }
 
 // Mirrors the storage bucket's server-side allow-list exactly.

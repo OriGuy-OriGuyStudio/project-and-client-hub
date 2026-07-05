@@ -113,6 +113,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Presence heartbeat: `touch_last_seen` already runs on every app load (in
+  // resolveProfile), which covers remembered sessions. But a persisted session
+  // can stay open for days without a reload, so also record activity whenever
+  // the user returns to the tab. Throttled so a busy user doesn't spam the RPC.
+  // This makes the admin's "last activity" reflect real visits per role
+  // (client + partner), not only full sign-ins.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let lastPing = Date.now(); // resolveProfile just pinged on this load
+    const MIN_GAP_MS = 2 * 60 * 1000;
+    const ping = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastPing < MIN_GAP_MS) return;
+      lastPing = Date.now();
+      void supabase.rpc("touch_last_seen");
+    };
+    document.addEventListener("visibilitychange", ping);
+    window.addEventListener("focus", ping);
+    return () => {
+      document.removeEventListener("visibilitychange", ping);
+      window.removeEventListener("focus", ping);
+    };
+  }, [status]);
+
   // Idle-timeout: sign the user out after 24h of no interaction.
   useEffect(() => {
     if (status !== "authenticated") return;
