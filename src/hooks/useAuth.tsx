@@ -127,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState !== "visible") return;
       if (Date.now() - lastPing < MIN_GAP_MS) return;
       lastPing = Date.now();
-      void supabase.rpc("touch_last_seen");
+      // PostgREST builders are LAZY — a bare `supabase.rpc(...)` never fires the
+      // request (see lib/analytics.ts). Must call `.then()` to trigger it.
+      supabase.rpc("touch_last_seen").then(undefined, () => {});
     };
     document.addEventListener("visibilitychange", ping);
     window.addEventListener("focus", ping);
