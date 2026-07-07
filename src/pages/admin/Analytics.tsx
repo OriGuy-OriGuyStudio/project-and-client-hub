@@ -99,10 +99,19 @@ export default function Analytics() {
 
     const allowed = data?.allowed ?? [];
 
-    // Authoritative last-login per user (from auth.users), keyed by profile id.
+    // "Last activity" per user = the most recent of: auth sign-in, the
+    // last_seen heartbeat (both via admin_user_activity), and any tracked usage
+    // event (session / page_view). So it reflects EVERY app open or refresh,
+    // not only a full Google sign-in.
     const lastSignIn = new Map<string, number>();
     for (const a of activity) {
       if (a.last_sign_in_at) lastSignIn.set(a.id, new Date(a.last_sign_in_at).getTime());
+    }
+    const lastEventAt = new Map<string, number>();
+    for (const e of events) {
+      if (!e.user_id) continue;
+      const t = new Date(e.created_at).getTime();
+      if (t > (lastEventAt.get(e.user_id) ?? 0)) lastEventAt.set(e.user_id, t);
     }
 
     // The full roster = everyone invited (allowed_emails) + any profile, keyed by
@@ -116,7 +125,8 @@ export default function Analytics() {
     for (const p of people) {
       const key = p.email.toLowerCase();
       const existing = rosterMap.get(key);
-      const seen = lastSignIn.get(p.id);
+      const seen =
+        Math.max(lastSignIn.get(p.id) ?? 0, lastEventAt.get(p.id) ?? 0) || undefined;
       if (existing) {
         existing.id = p.id;
         existing.seen = seen;
@@ -158,9 +168,10 @@ export default function Analytics() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 7);
 
-    // Dormant = logged in at least once but not in the last 14 days (by real
-    // sign-in). Never-logged-in users are tracked separately (invited, not yet
-    // onboarded) so a freshly-invited person isn't flagged as "disconnected".
+    // Dormant = active at least once but not in the last 14 days (by last
+    // activity: login, app open, or any tracked use). Never-logged-in users are
+    // tracked separately (invited, not yet onboarded) so a freshly-invited
+    // person isn't flagged as "disconnected".
     const dormant = roster
       .filter((r) => r.seen && now - r.seen > 14 * DAY)
       .map((r) => ({ ...r, days: Math.floor((now - r.seen!) / DAY) }))
