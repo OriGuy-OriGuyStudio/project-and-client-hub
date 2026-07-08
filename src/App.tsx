@@ -54,6 +54,7 @@ const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
 // build, so Rollup drops the imports — the chunks never ship.
 const TimerLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/TimerLab")) : null;
 const ReportsLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ReportsLab")) : null;
+const ProjectsLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ProjectsLab")) : null;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -158,6 +159,16 @@ function App() {
                 element={
                   <Suspense fallback={<div className="min-h-screen bg-background" />}>
                     <ReportsLab />
+                  </Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && ProjectsLab && (
+              <Route
+                path="/__projectslab"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                    <ProjectsLab />
                   </Suspense>
                 }
               />
