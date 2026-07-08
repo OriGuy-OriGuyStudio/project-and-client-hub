@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
+import { useProjectBilling, saveProjectValue } from "@/hooks/useTimeData";
 import { projectStatusHe } from "@/lib/status";
 import type { Project, ProjectStatus } from "@/types/database";
 
@@ -50,6 +51,13 @@ export function EditProjectSheet({ project }: { project: Project }) {
     setDraft((d) => ({ ...d, [k]: v }));
   }
 
+  // Project value (admin-only, hidden from clients) — used for the ₪/hour metric.
+  const { data: billing } = useProjectBilling(project.id);
+  const [value, setValue] = useState("");
+  useEffect(() => {
+    setValue(billing?.value != null ? String(billing.value) : "");
+  }, [billing]);
+
   async function save() {
     const title = clampText(draft.title.trim(), 200);
     if (!title) return toastError("תן שם לפרויקט.");
@@ -65,9 +73,16 @@ export function EditProjectSheet({ project }: { project: Project }) {
         warranty_start_date: draft.warranty_start_date || null,
       })
       .eq("id", project.id);
-    setSaving(false);
 
-    if (error) return toastError("שמירת הפרטים נכשלה.");
+    if (error) {
+      setSaving(false);
+      return toastError("שמירת הפרטים נכשלה.");
+    }
+
+    const trimmed = value.trim();
+    await saveProjectValue(project.id, trimmed ? Number(trimmed) : null);
+    qc.invalidateQueries({ queryKey: ["project-billing", project.id] });
+    setSaving(false);
 
     await logActivity({
       projectId: project.id,
@@ -163,6 +178,21 @@ export function EditProjectSheet({ project }: { project: Project }) {
                 onChange={(e) => update("warranty_start_date", e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ep-value">שווי הפרויקט (₪)</Label>
+            <Input
+              id="ep-value"
+              type="number"
+              inputMode="numeric"
+              placeholder="לדוגמה: 12000"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              פנימי, לא נחשף ללקוח. משמש לחישוב ₪ לשעה בטיימר לפי הזמן שנמדד.
+            </p>
           </div>
         </div>
 

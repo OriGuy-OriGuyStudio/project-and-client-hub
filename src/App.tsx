@@ -42,6 +42,7 @@ const Feedback = lazy(() => import("@/pages/admin/Feedback"));
 const Settings = lazy(() => import("@/pages/admin/Settings"));
 const Announcements = lazy(() => import("@/pages/admin/Announcements"));
 const Analytics = lazy(() => import("@/pages/admin/Analytics"));
+const TimeReports = lazy(() => import("@/pages/admin/TimeReports"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
@@ -49,6 +50,10 @@ const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
 const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
+// DEV-ONLY visual harnesses. The ternary is statically false in a production
+// build, so Rollup drops the imports — the chunks never ship.
+const TimerLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/TimerLab")) : null;
+const ReportsLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ReportsLab")) : null;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +116,7 @@ function App() {
                   <Route path="/admin/announcements" element={<Announcements />} />
                   <Route path="/admin/settings" element={<Settings />} />
                   <Route path="/admin/analytics" element={<Analytics />} />
+                  <Route path="/admin/time" element={<TimeReports />} />
                 </Route>
               </Route>
             </Route>
@@ -134,6 +140,28 @@ function App() {
                 </Suspense>
               }
             />
+
+            {/* DEV-ONLY: timer visual harness, no auth. Stripped from prod builds. */}
+            {import.meta.env.DEV && TimerLab && (
+              <Route
+                path="/__timerlab"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                    <TimerLab />
+                  </Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && ReportsLab && (
+              <Route
+                path="/__reportslab"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                    <ReportsLab />
+                  </Suspense>
+                }
+              />
+            )}
 
             {/* Unknown paths: send home (guards resolve role from there) */}
             <Route path="*" element={<Navigate to="/" replace />} />
