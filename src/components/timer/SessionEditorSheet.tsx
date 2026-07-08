@@ -48,7 +48,14 @@ export function SessionEditorSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   session?: TimeSession | null;
-  presetCtx?: { kind: Kind; clientId?: string | null; projectId?: string | null; stageId?: string | null; label?: string | null };
+  presetCtx?: {
+    kind: Kind;
+    clientId?: string | null;
+    projectId?: string | null;
+    stageId?: string | null;
+    label?: string | null;
+    retainer?: boolean;
+  };
 }) {
   const editing = !!session;
   const { data: projects = [] } = useProjects();
@@ -62,6 +69,7 @@ export function SessionEditorSheet({
   const [stageId, setStageId] = useState("");
   const [label, setLabel] = useState("");
   const [mode, setMode] = useState<Mode>("up");
+  const [isRetainer, setIsRetainer] = useState(false);
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(25);
   const [startedLocal, setStartedLocal] = useState(toLocalInput(new Date().toISOString()));
@@ -82,6 +90,7 @@ export function SessionEditorSheet({
       setStageId(session.stage_id ?? "");
       setLabel(session.label ?? "");
       setMode(session.mode);
+      setIsRetainer(session.is_retainer);
       setHours(Math.floor(session.duration_seconds / 3600));
       setMinutes(Math.round((session.duration_seconds % 3600) / 60));
       setStartedLocal(toLocalInput(session.started_at));
@@ -93,6 +102,7 @@ export function SessionEditorSheet({
       setStageId(presetCtx?.stageId ?? "");
       setLabel(presetCtx?.label ?? "");
       setMode("up");
+      setIsRetainer(!!presetCtx?.retainer);
       setHours(0);
       setMinutes(25);
       setStartedLocal(toLocalInput(new Date().toISOString()));
@@ -113,6 +123,7 @@ export function SessionEditorSheet({
       client_id: kind === "stage" ? clientId || null : null,
       project_id: kind === "stage" ? projectId || null : linkedProject,
       stage_id: kind === "stage" ? stageId || null : null,
+      is_retainer: kind === "stage" ? isRetainer : false,
       label: kind === "personal" ? label || null : null,
       mode,
       duration_seconds: durationSec,
@@ -218,6 +229,20 @@ export function SessionEditorSheet({
               פומודורו
             </button>
           </div>
+
+          {kind === "stage" && (
+            <div>
+              <p className="mb-1.5 text-xs text-muted-foreground">שיוך לחבילה</p>
+              <div className="flex gap-1 rounded-xl border border-border/60 bg-background/40 p-1">
+                <button className={seg(!isRetainer)} onClick={() => setIsRetainer(false)}>
+                  עבודה כללית
+                </button>
+                <button className={seg(isRetainer)} onClick={() => setIsRetainer(true)}>
+                  ריטיינר (נספר בחבילה)
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* duration */}
           <div>

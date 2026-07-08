@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { cn } from "@/lib/utils";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
 import type { ProjectWithBrand } from "@/hooks/useProjects";
 
@@ -61,8 +62,15 @@ export function ProjectCard({
                 {projectStatusHe[project.status]}
               </Badge>
               {project.parent_project_id && (
-                <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  <Link2 className="size-2.5" /> מקושר לריטיינר
+                <span
+                  className={cn(
+                    "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                    project.retainer_billed
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-background/40 text-muted-foreground",
+                  )}
+                >
+                  <Link2 className="size-2.5" /> {project.retainer_billed ? "מקושר לריטיינר" : "מקושר (עצמאי)"}
                 </span>
               )}
             </div>

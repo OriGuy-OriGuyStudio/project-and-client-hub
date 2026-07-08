@@ -227,6 +227,7 @@ export type Project = {
   description: string | null;
   client_id: string;
   parent_project_id: string | null;
+  retainer_billed: boolean;
   status: ProjectStatus;
   figma_url: string | null;
   figma_prototype_url: string | null;

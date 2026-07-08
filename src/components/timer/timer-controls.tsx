@@ -332,9 +332,15 @@ function ProjectPicker() {
 
       {/* retainer: linked feature-projects auto-count; else a general/retainer toggle */}
       {st.ctx.projectId && parentName ? (
-        <div className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] text-primary">
-          <LinkIcon className="size-3" /> נספר בריטיינר של {parentName}
-        </div>
+        selectedProject?.retainer_billed ? (
+          <div className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] text-primary">
+            <LinkIcon className="size-3" /> נספר בריטיינר של {parentName}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background/40 px-3 py-1.5 text-[11px] text-muted-foreground">
+            <LinkIcon className="size-3" /> מקושר ל{parentName} (עצמאי)
+          </div>
+        )
       ) : st.ctx.projectId ? (
         <div className="mx-auto flex w-max gap-1 rounded-full border border-border/60 bg-background/40 p-1">
           <button

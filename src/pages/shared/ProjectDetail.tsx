@@ -23,6 +23,7 @@ import { FileManager } from "@/components/files/FileManager";
 import { PaymentsSection } from "@/components/payments/PaymentsSection";
 import { WarrantyCountdown } from "@/components/warranty/WarrantyCountdown";
 import { ActivityFeed } from "@/components/project/ActivityFeed";
+import { MaintenanceLogEditor } from "@/components/service/MaintenanceLogEditor";
 import { InternalChat } from "@/components/chat/InternalChat";
 import {
   NotifyClientProvider,
@@ -154,6 +155,11 @@ export default function ProjectDetail() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
+          {isAdmin && (
+            <div data-reveal className="scroll-mt-20">
+              <MaintenanceLogEditor projectId={project.id} />
+            </div>
+          )}
           {/* Most relevant to the client after handover, so it leads the page.
               Client sees it only once it has content; admin always (to author). */}
           {(isAdmin || guideHasContent) && (

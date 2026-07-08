@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
+import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
@@ -50,6 +51,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
     status: project.status,
     warranty_start_date: project.warranty_start_date ?? "",
     parent_project_id: project.parent_project_id ?? "",
+    retainer_billed: project.retainer_billed ?? true,
   });
 
   function update<K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) {
@@ -92,6 +94,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
         status: draft.status,
         warranty_start_date: draft.warranty_start_date || null,
         parent_project_id: draft.parent_project_id || null,
+        retainer_billed: draft.parent_project_id ? draft.retainer_billed : true,
       })
       .eq("id", project.id);
 
@@ -188,8 +191,32 @@ export function EditProjectSheet({ project }: { project: Project }) {
               ]}
             />
             <p className="text-xs text-muted-foreground">
-              אם זה פיצ׳ר של פרויקט קיים, קשר אותו לפרויקט האב. השעות שלו ייספרו בריטיינר של האב.
+              אם זה פיצ׳ר של פרויקט קיים, קשר אותו לפרויקט האב.
             </p>
+            {draft.parent_project_id && (
+              <div className="flex gap-1 rounded-xl border border-border/60 bg-background/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => update("retainer_billed", true)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                    draft.retainer_billed ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground",
+                  )}
+                >
+                  נספר בריטיינר
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update("retainer_billed", false)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                    !draft.retainer_billed ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground",
+                  )}
+                >
+                  מקושר בלבד (עצמאי)
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

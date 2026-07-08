@@ -228,7 +228,11 @@ function ServiceBoard({ svc, projectName }: { svc: ProjectService; projectName: 
               icon={Clock}
               label="שעות שנוצלו"
               value={`${hoursLabel(summary?.hours_month ?? 0)} / ${meta.hours}`}
-              sub="ייעוץ ופיתוח"
+              sub={
+                svc.hourly_rate
+                  ? `שווי ₪${Math.round((summary?.hours_month ?? 0) * Number(svc.hourly_rate)).toLocaleString("he-IL")}`
+                  : "ייעוץ ופיתוח"
+              }
             />
           )}
           <Metric

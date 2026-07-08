@@ -349,6 +349,7 @@ export function TimerBoard() {
           projectId: st.ctx.projectId,
           stageId: st.ctx.stageId,
           label: st.ctx.label,
+          retainer: st.ctx.retainer,
         }}
       />
     </div>

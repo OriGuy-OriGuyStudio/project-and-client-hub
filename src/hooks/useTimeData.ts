@@ -73,6 +73,7 @@ export type SessionInput = {
   client_id: string | null;
   project_id: string | null;
   stage_id: string | null;
+  is_retainer: boolean;
   label: string | null;
   mode: "up" | "down";
   duration_seconds: number;
