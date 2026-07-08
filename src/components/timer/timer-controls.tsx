@@ -265,6 +265,11 @@ function ProjectPicker() {
   const clientProjects = clientId ? projects.filter((p) => p.client_id === clientId) : [];
   const { data: stages = [] } = useProjectStages(st.ctx.projectId);
 
+  const selectedProject = projects.find((p) => p.id === st.ctx.projectId);
+  const parentName = selectedProject?.parent_project_id
+    ? projects.find((p) => p.id === selectedProject.parent_project_id)?.title ?? "פרויקט אב"
+    : null;
+
   return (
     <div className="grid grid-cols-1 gap-2">
       {/* client — track time here even before any project exists */}
@@ -324,6 +329,34 @@ function ProjectPicker() {
         options={[{ value: "", label: "ללא שלב" }, ...stages.map((s) => ({ value: s.id, label: s.title }))]}
         ariaLabel="שלב"
       />
+
+      {/* retainer: linked feature-projects auto-count; else a general/retainer toggle */}
+      {st.ctx.projectId && parentName ? (
+        <div className="flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] text-primary">
+          <LinkIcon className="size-3" /> נספר בריטיינר של {parentName}
+        </div>
+      ) : st.ctx.projectId ? (
+        <div className="mx-auto flex w-max gap-1 rounded-full border border-border/60 bg-background/40 p-1">
+          <button
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-semibold transition-colors",
+              !st.ctx.retainer ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground",
+            )}
+            onClick={() => timer.setCtx({ retainer: false })}
+          >
+            עבודה כללית
+          </button>
+          <button
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-semibold transition-colors",
+              st.ctx.retainer ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground",
+            )}
+            onClick={() => timer.setCtx({ retainer: true })}
+          >
+            ריטיינר
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

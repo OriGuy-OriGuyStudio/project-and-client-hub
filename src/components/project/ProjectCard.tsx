@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -56,9 +56,16 @@ export function ProjectCard({
                 </p>
               </div>
             </div>
-            <Badge variant={projectStatusVariant[project.status]} className="shrink-0">
-              {projectStatusHe[project.status]}
-            </Badge>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <Badge variant={projectStatusVariant[project.status]}>
+                {projectStatusHe[project.status]}
+              </Badge>
+              {project.parent_project_id && (
+                <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <Link2 className="size-2.5" /> מקושר לריטיינר
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">

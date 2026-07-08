@@ -17,6 +17,8 @@ export type TimerCtx = {
   projectName?: string | null;
   stageId?: string | null;
   stageName?: string | null;
+  /** This session counts toward the project's retainer hours (not general work). */
+  retainer?: boolean;
   label?: string | null;
 };
 
@@ -232,6 +234,7 @@ async function saveSession(durationSec: number) {
     client_id: c.clientId ?? null,
     project_id: c.projectId ?? null,
     stage_id: c.kind === "stage" ? c.stageId ?? null : null,
+    is_retainer: c.kind === "stage" ? !!c.retainer : false,
     label: c.kind === "personal" ? c.label ?? null : null,
     mode: state.mode,
     planned_seconds: state.mode === "down" ? state.plannedSeconds : null,

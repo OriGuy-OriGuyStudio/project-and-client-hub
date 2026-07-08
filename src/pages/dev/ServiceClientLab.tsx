@@ -52,6 +52,7 @@ export default function ServiceClientLab() {
           site_type: "wordpress",
           site_url: "https://blog.example.com",
           monthly_price: null,
+          hourly_rate: 160,
           started_at: "2026-01-01",
           billing_day: 1,
           active: true,

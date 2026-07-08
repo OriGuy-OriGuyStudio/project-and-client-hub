@@ -30,7 +30,7 @@ import {
 import {
   TIER_META,
   tierFeatures,
-  infraValue,
+  packageValue,
   type ServiceTier,
 } from "@/lib/service-plans";
 import type { ProjectService } from "@/types/database";
@@ -307,9 +307,41 @@ function ServiceBoard({ svc, projectName }: { svc: ProjectService; projectName: 
             <p className="text-[11px] text-muted-foreground">שעות עבודה</p>
           </div>
         </div>
-        <p className="mt-4 rounded-xl bg-card/60 p-3 text-center text-sm text-muted-foreground">
-          החבילה שלך עולה <b className="text-foreground">₪{price.toLocaleString("he-IL")}</b>, אבל {infraValue(svc.site_type)}.
-        </p>
+        {(() => {
+          const val = packageValue(svc.tier, svc.site_type, svc.hourly_rate != null ? Number(svc.hourly_rate) : null);
+          const shekel = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
+          const rows: { l: string; v: string }[] = [];
+          if (val.workValue > 0) rows.push({ l: `${val.hours} שעות עבודה / ייעוץ בחודש`, v: shekel(val.workValue) });
+          if (val.licenseAnnual > 0)
+            rows.push({ l: "רישיונות פרימיום (Elementor + Crocoblock)", v: `${shekel(val.licenseAnnual)} / שנה` });
+          rows.push({ l: "אחסון פרימיום, CDN וניטור 24/7", v: "כלול" });
+          rows.push({ l: "גיבויים אוטומטיים ואבטחה בקצה", v: "כלול" });
+          return (
+            <div className="mt-4 rounded-xl bg-card/60 p-4">
+              <p className="mb-2 text-sm font-semibold text-foreground">מה כלול במחיר החבילה</p>
+              <div className="divide-y divide-border/60">
+                {rows.map((r) => (
+                  <div key={r.l} className="flex items-center justify-between py-1.5 text-sm">
+                    <span className="text-muted-foreground">{r.l}</span>
+                    <span className="tabular-nums text-foreground">{r.v}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-center text-sm text-muted-foreground">
+                {val.licenseAnnual > 0 ? (
+                  <>
+                    רק הרישיונות חוסכים לך <b className="text-primary">{shekel(val.licenseAnnual)}</b> בשנה, והכול כלול
+                    ב-<b className="text-foreground">{shekel(price)}</b> לחודש, בלי הפתעות.
+                  </>
+                ) : (
+                  <>
+                    אחסון, CDN, ניטור ופיתוח שוטף , הכול כלול ב-<b className="text-foreground">{shekel(price)}</b> לחודש.
+                  </>
+                )}
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* recent activity log */}

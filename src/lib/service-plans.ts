@@ -80,9 +80,25 @@ export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): stri
   return list;
 }
 
-/** Rough "infrastructure value" line for the ROI note. */
-export function infraValue(siteType: ServiceSiteType): string {
-  return siteType === "wordpress"
-    ? `הרישיונות והתשתית לבדם שווים מעל ₪1,400 בחודש`
-    : `האחסון, ה-CDN וזמן הפיתוח השוטף שווים הרבה יותר`;
+/** Rough monthly infra value (hosting + CDN + monitoring), ₪. */
+export function infraMonthly(siteType: ServiceSiteType): number {
+  return siteType === "wordpress" ? 120 : 90;
+}
+
+/** Honest package value breakdown shown to the client (₪/month). */
+export function packageValue(tier: ServiceTier, siteType: ServiceSiteType, hourlyRate: number | null) {
+  const hours = TIER_META[tier].hours;
+  const rate = hourlyRate ?? 0;
+  const workValue = Math.round(hours * rate);
+  const infra = infraMonthly(siteType);
+  const licenseAnnual = siteType === "wordpress" ? WP_LICENSE_VALUE : 0;
+  const licenseMonthly = Math.round(licenseAnnual / 12);
+  return {
+    hours,
+    workValue, // 0 if no rate set
+    infra,
+    licenseAnnual,
+    licenseMonthly,
+    total: workValue + infra + licenseMonthly,
+  };
 }

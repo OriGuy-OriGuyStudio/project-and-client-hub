@@ -226,6 +226,7 @@ export type Project = {
   title: string;
   description: string | null;
   client_id: string;
+  parent_project_id: string | null;
   status: ProjectStatus;
   figma_url: string | null;
   figma_prototype_url: string | null;
@@ -382,6 +383,7 @@ export type TimeSession = {
   client_id: string | null;
   project_id: string | null;
   stage_id: string | null;
+  is_retainer: boolean;
   label: string | null;
   mode: "up" | "down";
   planned_seconds: number | null;
@@ -405,6 +407,7 @@ export type ProjectService = {
   site_type: "wordpress" | "custom";
   site_url: string | null;
   monthly_price: number | null;
+  hourly_rate: number | null;
   started_at: string | null;
   billing_day: number;
   active: boolean;

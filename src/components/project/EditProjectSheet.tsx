@@ -21,6 +21,7 @@ import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
+import { useProjects } from "@/hooks/useProjects";
 import { useProjectBilling, saveProjectValue } from "@/hooks/useTimeData";
 import { useProjectService } from "@/hooks/useService";
 import { TIER_META } from "@/lib/service-plans";
@@ -38,6 +39,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const { data: clients } = useClients();
+  const { data: allProjects = [] } = useProjects();
   const activeClients = clients?.active ?? [];
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
     description: project.description ?? "",
     status: project.status,
     warranty_start_date: project.warranty_start_date ?? "",
+    parent_project_id: project.parent_project_id ?? "",
   });
 
   function update<K extends keyof typeof draft>(k: K, v: (typeof draft)[K]) {
@@ -66,11 +69,13 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const [svcSiteType, setSvcSiteType] = useState<"wordpress" | "custom">("wordpress");
   const [svcUrl, setSvcUrl] = useState("");
   const [svcBillingDay, setSvcBillingDay] = useState("1");
+  const [svcHourly, setSvcHourly] = useState("");
   useEffect(() => {
     setSvcTier(service && service.active ? service.tier : "none");
     setSvcSiteType(service?.site_type ?? "wordpress");
     setSvcUrl(service?.site_url ?? "");
     setSvcBillingDay(String(service?.billing_day ?? 1));
+    setSvcHourly(service?.hourly_rate != null ? String(service.hourly_rate) : "");
   }, [service]);
 
   async function save() {
@@ -86,6 +91,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
         description: clampText(draft.description.trim(), 2000) || null,
         status: draft.status,
         warranty_start_date: draft.warranty_start_date || null,
+        parent_project_id: draft.parent_project_id || null,
       })
       .eq("id", project.id);
 
@@ -106,6 +112,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
         tier: svcTier === "none" ? "core" : svcTier,
         site_type: svcSiteType,
         site_url: svcUrl.trim() || null,
+        hourly_rate: svcHourly.trim() ? Number(svcHourly) : null,
         billing_day: billingDay,
         active: svcTier !== "none",
         updated_at: new Date().toISOString(),
@@ -161,6 +168,27 @@ export function EditProjectSheet({ project }: { project: Project }) {
             />
             <p className="text-xs text-muted-foreground">
               שינוי הלקוח מעביר את הפרויקט לחשבון אחר, והלקוח הקודם יפסיק לראות אותו.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ep-parent">מקושר לפרויקט אב (ריטיינר)</Label>
+            <SelectMenu
+              id="ep-parent"
+              variant="field"
+              ariaLabel="פרויקט אב"
+              placeholder="ללא , פרויקט עצמאי"
+              value={draft.parent_project_id}
+              onChange={(v) => update("parent_project_id", v)}
+              options={[
+                { value: "", label: "ללא , פרויקט עצמאי" },
+                ...allProjects
+                  .filter((p) => p.id !== project.id && p.client_id === draft.client_id)
+                  .map((p) => ({ value: p.id, label: p.title })),
+              ]}
+            />
+            <p className="text-xs text-muted-foreground">
+              אם זה פיצ׳ר של פרויקט קיים, קשר אותו לפרויקט האב. השעות שלו ייספרו בריטיינר של האב.
             </p>
           </div>
 
@@ -282,6 +310,20 @@ export function EditProjectSheet({ project }: { project: Project }) {
                     value={svcBillingDay}
                     onChange={(e) => setSvcBillingDay(e.target.value)}
                   />
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="ep-svc-rate">תעריף שעתי (₪)</Label>
+                  <Input
+                    id="ep-svc-rate"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="לדוגמה: 160"
+                    value={svcHourly}
+                    onChange={(e) => setSvcHourly(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    משמש לחישוב שווי החבילה שמוצג ללקוח (שעות × תעריף) ולחריגת שעות.
+                  </p>
                 </div>
               </div>
             )}
