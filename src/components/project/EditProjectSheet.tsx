@@ -22,6 +22,8 @@ import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useProjectBilling, saveProjectValue } from "@/hooks/useTimeData";
+import { useProjectService } from "@/hooks/useService";
+import { TIER_META } from "@/lib/service-plans";
 import { projectStatusHe } from "@/lib/status";
 import type { Project, ProjectStatus } from "@/types/database";
 
@@ -58,6 +60,19 @@ export function EditProjectSheet({ project }: { project: Project }) {
     setValue(billing?.value != null ? String(billing.value) : "");
   }, [billing]);
 
+  // Service & maintenance plan (shown to the client on "השירות שלך").
+  const { data: service } = useProjectService(project.id);
+  const [svcTier, setSvcTier] = useState<"none" | "core" | "pro" | "ultra">("none");
+  const [svcSiteType, setSvcSiteType] = useState<"wordpress" | "custom">("wordpress");
+  const [svcUrl, setSvcUrl] = useState("");
+  const [svcBillingDay, setSvcBillingDay] = useState("1");
+  useEffect(() => {
+    setSvcTier(service && service.active ? service.tier : "none");
+    setSvcSiteType(service?.site_type ?? "wordpress");
+    setSvcUrl(service?.site_url ?? "");
+    setSvcBillingDay(String(service?.billing_day ?? 1));
+  }, [service]);
+
   async function save() {
     const title = clampText(draft.title.trim(), 200);
     if (!title) return toastError("תן שם לפרויקט.");
@@ -82,6 +97,23 @@ export function EditProjectSheet({ project }: { project: Project }) {
     const trimmed = value.trim();
     await saveProjectValue(project.id, trimmed ? Number(trimmed) : null);
     qc.invalidateQueries({ queryKey: ["project-billing", project.id] });
+
+    // service plan: upsert (or deactivate when "none")
+    const billingDay = Math.min(28, Math.max(1, parseInt(svcBillingDay || "1", 10)));
+    await supabase.from("project_service").upsert(
+      {
+        project_id: project.id,
+        tier: svcTier === "none" ? "core" : svcTier,
+        site_type: svcSiteType,
+        site_url: svcUrl.trim() || null,
+        billing_day: billingDay,
+        active: svcTier !== "none",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "project_id" },
+    );
+    qc.invalidateQueries({ queryKey: ["project-service", project.id] });
+    qc.invalidateQueries({ queryKey: ["my-services"] });
     setSaving(false);
 
     await logActivity({
@@ -192,6 +224,69 @@ export function EditProjectSheet({ project }: { project: Project }) {
             />
             <p className="text-xs text-muted-foreground">
               פנימי, לא נחשף ללקוח. משמש לחישוב ₪ לשעה בטיימר לפי הזמן שנמדד.
+            </p>
+          </div>
+
+          {/* service & maintenance plan (shown to the client) */}
+          <div className="space-y-3 rounded-xl border border-border/60 bg-background/20 p-3">
+            <p className="text-sm font-semibold text-foreground">חבילת שירות ותחזוקה</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>חבילה</Label>
+                <SelectMenu
+                  variant="field"
+                  ariaLabel="חבילה"
+                  value={svcTier}
+                  onChange={(v) => setSvcTier(v as typeof svcTier)}
+                  options={[
+                    { value: "none", label: "ללא חבילה" },
+                    { value: "core", label: `Core (₪${TIER_META.core.price})` },
+                    { value: "pro", label: `Pro (₪${TIER_META.pro.price})` },
+                    { value: "ultra", label: `Ultra VIP (₪${TIER_META.ultra.price})` },
+                  ]}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>סוג אתר</Label>
+                <SelectMenu
+                  variant="field"
+                  ariaLabel="סוג אתר"
+                  disabled={svcTier === "none"}
+                  value={svcSiteType}
+                  onChange={(v) => setSvcSiteType(v as typeof svcSiteType)}
+                  options={[
+                    { value: "wordpress", label: "WordPress" },
+                    { value: "custom", label: "מותאם אישית" },
+                  ]}
+                />
+              </div>
+            </div>
+            {svcTier !== "none" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ep-svc-url">כתובת האתר (לניטור)</Label>
+                  <Input
+                    id="ep-svc-url"
+                    placeholder="https://…"
+                    value={svcUrl}
+                    onChange={(e) => setSvcUrl(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ep-svc-day">יום חיוב</Label>
+                  <Input
+                    id="ep-svc-day"
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={svcBillingDay}
+                    onChange={(e) => setSvcBillingDay(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              נחשף ללקוח בעמוד ״השירות שלך״. כתובת האתר משמשת לניטור הביצועים והאבטחה.
             </p>
           </div>
         </div>

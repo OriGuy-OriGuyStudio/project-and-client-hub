@@ -399,6 +399,45 @@ export type ProjectBilling = {
   updated_at: string;
 }
 
+export type ProjectService = {
+  project_id: string;
+  tier: "core" | "pro" | "ultra";
+  site_type: "wordpress" | "custom";
+  site_url: string | null;
+  monthly_price: number | null;
+  started_at: string | null;
+  billing_day: number;
+  active: boolean;
+  updated_at: string;
+}
+
+export type SiteMetric = {
+  id: string;
+  project_id: string;
+  metric_date: string;
+  visitors: number | null;
+  pageviews: number | null;
+  sessions: number | null;
+  pagespeed: number | null;
+  lcp_ms: number | null;
+  cls: number | null;
+  inp_ms: number | null;
+  uptime_pct: number | null;
+  threats_blocked: number | null;
+  meta: Json | null;
+  created_at: string;
+}
+
+export type MaintenanceLog = {
+  id: string;
+  project_id: string;
+  kind: "update" | "backup" | "scan" | "deploy" | "service_call" | "note";
+  title: string | null;
+  count: number;
+  occurred_at: string;
+  meta: Json | null;
+}
+
 export type Payment = {
   id: string;
   project_id: string;
@@ -744,6 +783,9 @@ export interface Database {
       time_labels: TableShape<TimeLabel>;
       time_sessions: TableShape<TimeSession>;
       project_billing: TableShape<ProjectBilling>;
+      project_service: TableShape<ProjectService>;
+      site_metrics: TableShape<SiteMetric>;
+      maintenance_log: TableShape<MaintenanceLog>;
       payments: TableShape<Payment>;
       messages: TableShape<Message>;
       activity_log: TableShape<ActivityLog>;
@@ -801,6 +843,17 @@ export interface Database {
       set_client_redemption_status: { Args: { p_id: string; p_status: string }; Returns: undefined };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
+      client_service_summary: {
+        Args: { p_project: string };
+        Returns: {
+          hours_month: number;
+          hours_total: number;
+          service_calls_month: number;
+          updates_total: number;
+          backups_total: number;
+          threats_total: number;
+        }[];
+      };
       resolve_referral: {
         Args: { p_code: string };
         Returns: { valid: boolean; partner_name?: string | null };

@@ -27,6 +27,7 @@ import AccessDenied from "@/pages/auth/AccessDenied";
 const ClientDashboard = lazy(() => import("@/pages/client/Dashboard"));
 const Profile = lazy(() => import("@/pages/client/Profile"));
 const Partner = lazy(() => import("@/pages/client/Partner"));
+const Service = lazy(() => import("@/pages/client/Service"));
 const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
 const TaskBoard = lazy(() => import("@/pages/admin/TaskBoard"));
 const Discovery = lazy(() => import("@/pages/admin/Discovery"));
@@ -55,6 +56,8 @@ const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
 const TimerLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/TimerLab")) : null;
 const ReportsLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ReportsLab")) : null;
 const ProjectsLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ProjectsLab")) : null;
+const ServiceLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ServiceLab")) : null;
+const ServiceClientLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/ServiceClientLab")) : null;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +92,7 @@ function App() {
                 {/* Client-only - dashboard lives at the root slug */}
                 <Route element={<RequireClient />}>
                   <Route index element={<ClientDashboard />} />
+                  <Route path="/service" element={<Service />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/partner" element={<Partner />} />
                 </Route>
@@ -169,6 +173,26 @@ function App() {
                 element={
                   <Suspense fallback={<div className="min-h-screen bg-background" />}>
                     <ProjectsLab />
+                  </Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && ServiceLab && (
+              <Route
+                path="/__servicelab"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                    <ServiceLab />
+                  </Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && ServiceClientLab && (
+              <Route
+                path="/__serviceclient"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                    <ServiceClientLab />
                   </Suspense>
                 }
               />
