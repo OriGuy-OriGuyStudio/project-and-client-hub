@@ -41,6 +41,7 @@ import { clampText } from "@/lib/sanitize";
 import { GENDER_OPTIONS } from "@/lib/gender";
 import { useClients } from "@/hooks/useClients";
 import { isDemoEmail } from "@/lib/demo";
+import { isInternalClient } from "@/lib/internal";
 import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { useClientCrm } from "@/hooks/useClientCrm";
 import { useAuth } from "@/hooks/useAuth";
@@ -87,9 +88,10 @@ export default function Clients() {
 
   const activeList = data?.active ?? [];
   const pendingList = data?.pending ?? [];
-  const realActive = activeList.filter((c) => !isDemoEmail(c.email));
+  const realActive = activeList.filter((c) => !isDemoEmail(c.email) && !isInternalClient(c.email));
+  const internalActive = activeList.filter((c) => isInternalClient(c.email));
   const demoActive = activeList.filter((c) => isDemoEmail(c.email));
-  const realPending = pendingList.filter((c) => !isDemoEmail(c.email));
+  const realPending = pendingList.filter((c) => !isDemoEmail(c.email) && !isInternalClient(c.email));
   const demoPending = pendingList.filter((c) => isDemoEmail(c.email));
   const hasDemo = demoActive.length + demoPending.length > 0;
 
@@ -175,6 +177,15 @@ export default function Clients() {
                 ממתינים לכניסה ראשונה ({realPending.length})
               </h2>
               {realPending.map(renderPending)}
+            </section>
+          )}
+
+          {internalActive.length > 0 && (
+            <section className="space-y-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-3">
+              <h2 className="text-sm font-medium text-primary">
+                סטודיו (פנימי) , לזמן על Orion / Chat / אדמיניסטרציה, לא נספר כלקוח
+              </h2>
+              {internalActive.map(renderActive)}
             </section>
           )}
 

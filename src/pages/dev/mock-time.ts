@@ -6,6 +6,7 @@ const iso = (hoursAgo: number) => new Date(Date.now() - hoursAgo * 3600_000).toI
 export const MOCK_PROJECTS = [
   { id: "p1", client_id: "c1", business_name: "דנה לוי , סטודיו עיצוב", title: "אתר לסטודיו עיצוב", logo_url: null, logo_fit: "auto" },
   { id: "p2", client_id: "c2", business_name: "מסעדת הגליל", title: "אתר מסעדה + תפריט", logo_url: null, logo_fit: "auto" },
+  { id: "p3", client_id: "c4", business_name: "Studio Ori Guy", title: "Orion — פורטל הלקוחות", logo_url: null, logo_fit: "auto" },
 ];
 // c3 (Matx-il) intentionally has NO project — to test pre-project time tracking.
 const CLIENT = (id: string, business_name: string, full_name: string, email: string) => ({
@@ -26,6 +27,8 @@ export const MOCK_CLIENTS = {
     CLIENT("c1", "דנה לוי , סטודיו עיצוב", "דנה לוי", "dana@example.com"),
     CLIENT("c2", "מסעדת הגליל", "רון", "galil@example.com"),
     CLIENT("c3", "Matx-il", "דור", "dor@matx-il.com"),
+    // internal studio client (isInternalClient matches this email)
+    CLIENT("c4", "Studio Ori Guy", "הסטודיו", "studio@origuystudio.com"),
   ],
   pending: [],
 };
@@ -34,6 +37,7 @@ export const MOCK_STAGES = [
   { id: "s2", title: "פיתוח", project_id: "p1" },
   { id: "s3", title: "אפיון", project_id: "p2" },
   { id: "s4", title: "עיצוב", project_id: "p2" },
+  { id: "s5", title: "פיתוח", project_id: "p3" },
 ];
 export const MOCK_BILLING = [
   { project_id: "p1", value: 8000 },
@@ -63,6 +67,8 @@ export const MOCK_SESSIONS = [
   S({ kind: "stage", client_id: "c2", project_id: "p2", stage_id: "s4", mode: "down", duration_seconds: 3000, started_at: iso(51), note: "צבעים + טיפוגרפיה" }),
   // pre-project time for Matx-il (client, no project yet)
   S({ kind: "stage", client_id: "c3", project_id: null, stage_id: null, mode: "up", duration_seconds: 1800, started_at: iso(4), note: "שיחת אפיון ראשונית" }),
+  // internal studio work — Orion (should show in its own "סטודיו" section)
+  S({ kind: "stage", client_id: "c4", project_id: "p3", stage_id: "s5", mode: "up", duration_seconds: 5400, started_at: iso(7), note: "עבודה על הטיימר" }),
   S({ kind: "personal", label: "למידה", mode: "down", duration_seconds: 2400, started_at: iso(2) }),
   S({ kind: "personal", label: "סושיאל", mode: "up", duration_seconds: 1800, started_at: iso(74) }),
 ];

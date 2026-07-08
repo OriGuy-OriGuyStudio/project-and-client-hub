@@ -9,6 +9,7 @@ import {
   Link2,
   Play,
   Pencil,
+  Building2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import { supabase } from "@/lib/supabase";
 import { timer, ctxFromSession } from "@/lib/timer-store";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
+import { isInternalClient } from "@/lib/internal";
 import { clientLabel } from "@/components/timer/timer-controls";
 import { useTimeSessions } from "@/hooks/useTimeData";
 import { TimerBoard } from "@/components/timer/TimerBoard";
@@ -229,6 +231,9 @@ export function ReportsSection() {
     const projTitle = new Map(projects.map((p) => [p.id, p.title])); // the project's own title
     const projClientId = new Map(projects.map((p) => [p.id, p.client_id]));
     const clientName = new Map((clientsData?.active ?? []).map((c) => [c.id, clientLabel(c)]));
+    const internalIds = new Set(
+      (clientsData?.active ?? []).filter((c) => isInternalClient(c.email)).map((c) => c.id),
+    );
     const clientOf = (id: string | null | undefined) => (id ? clientName.get(id) || "לקוח" : "לקוח");
     const stageName = new Map(stages.map((s) => [s.id, s.title]));
     const value = new Map(billing.map((b) => [b.project_id, b.value]));
@@ -281,12 +286,14 @@ export function ReportsSection() {
     const projectRows = [...byProject.entries()]
       .map(([pid, agg]) => {
         const pre = pid.startsWith("noproj:");
-        const val = pre ? 0 : Number(value.get(pid) ?? 0);
+        const internal = !!agg.clientId && internalIds.has(agg.clientId);
+        const val = pre || internal ? 0 : Number(value.get(pid) ?? 0);
         return {
           id: pid,
           name: pre ? "טרם פרויקט" : projTitle.get(pid) || projName.get(pid) || "פרויקט",
           client: clientOf(agg.clientId),
           preProject: pre,
+          internal,
           total: agg.total,
           value: val,
           rate: val > 0 && agg.total > 0 ? val / (agg.total / 3600) : null,
@@ -318,8 +325,9 @@ export function ReportsSection() {
       .sort((a, b) => b.sec - a.sec);
     const maxPersonal = personalRows.reduce((m, r) => Math.max(m, r.sec), 0) || 1;
 
-    // time share per client, for the donut
+    // time share per PAYING client, for the donut (studio/internal excluded)
     const clientTime = [...clientGroups.entries()]
+      .filter(([, projs]) => !projs[0]?.internal)
       .map(([client, projs]) => ({ client, sec: projs.reduce((a, p) => a + p.total, 0) }))
       .sort((a, b) => b.sec - a.sec);
 
@@ -419,6 +427,76 @@ export function ReportsSection() {
   const shownSessions = sessions.filter((s) => modeFilter === "all" || s.mode === modeFilter);
   const rangeLabels: Record<Range, string> = { today: "היום", week: "7 ימים", month: "החודש", all: "הכל" };
 
+  const groups = [...model.clientGroups.entries()];
+  const payingGroups = groups.filter(([, p]) => !p[0]?.internal);
+  const internalGroups = groups.filter(([, p]) => p[0]?.internal);
+
+  const renderClientCard = (client: string, projs: typeof model.projectRows) => {
+    const clientTotal = projs.reduce((a, p) => a + p.total, 0);
+    return (
+      <Card key={client} className="overflow-hidden p-0">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-card/40 px-4 py-2.5">
+          <span className="flex items-center gap-2 font-heading text-sm font-semibold text-foreground">
+            <User className="size-4 text-brand-cyan-base" /> {client}
+          </span>
+          <span className="text-xs tabular-nums text-muted-foreground">{hms(clientTotal)}</span>
+        </div>
+        <div className="divide-y divide-border/60">
+          {projs.map((pr) => {
+            const open = expanded.has(pr.id);
+            return (
+              <div key={pr.id}>
+                <button
+                  onClick={() => toggle(pr.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-card/40"
+                >
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      open && "rotate-180",
+                    )}
+                  />
+                  <FolderKanban className="size-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <span className="truncate text-sm font-medium text-foreground">{pr.name}</span>
+                      <span className="flex shrink-0 items-center gap-2.5 text-xs">
+                        {pr.rate != null && (
+                          <span className="font-semibold text-primary">≈ {shekel(pr.rate)}/ש׳</span>
+                        )}
+                        <span className="tabular-nums text-muted-foreground">{hms(pr.total)}</span>
+                      </span>
+                    </div>
+                    <Bar frac={pr.total / model.maxProject} />
+                  </div>
+                </button>
+                {open && (
+                  <div className="space-y-1 bg-background/30 px-4 pb-3 pe-11">
+                    {pr.value > 0 && (
+                      <div className="flex items-center justify-between py-1 text-xs text-muted-foreground">
+                        <span>שווי הפרויקט</span>
+                        <span className="tabular-nums">{shekel(pr.value)}</span>
+                      </div>
+                    )}
+                    {pr.stages.map((st) => (
+                      <div key={st.name} className="flex items-center justify-between py-1 text-[13px]">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          {st.linked && <Link2 className="size-3 text-brand-cyan-base" />}
+                          {st.name}
+                        </span>
+                        <span className="tabular-nums">{hms(st.sec)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* date-range filter */}
@@ -486,78 +564,21 @@ export function ReportsSection() {
         </Card>
       )}
 
-      {/* per client + project, with bars and expandable stages */}
-      {model.clientGroups.size > 0 && (
+      {/* per paying client + project */}
+      {payingGroups.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-heading text-lg font-semibold text-foreground">לפי לקוח ופרויקט</h2>
-          {[...model.clientGroups.entries()].map(([client, projs]) => {
-            const clientTotal = projs.reduce((a, p) => a + p.total, 0);
-            return (
-              <Card key={client} className="overflow-hidden p-0">
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-card/40 px-4 py-2.5">
-                  <span className="flex items-center gap-2 font-heading text-sm font-semibold text-foreground">
-                    <User className="size-4 text-brand-cyan-base" /> {client}
-                  </span>
-                  <span className="text-xs tabular-nums text-muted-foreground">{hms(clientTotal)}</span>
-                </div>
-                <div className="divide-y divide-border/60">
-                  {projs.map((pr) => {
-                    const open = expanded.has(pr.id);
-                    return (
-                      <div key={pr.id}>
-                        <button
-                          onClick={() => toggle(pr.id)}
-                          className="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-card/40"
-                        >
-                          <ChevronDown
-                            className={cn(
-                              "size-4 shrink-0 text-muted-foreground transition-transform",
-                              open && "rotate-180",
-                            )}
-                          />
-                          <FolderKanban className="size-4 shrink-0 text-primary" />
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1.5 flex items-center justify-between gap-3">
-                              <span className="truncate text-sm font-medium text-foreground">{pr.name}</span>
-                              <span className="flex shrink-0 items-center gap-2.5 text-xs">
-                                {pr.rate != null && (
-                                  <span className="font-semibold text-primary">≈ {shekel(pr.rate)}/ש׳</span>
-                                )}
-                                <span className="tabular-nums text-muted-foreground">{hms(pr.total)}</span>
-                              </span>
-                            </div>
-                            <Bar frac={pr.total / model.maxProject} />
-                          </div>
-                        </button>
-                        {open && (
-                          <div className="space-y-1 bg-background/30 px-4 pb-3 pe-11">
-                            {pr.value > 0 && (
-                              <div className="flex items-center justify-between py-1 text-xs text-muted-foreground">
-                                <span>שווי הפרויקט</span>
-                                <span className="tabular-nums">{shekel(pr.value)}</span>
-                              </div>
-                            )}
-                            {pr.stages.map((st) => (
-                              <div
-                                key={st.name}
-                                className="flex items-center justify-between py-1 text-[13px]"
-                              >
-                                <span className="flex items-center gap-1.5 text-muted-foreground">
-                                  {st.linked && <Link2 className="size-3 text-brand-cyan-base" />}
-                                  {st.name}
-                                </span>
-                                <span className="tabular-nums">{hms(st.sec)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            );
-          })}
+          {payingGroups.map(([client, projs]) => renderClientCard(client, projs))}
+        </div>
+      )}
+
+      {/* studio / internal work — kept out of the paying-client reports */}
+      {internalGroups.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <Building2 className="size-5 text-primary" /> סטודיו — זמן פנימי
+          </h2>
+          {internalGroups.map(([client, projs]) => renderClientCard(client, projs))}
         </div>
       )}
 
