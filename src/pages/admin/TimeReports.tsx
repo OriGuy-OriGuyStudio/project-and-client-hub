@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { timer, ctxFromSession } from "@/lib/timer-store";
 import { useProjects } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
+import { clientLabel } from "@/components/timer/timer-controls";
 import { useTimeSessions } from "@/hooks/useTimeData";
 import { TimerBoard } from "@/components/timer/TimerBoard";
 import { SessionNote } from "@/components/timer/SessionNote";
@@ -189,6 +191,7 @@ type Range = "today" | "week" | "month" | "all";
 export function ReportsSection() {
   const { data: allSessions = [], isLoading } = useTimeSessions();
   const { data: projects = [] } = useProjects();
+  const { data: clientsData } = useClients();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [modeFilter, setModeFilter] = useState<"all" | "up" | "down">("all");
   const [range, setRange] = useState<Range>("week");
@@ -224,11 +227,14 @@ export function ReportsSection() {
   const model = useMemo(() => {
     const projName = new Map(projects.map((p) => [p.id, p.business_name || p.title])); // client-facing name
     const projTitle = new Map(projects.map((p) => [p.id, p.title])); // the project's own title
-    const projClient = new Map(projects.map((p) => [p.id, p.business_name || "לקוח"]));
+    const projClientId = new Map(projects.map((p) => [p.id, p.client_id]));
+    const clientName = new Map((clientsData?.active ?? []).map((c) => [c.id, clientLabel(c)]));
+    const clientOf = (id: string | null | undefined) => (id ? clientName.get(id) || "לקוח" : "לקוח");
     const stageName = new Map(stages.map((s) => [s.id, s.title]));
     const value = new Map(billing.map((b) => [b.project_id, b.value]));
 
-    const byProject = new Map<string, { total: number; stages: Map<string, number> }>();
+    // buckets keyed by project id, or `noproj:<clientId>` for pre-project time
+    const byProject = new Map<string, { total: number; clientId: string | null; stages: Map<string, number> }>();
     const personal = new Map<string, { sec: number; projectId: string | null }>();
     let total = 0;
     let week = 0;
@@ -252,30 +258,41 @@ export function ReportsSection() {
         if (s.project_id) cur.projectId = s.project_id;
         personal.set(s.label || "אישי", cur);
       }
-      // Stage sessions + personal labels linked to a project both roll up here.
+
+      const cid = s.client_id ?? (s.project_id ? projClientId.get(s.project_id) ?? null : null);
       if (s.project_id) {
-        const p = byProject.get(s.project_id) ?? { total: 0, stages: new Map() };
+        // stage sessions + personal labels linked to a project
+        const p = byProject.get(s.project_id) ?? { total: 0, clientId: cid, stages: new Map() };
         p.total += s.duration_seconds;
         const key = s.stage_id ?? (s.kind === "personal" && s.label ? `label:${s.label}` : "—");
         p.stages.set(key, (p.stages.get(key) ?? 0) + s.duration_seconds);
         byProject.set(s.project_id, p);
+      } else if (s.kind === "stage" && cid) {
+        // pre-project time for a client (no project yet)
+        const bk = `noproj:${cid}`;
+        const p = byProject.get(bk) ?? { total: 0, clientId: cid, stages: new Map() };
+        p.total += s.duration_seconds;
+        p.stages.set("—", (p.stages.get("—") ?? 0) + s.duration_seconds);
+        byProject.set(bk, p);
       }
     }
 
     // ready-to-render project rows, grouped under their client
     const projectRows = [...byProject.entries()]
       .map(([pid, agg]) => {
-        const val = Number(value.get(pid) ?? 0);
+        const pre = pid.startsWith("noproj:");
+        const val = pre ? 0 : Number(value.get(pid) ?? 0);
         return {
           id: pid,
-          name: projTitle.get(pid) || projName.get(pid) || "פרויקט",
-          client: projClient.get(pid) || "לקוח",
+          name: pre ? "טרם פרויקט" : projTitle.get(pid) || projName.get(pid) || "פרויקט",
+          client: clientOf(agg.clientId),
+          preProject: pre,
           total: agg.total,
           value: val,
           rate: val > 0 && agg.total > 0 ? val / (agg.total / 3600) : null,
           stages: [...agg.stages.entries()]
             .map(([sid, sec]) => ({
-              name: sid.startsWith("label:") ? sid.slice(6) : stageName.get(sid) || "ללא שלב",
+              name: sid.startsWith("label:") ? sid.slice(6) : sid === "—" ? "טרם פרויקט" : stageName.get(sid) || "ללא שלב",
               linked: sid.startsWith("label:"),
               sec,
             }))
@@ -309,6 +326,7 @@ export function ReportsSection() {
     return {
       projName,
       stageName,
+      clientName,
       total,
       week,
       today,
@@ -321,7 +339,7 @@ export function ReportsSection() {
       personalRows,
       maxPersonal,
     };
-  }, [sessions, projects, stages, billing]);
+  }, [sessions, projects, stages, billing, clientsData]);
 
   // "today / this week" glance stays constant regardless of the range filter
   const glance = useMemo(() => {
@@ -342,6 +360,7 @@ export function ReportsSection() {
       ctxFromSession(s, {
         project: (id) => model.projName.get(id) ?? null,
         stage: (id) => model.stageName.get(id) ?? null,
+        client: (id) => model.clientName.get(id) ?? null,
       }),
       { mode: s.mode },
     );
@@ -362,11 +381,12 @@ export function ReportsSection() {
     const rows = [["תאריך", "סוג", "פרויקט/תווית", "לקוח", "שלב", "מצב", "משך (שניות)", "משך"]];
     for (const s of sessions) {
       const linkedProj = s.project_id ? model.projName.get(s.project_id) || "" : "";
+      const clientNm = s.client_id ? model.clientName.get(s.client_id) || "" : "";
       rows.push([
         new Date(s.started_at).toLocaleString("he-IL"),
         s.kind === "personal" ? "אישי" : "פרויקט",
-        s.kind === "personal" ? s.label || "" : linkedProj,
-        linkedProj,
+        s.kind === "personal" ? s.label || "" : linkedProj || clientNm,
+        clientNm || linkedProj,
         s.stage_id ? model.stageName.get(s.stage_id) || "" : "",
         s.mode === "down" ? "פומודורו" : "משימה",
         String(s.duration_seconds),
@@ -603,10 +623,20 @@ export function ReportsSection() {
             <div className="divide-y divide-border/60">
               {g.items.map((s) => {
                 const linkedProj = s.project_id ? model.projName.get(s.project_id) || null : null;
-                const name = s.kind === "personal" ? s.label || "אישי" : linkedProj || "פרויקט";
+                const clientNm = s.client_id ? model.clientName.get(s.client_id) || null : null;
+                const name =
+                  s.kind === "personal"
+                    ? s.label || "אישי"
+                    : linkedProj || clientNm || "פרויקט";
                 const stage = s.stage_id ? model.stageName.get(s.stage_id) : null;
                 const down = s.mode === "down";
-                const belongsTo = s.kind === "personal" && linkedProj ? linkedProj : stage;
+                // linked-personal → show client; client-only stage → "טרם פרויקט"; else stage
+                const belongsTo =
+                  s.kind === "personal" && linkedProj
+                    ? linkedProj
+                    : s.kind === "stage" && !s.project_id && clientNm
+                      ? "טרם פרויקט"
+                      : stage;
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                     <div className="flex min-w-0 items-center gap-2">

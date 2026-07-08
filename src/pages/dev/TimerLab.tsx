@@ -17,8 +17,10 @@ export default function TimerLab() {
     seedTimeMock(qc);
     timer.setCtx({
       kind: "stage",
+      clientId: "c1",
+      clientName: "דנה לוי , סטודיו עיצוב",
       projectId: "p1",
-      projectName: "דנה לוי , סטודיו עיצוב",
+      projectName: "אתר לסטודיו עיצוב",
       stageId: "s1",
       stageName: "עיצוב",
     });

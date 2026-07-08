@@ -12,6 +12,7 @@ import { celebrate } from "@/lib/confetti";
 export type TimerCtx = {
   kind: "stage" | "personal";
   clientId?: string | null;
+  clientName?: string | null;
   projectId?: string | null;
   projectName?: string | null;
   stageId?: string | null;
@@ -114,20 +115,35 @@ export function getState(): Readonly<State> {
 export function ctxTitle(): string {
   const c = state.ctx;
   if (c.kind === "personal") return c.label || "אישי";
-  return [c.projectName, c.stageName].filter(Boolean).join(" · ") || "פרויקט";
+  const parts = [c.projectName, c.stageName].filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return c.clientName || "פרויקט";
 }
 
 /** Rebuild a timer context from a stored session (for "continue" / quick-start). */
 export function ctxFromSession(
-  s: { kind: "stage" | "personal"; project_id: string | null; stage_id: string | null; label: string | null },
-  names?: { project?: (id: string) => string | null; stage?: (id: string) => string | null },
+  s: {
+    kind: "stage" | "personal";
+    client_id?: string | null;
+    project_id: string | null;
+    stage_id: string | null;
+    label: string | null;
+  },
+  names?: {
+    project?: (id: string) => string | null;
+    stage?: (id: string) => string | null;
+    client?: (id: string) => string | null;
+  },
 ): Partial<TimerCtx> {
   const projectName = s.project_id ? names?.project?.(s.project_id) ?? null : null;
+  const clientName = s.client_id ? names?.client?.(s.client_id) ?? null : null;
   if (s.kind === "personal") {
     return { kind: "personal", label: s.label, projectId: s.project_id, projectName, stageId: null, stageName: null };
   }
   return {
     kind: "stage",
+    clientId: s.client_id ?? null,
+    clientName,
     projectId: s.project_id,
     projectName,
     stageId: s.stage_id,
@@ -210,8 +226,10 @@ async function saveSession(durationSec: number) {
   const c = state.ctx;
   const { error } = await supabase.from("time_sessions").insert({
     kind: c.kind,
-    // project_id is set for stage sessions and for personal labels linked to a
-    // project — so linked personal time counts toward the project's total/₪-hr.
+    // client_id lets us attribute time to a client even before a project exists
+    // (pre-project sales/discovery). project_id is set for stage sessions and
+    // for personal labels linked to a project.
+    client_id: c.clientId ?? null,
     project_id: c.projectId ?? null,
     stage_id: c.kind === "stage" ? c.stageId ?? null : null,
     label: c.kind === "personal" ? c.label ?? null : null,

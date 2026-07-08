@@ -5,6 +5,8 @@ import { useTimer } from "@/hooks/useTimer";
 import { timer, ctxTitle, ctxFromSession } from "@/lib/timer-store";
 import { supabase } from "@/lib/supabase";
 import { useProjects } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
+import { clientLabel } from "@/components/timer/timer-controls";
 import { useProjectBilling, useTimeSessions } from "@/hooks/useTimeData";
 import {
   CYAN,
@@ -56,11 +58,15 @@ export function TimerBoard() {
   const ctxSessions = useMemo(() => {
     const c = st.ctx;
     return sessions
-      .filter((s: TimeSession) =>
-        c.kind === "personal"
-          ? s.kind === "personal" && s.label === c.label
-          : s.kind === "stage" && s.project_id === c.projectId && (!c.stageId || s.stage_id === c.stageId),
-      )
+      .filter((s: TimeSession) => {
+        if (c.kind === "personal") return s.kind === "personal" && s.label === c.label;
+        if (s.kind !== "stage") return false;
+        // project chosen → match project (+ stage); no project → pre-project time
+        // for the client (match client, no project).
+        return c.projectId
+          ? s.project_id === c.projectId && (!c.stageId || s.stage_id === c.stageId)
+          : s.project_id == null && s.client_id === c.clientId;
+      })
       .slice(0, 8);
   }, [sessions, st.ctx]);
   const ctxTotal = ctxSessions.reduce((a, s) => a + s.duration_seconds, 0);
@@ -82,8 +88,13 @@ export function TimerBoard() {
       return data ?? [];
     },
   });
+  const { data: clientsData } = useClients();
   const projName = useMemo(() => new Map(projects.map((p) => [p.id, p.business_name || p.title])), [projects]);
   const stageName = useMemo(() => new Map(allStages.map((s) => [s.id, s.title])), [allStages]);
+  const clientName = useMemo(
+    () => new Map((clientsData?.active ?? []).map((c) => [c.id, clientLabel(c)])),
+    [clientsData],
+  );
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<TimeSession | null>(null);
@@ -100,6 +111,7 @@ export function TimerBoard() {
       ctxFromSession(s, {
         project: (id) => projName.get(id) ?? null,
         stage: (id) => stageName.get(id) ?? null,
+        client: (id) => clientName.get(id) ?? null,
       }),
       { mode: s.mode },
     );
@@ -109,20 +121,24 @@ export function TimerBoard() {
     const seen = new Set<string>();
     const out: { key: string; title: string; s: TimeSession }[] = [];
     for (const s of sessions) {
-      const key = s.kind === "personal" ? `p:${s.label}` : `s:${s.project_id}:${s.stage_id}`;
+      const key =
+        s.kind === "personal" ? `p:${s.label}` : `s:${s.client_id}:${s.project_id}:${s.stage_id}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const title =
         s.kind === "personal"
           ? s.label || "אישי"
-          : [s.project_id ? projName.get(s.project_id) : null, s.stage_id ? stageName.get(s.stage_id) : null]
+          : [
+              s.project_id ? projName.get(s.project_id) : s.client_id ? clientName.get(s.client_id) : null,
+              s.stage_id ? stageName.get(s.stage_id) : null,
+            ]
               .filter(Boolean)
               .join(" · ") || "פרויקט";
       out.push({ key, title, s });
       if (out.length >= 5) break;
     }
     return out;
-  }, [sessions, projName, stageName]);
+  }, [sessions, projName, stageName, clientName]);
 
   // daily/weekly rollup for the summary panel + the 7-day mini chart
   const summary = useMemo(() => {
@@ -329,6 +345,7 @@ export function TimerBoard() {
         session={editing}
         presetCtx={{
           kind: st.ctx.kind,
+          clientId: st.ctx.clientId,
           projectId: st.ctx.projectId,
           stageId: st.ctx.stageId,
           label: st.ctx.label,

@@ -70,6 +70,7 @@ export async function saveSessionNote(id: string, note: string) {
 /* ---------------- manual create / edit / delete of a session -------------- */
 export type SessionInput = {
   kind: "stage" | "personal";
+  client_id: string | null;
   project_id: string | null;
   stage_id: string | null;
   label: string | null;

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Square, RotateCcw, Plus, Pencil, X, Link2 as LinkIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { cn } from "@/lib/utils";
 import { useTimer } from "@/hooks/useTimer";
 import { useProjects } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
 import { useProjectStages, useTimeLabels } from "@/hooks/useTimeData";
 import {
   timer,
@@ -13,6 +14,10 @@ import {
   getFrac,
   ctxTitle,
 } from "@/lib/timer-store";
+
+/** Human label for a client across the timer UI. */
+export const clientLabel = (c: { business_name: string | null; full_name: string | null; email: string }) =>
+  c.business_name || c.full_name || c.email;
 
 const LONG_RUN_SEC = 6 * 3600; // warn if a session has been running this long
 
@@ -253,60 +258,70 @@ export function TimerContextPicker() {
 function ProjectPicker() {
   const st = useTimer();
   const { data: projects = [] } = useProjects();
-  const [clientId, setClientId] = useState<string>("");
+  const { data: clientsData } = useClients();
+  const clients = clientsData?.active ?? [];
 
-  const clients = useMemo(() => {
-    const m = new Map<string, string>();
-    projects.forEach((p) => m.set(p.client_id, p.business_name || p.title));
-    return [...m.entries()].map(([id, name]) => ({ value: id, label: name }));
-  }, [projects]);
-
-  const shown = clientId ? projects.filter((p) => p.client_id === clientId) : projects;
+  const clientId = st.ctx.clientId ?? "";
+  const clientProjects = clientId ? projects.filter((p) => p.client_id === clientId) : [];
   const { data: stages = [] } = useProjectStages(st.ctx.projectId);
 
   return (
     <div className="grid grid-cols-1 gap-2">
+      {/* client — track time here even before any project exists */}
       <SelectMenu
         variant="field"
         contentClassName={MENU_Z}
-        placeholder="כל הלקוחות"
+        placeholder="בחר לקוח…"
         value={clientId}
-        onChange={(v) => setClientId(v)}
-        options={[{ value: "", label: "כל הלקוחות" }, ...clients]}
-        ariaLabel="לקוח"
-      />
-      <SelectMenu
-        variant="field"
-        contentClassName={MENU_Z}
-        placeholder="בחר פרויקט…"
-        value={st.ctx.projectId ?? ""}
         onChange={(v) => {
-          const p = projects.find((x) => x.id === v);
+          const c = clients.find((x) => x.id === v);
           timer.setCtx({
             kind: "stage",
-            projectId: v,
-            projectName: p?.business_name || p?.title,
-            clientId: p?.client_id,
+            clientId: v || null,
+            clientName: c ? clientLabel(c) : null,
+            projectId: null,
+            projectName: null,
             stageId: null,
             stageName: null,
           });
         }}
-        options={shown.map((p) => ({
-          value: p.id,
-          label: p.business_name ? `${p.business_name} · ${p.title}` : p.title,
-        }))}
-        ariaLabel="פרויקט"
+        options={clients.map((c) => ({ value: c.id, label: clientLabel(c) }))}
+        ariaLabel="לקוח"
       />
+      {/* project (optional) — empty = pre-project time for the client */}
       <SelectMenu
         variant="field"
         contentClassName={MENU_Z}
-        placeholder={stages.length ? "בחר שלב…" : "אין שלבים בפרויקט"}
+        placeholder={!clientId ? "בחר לקוח קודם" : clientProjects.length ? "פרויקט (רשות)" : "אין פרויקט ללקוח"}
+        disabled={!clientId}
+        value={st.ctx.projectId ?? ""}
+        onChange={(v) => {
+          const p = projects.find((x) => x.id === v);
+          timer.setCtx({
+            projectId: v || null,
+            projectName: p ? p.title : null,
+            stageId: null,
+            stageName: null,
+          });
+        }}
+        options={[
+          { value: "", label: "ללא פרויקט (טרום)" },
+          ...clientProjects.map((p) => ({ value: p.id, label: p.title })),
+        ]}
+        ariaLabel="פרויקט"
+      />
+      {/* stage (optional) */}
+      <SelectMenu
+        variant="field"
+        contentClassName={MENU_Z}
+        placeholder={!st.ctx.projectId ? "—" : stages.length ? "בחר שלב…" : "אין שלבים בפרויקט"}
+        disabled={!st.ctx.projectId}
         value={st.ctx.stageId ?? ""}
         onChange={(v) => {
           const s = stages.find((x) => x.id === v);
-          timer.setCtx({ stageId: v, stageName: s?.title });
+          timer.setCtx({ stageId: v || null, stageName: s?.title ?? null });
         }}
-        options={stages.map((s) => ({ value: s.id, label: s.title }))}
+        options={[{ value: "", label: "ללא שלב" }, ...stages.map((s) => ({ value: s.id, label: s.title }))]}
         ariaLabel="שלב"
       />
     </div>

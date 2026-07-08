@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
+import { clientLabel } from "@/components/timer/timer-controls";
 import {
   useProjectStages,
   useTimeLabels,
@@ -46,13 +48,16 @@ export function SessionEditorSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   session?: TimeSession | null;
-  presetCtx?: { kind: Kind; projectId?: string | null; stageId?: string | null; label?: string | null };
+  presetCtx?: { kind: Kind; clientId?: string | null; projectId?: string | null; stageId?: string | null; label?: string | null };
 }) {
   const editing = !!session;
   const { data: projects = [] } = useProjects();
+  const { data: clientsData } = useClients();
+  const clients = clientsData?.active ?? [];
   const { labels } = useTimeLabels();
 
   const [kind, setKind] = useState<Kind>("stage");
+  const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [stageId, setStageId] = useState("");
   const [label, setLabel] = useState("");
@@ -64,12 +69,15 @@ export function SessionEditorSheet({
   const [saving, setSaving] = useState(false);
 
   const { data: stages = [] } = useProjectStages(kind === "stage" ? projectId || null : null);
+  const clientProjects = clientId ? projects.filter((p) => p.client_id === clientId) : [];
 
   // (Re)initialise whenever the sheet opens.
   useEffect(() => {
     if (!open) return;
     if (session) {
       setKind(session.kind);
+      // fall back to the project's client if an older session has no client_id
+      setClientId(session.client_id ?? projects.find((p) => p.id === session.project_id)?.client_id ?? "");
       setProjectId(session.project_id ?? "");
       setStageId(session.stage_id ?? "");
       setLabel(session.label ?? "");
@@ -80,6 +88,7 @@ export function SessionEditorSheet({
       setNote(session.note ?? "");
     } else {
       setKind(presetCtx?.kind ?? "stage");
+      setClientId(presetCtx?.clientId ?? "");
       setProjectId(presetCtx?.projectId ?? "");
       setStageId(presetCtx?.stageId ?? "");
       setLabel(presetCtx?.label ?? "");
@@ -89,10 +98,10 @@ export function SessionEditorSheet({
       setStartedLocal(toLocalInput(new Date().toISOString()));
       setNote("");
     }
-  }, [open, session, presetCtx]);
+  }, [open, session, presetCtx, projects]);
 
   const durationSec = hours * 3600 + minutes * 60;
-  const valid = durationSec > 0 && (kind === "stage" ? !!projectId : !!label);
+  const valid = durationSec > 0 && (kind === "stage" ? !!clientId : !!label);
 
   async function submit() {
     if (!valid) return;
@@ -101,6 +110,7 @@ export function SessionEditorSheet({
     const linkedProject = labels.find((l) => l.name === label)?.project_id ?? null;
     const input: SessionInput = {
       kind,
+      client_id: kind === "stage" ? clientId || null : null,
       project_id: kind === "stage" ? projectId || null : linkedProject,
       stage_id: kind === "stage" ? stageId || null : null,
       label: kind === "personal" ? label || null : null,
@@ -151,24 +161,40 @@ export function SessionEditorSheet({
             <div className="space-y-2">
               <SelectMenu
                 variant="field"
-                placeholder="בחר פרויקט…"
+                placeholder="בחר לקוח…"
+                value={clientId}
+                onChange={(v) => {
+                  setClientId(v);
+                  setProjectId("");
+                  setStageId("");
+                }}
+                options={clients.map((c) => ({ value: c.id, label: clientLabel(c) }))}
+                ariaLabel="לקוח"
+              />
+              <SelectMenu
+                variant="field"
+                disabled={!clientId}
+                placeholder={
+                  !clientId ? "בחר לקוח קודם" : clientProjects.length ? "פרויקט (רשות)" : "אין פרויקט ללקוח"
+                }
                 value={projectId}
                 onChange={(v) => {
                   setProjectId(v);
                   setStageId("");
                 }}
-                options={projects.map((p) => ({
-                  value: p.id,
-                  label: p.business_name ? `${p.business_name} · ${p.title}` : p.title,
-                }))}
+                options={[
+                  { value: "", label: "ללא פרויקט (טרום)" },
+                  ...clientProjects.map((p) => ({ value: p.id, label: p.title })),
+                ]}
                 ariaLabel="פרויקט"
               />
               <SelectMenu
                 variant="field"
-                placeholder={stages.length ? "בחר שלב…" : "אין שלבים"}
+                disabled={!projectId}
+                placeholder={!projectId ? "—" : stages.length ? "בחר שלב…" : "אין שלבים"}
                 value={stageId}
                 onChange={setStageId}
-                options={stages.map((s) => ({ value: s.id, label: s.title }))}
+                options={[{ value: "", label: "ללא שלב" }, ...stages.map((s) => ({ value: s.id, label: s.title }))]}
                 ariaLabel="שלב"
               />
             </div>

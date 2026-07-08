@@ -379,6 +379,7 @@ export type TimeSession = {
   id: string;
   owner_id: string;
   kind: "stage" | "personal";
+  client_id: string | null;
   project_id: string | null;
   stage_id: string | null;
   label: string | null;
