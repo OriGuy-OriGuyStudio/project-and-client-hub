@@ -367,6 +367,37 @@ export type ProjectSiteCredential = {
   updated_at: string;
 }
 
+export type TimeLabel = {
+  id: string;
+  name: string;
+  order_index: number;
+  project_id: string | null;
+  created_at: string;
+}
+
+export type TimeSession = {
+  id: string;
+  owner_id: string;
+  kind: "stage" | "personal";
+  project_id: string | null;
+  stage_id: string | null;
+  label: string | null;
+  mode: "up" | "down";
+  planned_seconds: number | null;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number;
+  note: string | null;
+  created_at: string;
+}
+
+export type ProjectBilling = {
+  project_id: string;
+  value: number | null;
+  currency: string;
+  updated_at: string;
+}
+
 export type Payment = {
   id: string;
   project_id: string;
@@ -709,6 +740,9 @@ export interface Database {
       guide_templates: TableShape<GuideTemplate>;
       guide_articles: TableShape<GuideArticle>;
       project_site_credentials: TableShape<ProjectSiteCredential>;
+      time_labels: TableShape<TimeLabel>;
+      time_sessions: TableShape<TimeSession>;
+      project_billing: TableShape<ProjectBilling>;
       payments: TableShape<Payment>;
       messages: TableShape<Message>;
       activity_log: TableShape<ActivityLog>;

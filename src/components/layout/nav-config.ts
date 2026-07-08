@@ -14,6 +14,7 @@ import {
   ListChecks,
   ClipboardList,
   Inbox,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,6 +51,7 @@ export const adminNav: NavItem[] = [
   },
   { to: "/admin/announcements", label: "הכרזות", icon: Megaphone },
   { to: "/admin/analytics", label: "אנליטיקות", icon: BarChart3 },
+  { to: "/admin/time", label: "מעקב זמן", icon: Timer },
   { to: "/admin/settings", label: "הגדרות", icon: Settings },
 ];
 

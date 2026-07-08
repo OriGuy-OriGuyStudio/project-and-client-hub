@@ -12,6 +12,9 @@ import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { useAuth } from "@/hooks/useAuth";
+import { TimerWidget } from "@/components/timer/TimerWidget";
+import { isTimerTitleActive } from "@/lib/timer-store";
 import { toast } from "@/hooks/use-toast";
 
 const GENDER_NOTE_KEY = "sog-gender-note";
@@ -35,6 +38,7 @@ function titleForPath(path: string): string {
 export function AppShell() {
   const reduced = usePrefersReducedMotion();
   const location = useLocation();
+  const { isAdmin } = useAuth();
   const sidebarRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -53,12 +57,19 @@ export function AppShell() {
     return () => ctx.revert();
   }, [reduced]);
 
-  // Keep the browser tab title in sync with the current page.
+  // Keep the browser tab title in sync with the current page — unless a running
+  // timer is showing the countdown in the title (it releases ownership on stop).
   useEffect(() => {
-    const label = titleForPath(location.pathname);
-    document.title = label
-      ? `${label} · Studio Ori Guy`
-      : "Studio Ori Guy · פורטל לקוחות";
+    const setPageTitle = () => {
+      if (isTimerTitleActive()) return;
+      const label = titleForPath(location.pathname);
+      document.title = label
+        ? `${label} · Studio Ori Guy`
+        : "Studio Ori Guy · פורטל לקוחות";
+    };
+    setPageTitle();
+    document.addEventListener("timer-title-release", setPageTitle);
+    return () => document.removeEventListener("timer-title-release", setPageTitle);
   }, [location.pathname]);
 
   // One-time note: copy is masculine grammatical form, addresses everyone.
@@ -105,6 +116,7 @@ export function AppShell() {
       </div>
       <BackToTop />
       <WarpOverlay />
+      {isAdmin && <TimerWidget />}
     </div>
   );
 }

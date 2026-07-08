@@ -74,7 +74,9 @@ export default function Clients() {
   const { data: activity } = useQuery({
     queryKey: ["admin-user-activity"],
     queryFn: async () => {
-      const { data } = await supabase.rpc("admin_user_activity");
+      const { data, error } = await supabase.rpc("admin_user_activity");
+      // Surface RPC failures instead of silently showing everyone as "טרם נכנס".
+      if (error) throw error;
       const m = new Map<string, string>();
       for (const a of (data ?? []) as { id: string; last_sign_in_at: string | null }[]) {
         if (a.last_sign_in_at) m.set(a.id, a.last_sign_in_at);
