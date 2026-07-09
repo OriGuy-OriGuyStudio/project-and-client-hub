@@ -141,6 +141,13 @@ export default function PackagesLanding() {
   const g = (male: string, female: string) => (gender === "female" ? female : male);
   const gt = (s: string) => applyGender(s, gender);
 
+  // Prefill the sign form from details we already have about the client/business,
+  // so they mostly confirm rather than type. For now these ride on query params
+  // for preview (?business=&email=&phone=&tier=); in the DB phase they come from
+  // the token -> lead/client lookup. Fields stay editable (uncontrolled defaults).
+  const pf = (k: string) => (params.get(k) || "").trim();
+  const prefilled = !!(greetName || pf("business") || pf("email") || pf("phone"));
+
   // Site type (WordPress vs custom-code) tailors the feature copy. Ori sets it
   // per recipient via ?type=wp|custom (later from the client's project_service),
   // so the client never has to choose. With no param the page stays generic and
@@ -154,7 +161,11 @@ export default function PackagesLanding() {
   const tiers = buildTiers(siteType);
 
   const rootRef = useReveal();
-  const [tier, setTier] = useState("pro");
+  // The recommended package can be pre-selected via ?tier=core|pro|ultra.
+  const tierParam = params.get("tier");
+  const [tier, setTier] = useState(
+    tierParam && (TIER_ORDER as string[]).includes(tierParam) ? tierParam : "pro"
+  );
   const [sent, setSent] = useState(false);
   const [svcTab, setSvcTab] = useState("speed");
   const [intro, setIntro] = useState(!introPlayed);
@@ -590,11 +601,14 @@ export default function PackagesLanding() {
                   </button>
                 ))}
               </div>
+              {prefilled && (
+                <p className="prefill-note"><Check s={13} /> {g("מילאתי מראש את הפרטים שיש לי, אפשר לעדכן כל שדה.", "מילאתי מראש את הפרטים שיש לי, אפשר לעדכן כל שדה.")}</p>
+              )}
               <div className="sgrid">
-                <Field label="שם מלא" id="f-name"><input id="f-name" name="full_name" placeholder="ישראל ישראלי" required /></Field>
-                <Field label="שם העסק" id="f-biz"><input id="f-biz" name="business" placeholder="העסק שלי בע״מ" required /></Field>
-                <Field label="אימייל" id="f-email"><input id="f-email" name="email" type="email" placeholder="you@business.co.il" required /></Field>
-                <Field label="טלפון" id="f-phone"><input id="f-phone" name="phone" placeholder="050-0000000" required /></Field>
+                <Field label="שם מלא" id="f-name"><input id="f-name" name="full_name" placeholder="ישראל ישראלי" defaultValue={greetName} required /></Field>
+                <Field label="שם העסק" id="f-biz"><input id="f-biz" name="business" placeholder="העסק שלי בע״מ" defaultValue={pf("business")} required /></Field>
+                <Field label="אימייל" id="f-email"><input id="f-email" name="email" type="email" placeholder="you@business.co.il" defaultValue={pf("email")} required /></Field>
+                <Field label="טלפון" id="f-phone"><input id="f-phone" name="phone" placeholder="050-0000000" defaultValue={pf("phone")} required /></Field>
               </div>
               {/* Site type is pre-determined (Ori knows the client's site), so it
                   is shown read-only here, not chosen. The hidden input carries it
@@ -1008,6 +1022,8 @@ const CSS = `
 .pkl .chip .cp{font-size:12.5px;color:var(--muted)}
 .pkl .chip.sel{background:var(--green);border-color:var(--green);color:var(--ink-on-green)}
 .pkl .chip.sel .cp{color:rgba(10,10,12,.72)}
+.pkl .prefill-note{display:flex;align-items:center;gap:8px;margin:0 2px 16px;font-size:13px;color:var(--green)}
+.pkl .prefill-note svg{flex:none}
 .pkl .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:640px){.pkl .sgrid{grid-template-columns:1fr}}
 .pkl .f{display:flex;flex-direction:column;gap:7px}
