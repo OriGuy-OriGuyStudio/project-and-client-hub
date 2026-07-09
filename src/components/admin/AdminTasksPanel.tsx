@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert, LifeBuoy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,9 +36,14 @@ export function AdminTasksPanel() {
   const leads = data?.leads ?? [];
   const feedback = data?.feedback ?? [];
   const loginAttempts = data?.loginAttempts ?? [];
+  const serviceCalls = data?.serviceCalls ?? [];
   const total =
     redemptions.length + messages.length + accessRequests.length + leads.length +
-    feedback.length + loginAttempts.length;
+    feedback.length + loginAttempts.length + serviceCalls.length;
+
+  const scStatusHe: Record<string, string> = {
+    new: "חדשה", scheduled: "מתוזמנת", in_progress: "בטיפול",
+  };
 
   async function dismissLoginAttempt(id: string) {
     setBusy(id);
@@ -185,6 +190,30 @@ export function AdminTasksPanel() {
                     <X className="size-4" /> דחייה
                   </Button>
                 </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Open service calls (client opened a קריאת שירות) */}
+          {serviceCalls.map((c) => (
+            <div key={c.id} className="rounded-xl border border-primary/30 bg-primary/[0.05] p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <LifeBuoy className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      קריאת שירות מ<span className="font-semibold">{c.clientName}</span>
+                      <span className="text-muted-foreground"> · {c.projectTitle}</span>
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{c.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{scStatusHe[c.status] ?? c.status}</p>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="secondary">
+                  <Link to="/admin/service-calls">
+                    טיפול <ExternalLink className="size-3.5" />
+                  </Link>
+                </Button>
               </div>
             </div>
           ))}

@@ -30,7 +30,7 @@ function toLocalInput(iso: string) {
 export function MaintenanceLogEditor({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const { data: log = [] } = useMaintenanceLog(projectId, 20);
-  const [kind, setKind] = useState<MaintenanceLog["kind"]>("service_call");
+  const [kind, setKind] = useState<MaintenanceLog["kind"]>("update");
   const [title, setTitle] = useState("");
   const [count, setCount] = useState("1");
   const [when, setWhen] = useState(toLocalInput(new Date().toISOString()));
@@ -76,7 +76,9 @@ export function MaintenanceLogEditor({ projectId }: { projectId: string }) {
           ariaLabel="סוג"
           value={kind}
           onChange={(v) => setKind(v as MaintenanceLog["kind"])}
-          options={(Object.keys(KIND_HE) as MaintenanceLog["kind"][]).map((k) => ({ value: k, label: KIND_HE[k] }))}
+          options={(Object.keys(KIND_HE) as MaintenanceLog["kind"][])
+            .filter((k) => k !== "service_call")
+            .map((k) => ({ value: k, label: KIND_HE[k] }))}
         />
         <Input placeholder="תיאור (רשות)" value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input type="number" min={1} aria-label="כמות" value={count} onChange={(e) => setCount(e.target.value)} />

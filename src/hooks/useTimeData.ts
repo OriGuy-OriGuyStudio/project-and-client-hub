@@ -74,6 +74,7 @@ export type SessionInput = {
   project_id: string | null;
   stage_id: string | null;
   is_retainer: boolean;
+  service_call_id: string | null;
   label: string | null;
   mode: "up" | "down";
   duration_seconds: number;

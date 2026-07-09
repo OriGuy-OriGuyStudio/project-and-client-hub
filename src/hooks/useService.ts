@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { ProjectService, SiteMetric, MaintenanceLog } from "@/types/database";
+import type {
+  ProjectService,
+  SiteMetric,
+  MaintenanceLog,
+  ServiceCall,
+  ServiceCallStatus,
+  ServiceCallAttachment,
+} from "@/types/database";
 
 /** Active service subscriptions the current user can see (client: their own). */
 export function useMyServices() {
@@ -78,6 +85,90 @@ export type ServiceSummary = {
   backups_total: number;
   threats_total: number;
 };
+
+/** Client (or admin) opens a service call: creates it + notifies the studio. */
+export async function openServiceCall(
+  projectId: string,
+  title: string,
+  description: string,
+  attachments: ServiceCallAttachment[] = [],
+) {
+  const { data, error } = await supabase.rpc("open_service_call", {
+    p_project: projectId,
+    p_title: title,
+    p_description: description || null,
+    p_attachments: attachments as unknown as never,
+  });
+  return { data, error };
+}
+
+/** Admin opens a service call on a client's behalf (proactive). */
+export async function adminOpenServiceCall(projectId: string, title: string, description: string) {
+  const { data, error } = await supabase.rpc("admin_open_service_call", {
+    p_project: projectId,
+    p_title: title,
+    p_description: description || null,
+  });
+  return { data, error };
+}
+
+/** Service calls for one project (client sees own; admin sees all). */
+export function useServiceCalls(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["service-calls", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<ServiceCall[]> => {
+      const { data, error } = await supabase
+        .from("service_calls")
+        .select("*")
+        .eq("project_id", projectId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export type ServiceCallRow = ServiceCall & {
+  project_title: string | null;
+  client_name: string | null;
+};
+
+/** All service calls (admin inbox), newest first, with project + client names. */
+export function useAllServiceCalls() {
+  return useQuery({
+    queryKey: ["service-calls-all"],
+    queryFn: async (): Promise<ServiceCallRow[]> => {
+      const { data, error } = await supabase
+        .from("service_calls")
+        .select("*, project:projects(title), client:profiles(full_name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      return ((data as any[]) ?? []).map((r) => ({
+        ...(r as ServiceCall),
+        project_title: r.project?.title ?? null,
+        client_name: r.client?.full_name ?? null,
+      }));
+    },
+  });
+}
+
+/** Admin: update a call's internal name / status (resolved_at auto on done). */
+export async function updateServiceCall(
+  id: string,
+  patch: { status?: ServiceCallStatus; admin_label?: string | null },
+) {
+  const row: Partial<ServiceCall> = { ...patch };
+  if (patch.status) row.resolved_at = patch.status === "done" ? new Date().toISOString() : null;
+  const { error } = await supabase.from("service_calls").update(row).eq("id", id);
+  // Client in-app notification fires via the DB trigger. Email the client
+  // best-effort when the status moved to a client-visible stage.
+  if (!error && (patch.status === "in_progress" || patch.status === "done")) {
+    void supabase.functions.invoke("notify-service-status", { body: { callId: id } });
+  }
+  return { error };
+}
 
 /** Safe aggregate (hours from admin-only time_sessions + counts) for a project. */
 export function useServiceSummary(projectId: string | null | undefined) {

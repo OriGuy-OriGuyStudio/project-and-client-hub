@@ -48,6 +48,16 @@ export interface AdminTaskLoginAttempt {
   createdAt: string;
 }
 
+export interface AdminTaskServiceCall {
+  id: string;
+  title: string;
+  status: string;
+  projectId: string;
+  projectTitle: string;
+  clientName: string;
+  createdAt: string;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
@@ -55,6 +65,7 @@ export interface AdminTasks {
   leads: AdminTaskLead[];
   feedback: AdminTaskFeedback[];
   loginAttempts: AdminTaskLoginAttempt[];
+  serviceCalls: AdminTaskServiceCall[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -65,7 +76,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar, ld, pp, fb, la] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp, fb, la, sc] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -104,6 +115,11 @@ export function useAdminTasks(adminId?: string) {
           .eq("is_read", false)
           .order("created_at", { ascending: false })
           .limit(20),
+        supabase
+          .from("service_calls")
+          .select("id, title, status, project_id, client_id, created_at, project:projects(title), client:profiles(full_name)")
+          .in("status", ["new", "scheduled", "in_progress"])
+          .order("created_at", { ascending: true }),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -173,7 +189,17 @@ export function useAdminTasks(adminId?: string) {
         createdAt: n.created_at,
       })));
 
-      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts };
+      const serviceCalls: AdminTaskServiceCall[] = (((sc.data as any[]) ?? []).map((r) => ({
+        id: r.id,
+        title: r.title,
+        status: r.status,
+        projectId: r.project_id,
+        projectTitle: r.project?.title ?? "פרויקט",
+        clientName: r.client?.full_name ?? "לקוח",
+        createdAt: r.created_at,
+      })));
+
+      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts, serviceCalls };
     },
   });
 }

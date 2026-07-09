@@ -7,6 +7,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
 import { useProjectStages, useTimeLabels } from "@/hooks/useTimeData";
+import { useServiceCalls } from "@/hooks/useService";
 import {
   timer,
   getDisplaySeconds,
@@ -264,6 +265,8 @@ function ProjectPicker() {
   const clientId = st.ctx.clientId ?? "";
   const clientProjects = clientId ? projects.filter((p) => p.client_id === clientId) : [];
   const { data: stages = [] } = useProjectStages(st.ctx.projectId);
+  const { data: allCalls = [] } = useServiceCalls(st.ctx.projectId);
+  const openCalls = allCalls.filter((c) => ["new", "scheduled", "in_progress"].includes(c.status));
 
   const selectedProject = projects.find((p) => p.id === st.ctx.projectId);
   const parentName = selectedProject?.parent_project_id
@@ -288,6 +291,8 @@ function ProjectPicker() {
             projectName: null,
             stageId: null,
             stageName: null,
+            serviceCallId: null,
+            serviceCallTitle: null,
           });
         }}
         options={clients.map((c) => ({ value: c.id, label: clientLabel(c) }))}
@@ -307,6 +312,8 @@ function ProjectPicker() {
             projectName: p ? p.title : null,
             stageId: null,
             stageName: null,
+            serviceCallId: null,
+            serviceCallTitle: null,
           });
         }}
         options={[
@@ -329,6 +336,29 @@ function ProjectPicker() {
         options={[{ value: "", label: "ללא שלב" }, ...stages.map((s) => ({ value: s.id, label: s.title }))]}
         ariaLabel="שלב"
       />
+
+      {/* service call (optional): track time against an open קריאת שירות */}
+      {st.ctx.projectId && openCalls.length > 0 && (
+        <SelectMenu
+          variant="field"
+          contentClassName={MENU_Z}
+          placeholder="קריאת שירות (רשות)"
+          value={st.ctx.serviceCallId ?? ""}
+          onChange={(v) => {
+            const call = openCalls.find((c) => c.id === v);
+            timer.setCtx({
+              serviceCallId: v || null,
+              serviceCallTitle: call ? call.admin_label || call.title : null,
+              retainer: v ? true : st.ctx.retainer,
+            });
+          }}
+          options={[
+            { value: "", label: "ללא קריאת שירות" },
+            ...openCalls.map((c) => ({ value: c.id, label: c.admin_label || c.title })),
+          ]}
+          ariaLabel="קריאת שירות"
+        />
+      )}
 
       {/* retainer: linked feature-projects auto-count; else a general/retainer toggle */}
       {st.ctx.projectId && parentName ? (

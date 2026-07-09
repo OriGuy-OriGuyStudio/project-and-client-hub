@@ -19,6 +19,9 @@ export type TimerCtx = {
   stageName?: string | null;
   /** This session counts toward the project's retainer hours (not general work). */
   retainer?: boolean;
+  /** Optional: time tracked against a specific service call (קריאת שירות). */
+  serviceCallId?: string | null;
+  serviceCallTitle?: string | null;
   label?: string | null;
 };
 
@@ -117,6 +120,9 @@ export function getState(): Readonly<State> {
 export function ctxTitle(): string {
   const c = state.ctx;
   if (c.kind === "personal") return c.label || "אישי";
+  if (c.serviceCallTitle) {
+    return c.projectName ? `${c.serviceCallTitle} · ${c.projectName}` : c.serviceCallTitle;
+  }
   const parts = [c.projectName, c.stageName].filter(Boolean);
   if (parts.length) return parts.join(" · ");
   return c.clientName || "פרויקט";
@@ -129,12 +135,14 @@ export function ctxFromSession(
     client_id?: string | null;
     project_id: string | null;
     stage_id: string | null;
+    service_call_id?: string | null;
     label: string | null;
   },
   names?: {
     project?: (id: string) => string | null;
     stage?: (id: string) => string | null;
     client?: (id: string) => string | null;
+    serviceCall?: (id: string) => string | null;
   },
 ): Partial<TimerCtx> {
   const projectName = s.project_id ? names?.project?.(s.project_id) ?? null : null;
@@ -150,6 +158,8 @@ export function ctxFromSession(
     projectName,
     stageId: s.stage_id,
     stageName: s.stage_id ? names?.stage?.(s.stage_id) ?? null : null,
+    serviceCallId: s.service_call_id ?? null,
+    serviceCallTitle: s.service_call_id ? names?.serviceCall?.(s.service_call_id) ?? null : null,
     label: null,
   };
 }
@@ -235,6 +245,7 @@ async function saveSession(durationSec: number) {
     project_id: c.projectId ?? null,
     stage_id: c.kind === "stage" ? c.stageId ?? null : null,
     is_retainer: c.kind === "stage" ? !!c.retainer : false,
+    service_call_id: c.kind === "stage" ? c.serviceCallId ?? null : null,
     label: c.kind === "personal" ? c.label ?? null : null,
     mode: state.mode,
     planned_seconds: state.mode === "down" ? state.plannedSeconds : null,

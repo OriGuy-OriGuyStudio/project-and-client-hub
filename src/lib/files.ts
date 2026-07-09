@@ -202,6 +202,21 @@ export async function uploadProjectFile(params: {
   }
 }
 
+/**
+ * Upload one media file attached to a service call. Stored in the same private
+ * bucket under the project-id prefix (storage RLS keys on the first segment), so
+ * an owning client may upload. Returns the storage path (no `files` row created).
+ */
+export async function uploadServiceCallMedia(projectId: string, file: File): Promise<string> {
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  const storagePath = `${projectId}/service-calls/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage
+    .from(PROJECT_FILES_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return storagePath;
+}
+
 /** Mint a short-lived signed URL (1h). Requires passing the storage SELECT policy. */
 export async function getSignedUrl(storagePath: string): Promise<string | null> {
   const { data, error } = await supabase.storage

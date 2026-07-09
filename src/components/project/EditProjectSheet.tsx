@@ -107,21 +107,29 @@ export function EditProjectSheet({ project }: { project: Project }) {
     await saveProjectValue(project.id, trimmed ? Number(trimmed) : null);
     qc.invalidateQueries({ queryKey: ["project-billing", project.id] });
 
-    // service plan: upsert (or deactivate when "none")
-    const billingDay = Math.min(28, Math.max(1, parseInt(svcBillingDay || "1", 10)));
-    await supabase.from("project_service").upsert(
-      {
-        project_id: project.id,
-        tier: svcTier === "none" ? "core" : svcTier,
-        site_type: svcSiteType,
-        site_url: svcUrl.trim() || null,
-        hourly_rate: svcHourly.trim() ? Number(svcHourly) : null,
-        billing_day: billingDay,
-        active: svcTier !== "none",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "project_id" },
-    );
+    // service plan: a linked (child) project inherits the parent's package and
+    // never carries its own, so deactivate any stray plan. Otherwise upsert.
+    if (draft.parent_project_id) {
+      await supabase
+        .from("project_service")
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq("project_id", project.id);
+    } else {
+      const billingDay = Math.min(28, Math.max(1, parseInt(svcBillingDay || "1", 10)));
+      await supabase.from("project_service").upsert(
+        {
+          project_id: project.id,
+          tier: svcTier === "none" ? "core" : svcTier,
+          site_type: svcSiteType,
+          site_url: svcUrl.trim() || null,
+          hourly_rate: svcHourly.trim() ? Number(svcHourly) : null,
+          billing_day: billingDay,
+          active: svcTier !== "none",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "project_id" },
+      );
+    }
     qc.invalidateQueries({ queryKey: ["project-service", project.id] });
     qc.invalidateQueries({ queryKey: ["my-services"] });
     setSaving(false);
@@ -283,6 +291,12 @@ export function EditProjectSheet({ project }: { project: Project }) {
           </div>
 
           {/* service & maintenance plan (shown to the client) */}
+          {draft.parent_project_id ? (
+            <div className="rounded-xl border border-border/60 bg-background/20 p-3 text-xs text-muted-foreground">
+              חבילת השירות מנוהלת בפרויקט האב. פרויקט מקושר לא מחזיק חבילה או תעריף
+              נפרדים, וכל השעות נספרות בריטיינר של האב.
+            </div>
+          ) : (
           <div className="space-y-3 rounded-xl border border-border/60 bg-background/20 p-3">
             <p className="text-sm font-semibold text-foreground">חבילת שירות ותחזוקה</p>
             <div className="grid grid-cols-2 gap-3">
@@ -358,6 +372,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
               נחשף ללקוח בעמוד ״השירות שלך״. כתובת האתר משמשת לניטור הביצועים והאבטחה.
             </p>
           </div>
+          )}
         </div>
 
         <SheetFooter>

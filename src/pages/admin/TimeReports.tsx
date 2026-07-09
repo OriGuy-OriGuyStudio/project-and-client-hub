@@ -188,7 +188,7 @@ function Donut({ data, total }: { data: { client: string; sec: number }[]; total
 }
 
 /* ---------------- reports dashboard ---------------- */
-type Range = "today" | "week" | "month" | "all";
+type Range = "today" | "week" | "month" | "all" | "custom";
 
 export function ReportsSection() {
   const { data: allSessions = [], isLoading } = useTimeSessions();
@@ -197,19 +197,29 @@ export function ReportsSection() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [modeFilter, setModeFilter] = useState<"all" | "up" | "down">("all");
   const [range, setRange] = useState<Range>("week");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [editing, setEditing] = useState<TimeSession | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
   // apply the date-range filter to everything the dashboard shows
   const sessions = useMemo(() => {
     if (range === "all") return allSessions;
+    if (range === "custom") {
+      const fromMs = customFrom ? new Date(`${customFrom}T00:00:00`).getTime() : -Infinity;
+      const toMs = customTo ? new Date(`${customTo}T23:59:59.999`).getTime() : Infinity;
+      return allSessions.filter((s) => {
+        const t = new Date(s.started_at).getTime();
+        return t >= fromMs && t <= toMs;
+      });
+    }
     const now = new Date();
     let from: number;
     if (range === "today") from = new Date().setHours(0, 0, 0, 0);
     else if (range === "week") from = Date.now() - 7 * DAY;
     else from = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     return allSessions.filter((s) => new Date(s.started_at).getTime() >= from);
-  }, [allSessions, range]);
+  }, [allSessions, range, customFrom, customTo]);
 
   const { data: stages = [] } = useQuery({
     queryKey: ["all-stages"],
@@ -425,7 +435,7 @@ export function ReportsSection() {
   const taskPctVal = pct(model.taskTotal, model.total);
   const pomoPctVal = 100 - taskPctVal;
   const shownSessions = sessions.filter((s) => modeFilter === "all" || s.mode === modeFilter);
-  const rangeLabels: Record<Range, string> = { today: "היום", week: "7 ימים", month: "החודש", all: "הכל" };
+  const rangeLabels: Record<Range, string> = { today: "היום", week: "7 ימים", month: "החודש", all: "הכל", custom: "מותאם" };
 
   const groups = [...model.clientGroups.entries()];
   const payingGroups = groups.filter(([, p]) => !p[0]?.internal);
@@ -501,19 +511,42 @@ export function ReportsSection() {
     <div className="space-y-6">
       {/* date-range filter */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex gap-1 rounded-full border border-border/60 bg-card/60 p-1">
-          {(["today", "week", "month", "all"] as Range[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={cn(
-                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                range === r ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {rangeLabels[r]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex gap-1 rounded-full border border-border/60 bg-card/60 p-1">
+            {(["today", "week", "month", "all", "custom"] as Range[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                  range === r ? "bg-primary text-[color:var(--ink,#0a0623)]" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {rangeLabels[r]}
+              </button>
+            ))}
+          </div>
+          {range === "custom" && (
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/60 px-2 py-1">
+              <input
+                type="date"
+                aria-label="מתאריך"
+                value={customFrom}
+                max={customTo || undefined}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="rounded-md bg-transparent px-2 py-1 text-xs text-foreground outline-none [color-scheme:dark]"
+              />
+              <span className="text-xs text-muted-foreground">עד</span>
+              <input
+                type="date"
+                aria-label="עד תאריך"
+                value={customTo}
+                min={customFrom || undefined}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="rounded-md bg-transparent px-2 py-1 text-xs text-foreground outline-none [color-scheme:dark]"
+              />
+            </div>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={exportCsv} disabled={!sessions.length}>
           <Download className="size-4" /> CSV

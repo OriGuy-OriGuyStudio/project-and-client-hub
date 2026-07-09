@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
 import { clientLabel } from "@/components/timer/timer-controls";
+import { useServiceCalls } from "@/hooks/useService";
 import {
   useProjectStages,
   useTimeLabels,
@@ -68,6 +69,7 @@ export function SessionEditorSheet({
   const [projectId, setProjectId] = useState("");
   const [stageId, setStageId] = useState("");
   const [label, setLabel] = useState("");
+  const [serviceCallId, setServiceCallId] = useState("");
   const [mode, setMode] = useState<Mode>("up");
   const [isRetainer, setIsRetainer] = useState(false);
   const [hours, setHours] = useState(0);
@@ -77,6 +79,10 @@ export function SessionEditorSheet({
   const [saving, setSaving] = useState(false);
 
   const { data: stages = [] } = useProjectStages(kind === "stage" ? projectId || null : null);
+  const { data: allCalls = [] } = useServiceCalls(kind === "stage" ? projectId || null : null);
+  const openCalls = allCalls.filter(
+    (c) => ["new", "scheduled", "in_progress"].includes(c.status) || c.id === serviceCallId,
+  );
   const clientProjects = clientId ? projects.filter((p) => p.client_id === clientId) : [];
 
   // (Re)initialise whenever the sheet opens.
@@ -89,6 +95,7 @@ export function SessionEditorSheet({
       setProjectId(session.project_id ?? "");
       setStageId(session.stage_id ?? "");
       setLabel(session.label ?? "");
+      setServiceCallId(session.service_call_id ?? "");
       setMode(session.mode);
       setIsRetainer(session.is_retainer);
       setHours(Math.floor(session.duration_seconds / 3600));
@@ -101,6 +108,7 @@ export function SessionEditorSheet({
       setProjectId(presetCtx?.projectId ?? "");
       setStageId(presetCtx?.stageId ?? "");
       setLabel(presetCtx?.label ?? "");
+      setServiceCallId("");
       setMode("up");
       setIsRetainer(!!presetCtx?.retainer);
       setHours(0);
@@ -124,6 +132,7 @@ export function SessionEditorSheet({
       project_id: kind === "stage" ? projectId || null : linkedProject,
       stage_id: kind === "stage" ? stageId || null : null,
       is_retainer: kind === "stage" ? isRetainer : false,
+      service_call_id: kind === "stage" ? serviceCallId || null : null,
       label: kind === "personal" ? label || null : null,
       mode,
       duration_seconds: durationSec,
@@ -178,6 +187,7 @@ export function SessionEditorSheet({
                   setClientId(v);
                   setProjectId("");
                   setStageId("");
+                  setServiceCallId("");
                 }}
                 options={clients.map((c) => ({ value: c.id, label: clientLabel(c) }))}
                 ariaLabel="לקוח"
@@ -192,6 +202,7 @@ export function SessionEditorSheet({
                 onChange={(v) => {
                   setProjectId(v);
                   setStageId("");
+                  setServiceCallId("");
                 }}
                 options={[
                   { value: "", label: "ללא פרויקט (טרום)" },
@@ -208,6 +219,22 @@ export function SessionEditorSheet({
                 options={[{ value: "", label: "ללא שלב" }, ...stages.map((s) => ({ value: s.id, label: s.title }))]}
                 ariaLabel="שלב"
               />
+              {projectId && openCalls.length > 0 && (
+                <SelectMenu
+                  variant="field"
+                  placeholder="קריאת שירות (רשות)"
+                  value={serviceCallId}
+                  onChange={(v) => {
+                    setServiceCallId(v);
+                    if (v) setIsRetainer(true);
+                  }}
+                  options={[
+                    { value: "", label: "ללא קריאת שירות" },
+                    ...openCalls.map((c) => ({ value: c.id, label: c.admin_label || c.title })),
+                  ]}
+                  ariaLabel="קריאת שירות"
+                />
+              )}
             </div>
           ) : (
             <SelectMenu

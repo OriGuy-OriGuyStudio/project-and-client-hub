@@ -386,6 +386,7 @@ export type TimeSession = {
   stage_id: string | null;
   is_retainer: boolean;
   label: string | null;
+  service_call_id: string | null;
   mode: "up" | "down";
   planned_seconds: number | null;
   started_at: string;
@@ -440,6 +441,24 @@ export type MaintenanceLog = {
   count: number;
   occurred_at: string;
   meta: Json | null;
+}
+
+export type ServiceCallStatus = "new" | "scheduled" | "in_progress" | "done" | "cancelled";
+
+export type ServiceCallAttachment = { path: string; mime: string | null; name: string | null };
+
+export type ServiceCall = {
+  id: string;
+  project_id: string;
+  client_id: string | null;
+  title: string;
+  description: string | null;
+  admin_label: string | null;
+  status: ServiceCallStatus;
+  attachments: ServiceCallAttachment[];
+  created_by: string | null;
+  created_at: string;
+  resolved_at: string | null;
 }
 
 export type Payment = {
@@ -795,6 +814,7 @@ export interface Database {
       activity_log: TableShape<ActivityLog>;
       admin_client_notes: TableShape<AdminClientNote>;
       client_call_logs: TableShape<ClientCallLog>;
+      service_calls: TableShape<ServiceCall>;
       notifications: TableShape<Notification>;
       client_feedback: TableShape<ClientFeedback>;
       referrals: TableShape<Referral>;
@@ -847,6 +867,14 @@ export interface Database {
       set_client_redemption_status: { Args: { p_id: string; p_status: string }; Returns: undefined };
       mark_project_notifications_read: { Args: { p_project_id: string }; Returns: undefined };
       owns_project: { Args: { p_project_id: string }; Returns: boolean };
+      open_service_call: {
+        Args: { p_project: string; p_title: string; p_description?: string | null; p_attachments?: Json };
+        Returns: string;
+      };
+      admin_open_service_call: {
+        Args: { p_project: string; p_title: string; p_description?: string | null };
+        Returns: string;
+      };
       client_service_summary: {
         Args: { p_project: string };
         Returns: {
