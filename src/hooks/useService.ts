@@ -102,6 +102,59 @@ export async function openServiceCall(
   return { data, error };
 }
 
+export type MaintenanceOverviewRow = {
+  project_id: string;
+  project_title: string;
+  client_name: string | null;
+  client_email: string | null;
+  tier: "core" | "pro" | "ultra";
+  site_type: "wordpress" | "custom";
+  site_url: string | null;
+  hourly_rate: number | null;
+  monthly_price: number | null;
+  preview_token: string | null;
+  pagespeed: number | null;
+  uptime_pct: number | null;
+  threats_blocked: number | null;
+  lcp_ms: number | null;
+  last_metric_date: string | null;
+  hours_month: number;
+  open_calls: number;
+};
+
+/** Admin: every active package with its latest metrics + open calls. */
+export function useMaintenanceOverview() {
+  return useQuery({
+    queryKey: ["maintenance-overview"],
+    queryFn: async (): Promise<MaintenanceOverviewRow[]> => {
+      const { data, error } = await supabase.rpc("admin_maintenance_overview");
+      if (error) throw error;
+      return (data ?? []) as MaintenanceOverviewRow[];
+    },
+  });
+}
+
+/** Admin: run the PageSpeed poll on demand (fills today's metrics now). */
+export async function refreshSiteMetrics() {
+  return supabase.functions.invoke("poll-site-metrics", { body: {} });
+}
+
+export type ServicePreview = {
+  service: ProjectService;
+  project_title: string;
+  business_name: string;
+  metrics: SiteMetric[];
+  log: MaintenanceLog[];
+  summary: ServiceSummary;
+};
+
+/** Public, read-only dashboard snapshot for a share token (anon-callable). */
+export async function fetchServicePreview(token: string): Promise<ServicePreview | null> {
+  const { data, error } = await supabase.rpc("service_preview", { p_token: token });
+  if (error) throw error;
+  return (data as ServicePreview) ?? null;
+}
+
 /** Admin opens a service call on a client's behalf (proactive). */
 export async function adminOpenServiceCall(projectId: string, title: string, description: string) {
   const { data, error } = await supabase.rpc("admin_open_service_call", {

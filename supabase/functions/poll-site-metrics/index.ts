@@ -49,7 +49,18 @@ Deno.serve(async (req) => {
     .from("webhook_secrets").select("name, value").in("name", ["metrics_ingest", "pagespeed_key"]);
   const secrets: Record<string, string> = Object.fromEntries((secRows ?? []).map((r) => [r.name, r.value]));
   const provided = req.headers.get("x-webhook-secret") ?? "";
-  if (!secrets.metrics_ingest || provided !== secrets.metrics_ingest) return json({ error: "unauthorized" }, 401);
+  let authed = !!secrets.metrics_ingest && provided === secrets.metrics_ingest;
+  if (!authed) {
+    // also allow an admin JWT, for the manual "refresh now" button in the app
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (authHeader) {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const asUser = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+      const { data: role } = await asUser.rpc("get_my_role");
+      authed = role === "admin";
+    }
+  }
+  if (!authed) return json({ error: "unauthorized" }, 401);
 
   const key = secrets.pagespeed_key || Deno.env.get("PAGESPEED_API_KEY") || "";
   const today = new Date().toISOString().slice(0, 10);

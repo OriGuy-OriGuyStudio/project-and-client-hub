@@ -51,6 +51,7 @@ import {
   useServiceSummary,
   useServiceCalls,
   openServiceCall,
+  type ServiceSummary,
 } from "@/hooks/useService";
 import {
   TIER_META,
@@ -58,7 +59,7 @@ import {
   packageValue,
   type ServiceTier,
 } from "@/lib/service-plans";
-import type { ProjectService, ServiceCallStatus, ServiceCallAttachment } from "@/types/database";
+import type { ProjectService, ServiceCallStatus, ServiceCallAttachment, SiteMetric, MaintenanceLog } from "@/types/database";
 
 const SC_STATUS_HE: Record<ServiceCallStatus, string> = {
   new: "התקבלה",
@@ -338,13 +339,29 @@ function ServiceCallsList({ projectId }: { projectId: string }) {
 }
 
 /* ---------- one project's service board ---------- */
-function ServiceBoard({ svc, projectName }: { svc: ProjectService; projectName: string }) {
+export function ServiceBoard({
+  svc,
+  projectName,
+  preview,
+  readOnly,
+}: {
+  svc: ProjectService;
+  projectName: string;
+  /** When provided, render from this snapshot instead of live queries (public preview). */
+  preview?: { metrics: SiteMetric[]; log: MaintenanceLog[]; summary: ServiceSummary | null };
+  readOnly?: boolean;
+}) {
   const meta = TIER_META[svc.tier];
   const price = Number(svc.monthly_price ?? meta.price);
   const wp = svc.site_type === "wordpress";
-  const { data: metrics = [] } = useSiteMetrics(svc.project_id, 30);
-  const { data: log = [] } = useMaintenanceLog(svc.project_id, 40);
-  const { data: summary } = useServiceSummary(svc.project_id);
+  // In preview mode disable the live (RLS-gated) queries and use the snapshot.
+  const pid = preview ? null : svc.project_id;
+  const { data: liveMetrics = [] } = useSiteMetrics(pid, 30);
+  const { data: liveLog = [] } = useMaintenanceLog(pid, 40);
+  const { data: liveSummary } = useServiceSummary(pid);
+  const metrics = preview?.metrics ?? liveMetrics;
+  const log = preview?.log ?? liveLog;
+  const summary = preview?.summary ?? liveSummary;
 
   const latest = metrics[0];
   const traffic7 = useMemo(() => metrics.slice(0, 7).reverse().map((m) => m.visitors ?? 0), [metrics]);
@@ -410,7 +427,7 @@ function ServiceBoard({ svc, projectName }: { svc: ProjectService; projectName: 
                 <p className="mt-1 text-xs text-muted-foreground">ציון בריאות האתר</p>
               </div>
             )}
-            <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />
+            {!readOnly && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
           </div>
         </div>
 
@@ -601,7 +618,7 @@ function ServiceBoard({ svc, projectName }: { svc: ProjectService; projectName: 
       </div>
 
       {/* client's own service calls */}
-      <ServiceCallsList projectId={svc.project_id} />
+      {!readOnly && <ServiceCallsList projectId={svc.project_id} />}
 
       {/* recent activity log */}
       {log.length > 0 && (

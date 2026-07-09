@@ -413,6 +413,7 @@ export type ProjectService = {
   started_at: string | null;
   billing_day: number;
   active: boolean;
+  preview_token: string | null;
   updated_at: string;
 }
 
@@ -875,6 +876,8 @@ export interface Database {
         Args: { p_project: string; p_title: string; p_description?: string | null };
         Returns: string;
       };
+      admin_maintenance_overview: { Args: Record<string, never>; Returns: unknown };
+      service_preview: { Args: { p_token: string }; Returns: Json };
       client_service_summary: {
         Args: { p_project: string };
         Returns: {

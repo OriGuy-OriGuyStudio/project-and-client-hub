@@ -45,9 +45,11 @@ const Announcements = lazy(() => import("@/pages/admin/Announcements"));
 const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const TimeReports = lazy(() => import("@/pages/admin/TimeReports"));
 const ServiceCalls = lazy(() => import("@/pages/admin/ServiceCalls"));
+const Maintenance = lazy(() => import("@/pages/admin/Maintenance"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
+const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
@@ -124,9 +126,20 @@ function App() {
                   <Route path="/admin/analytics" element={<Analytics />} />
                   <Route path="/admin/time" element={<TimeReports />} />
                   <Route path="/admin/service-calls" element={<ServiceCalls />} />
+                  <Route path="/admin/maintenance" element={<Maintenance />} />
                 </Route>
               </Route>
             </Route>
+
+            {/* Public, read-only service-dashboard preview (no auth, token-gated) */}
+            <Route
+              path="/s/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <ServicePreview />
+                </Suspense>
+              }
+            />
 
             {/* Public partner-referral landing (no auth) */}
             <Route
