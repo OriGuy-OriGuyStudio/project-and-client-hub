@@ -360,19 +360,29 @@ export function ReportsSection() {
     };
   }, [sessions, projects, stages, billing, clientsData]);
 
-  // "today / this week" glance stays constant regardless of the range filter
+  // "today / this week" glance stays constant regardless of the range filter.
+  // Today is split into paying-client work vs internal-studio work.
   const glance = useMemo(() => {
     const dayStart = new Date().setHours(0, 0, 0, 0);
     const weekAgo = Date.now() - 7 * DAY;
+    const internalIds = new Set(
+      (clientsData?.active ?? []).filter((c) => isInternalClient(c.email)).map((c) => c.id),
+    );
+    const projClient = new Map(projects.map((p) => [p.id, p.client_id]));
     let today = 0;
     let week = 0;
+    let todayStudio = 0;
     for (const s of allSessions) {
       const t = new Date(s.started_at).getTime();
-      if (t >= dayStart) today += s.duration_seconds;
+      if (t >= dayStart) {
+        today += s.duration_seconds;
+        const cid = s.client_id ?? (s.project_id ? projClient.get(s.project_id) ?? null : null);
+        if (cid && internalIds.has(cid)) todayStudio += s.duration_seconds;
+      }
       if (t >= weekAgo) week += s.duration_seconds;
     }
-    return { today, week };
-  }, [allSessions]);
+    return { today, week, todayStudio, todayClients: today - todayStudio };
+  }, [allSessions, clientsData, projects]);
 
   const continueSession = (s: TimeSession) =>
     timer.start(
@@ -554,9 +564,18 @@ export function ReportsSection() {
         </Button>
       </div>
 
+      {/* עבדתי היום — split by clients vs studio */}
+      <div>
+        <p className="mb-2 text-xs font-semibold text-muted-foreground">עבדתי היום</p>
+        <div className="grid grid-cols-3 gap-3">
+          <StatTile label="על לקוחות" value={hms(glance.todayClients)} />
+          <StatTile label="על הסטודיו" value={hms(glance.todayStudio)} tone="pomo" />
+          <StatTile label="סה״כ" value={hms(glance.today)} />
+        </div>
+      </div>
+
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatTile label="עבדתי היום" value={hms(glance.today)} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile label="7 ימים" value={hms(glance.week)} />
         <StatTile label={`בטווח (${rangeLabels[range]})`} value={hms(model.total)} sub={`${sessions.length} סשנים`} />
         <StatTile label="זמן משימה" value={hms(model.taskTotal)} tone="task" sub={`${taskPctVal}%`} />
