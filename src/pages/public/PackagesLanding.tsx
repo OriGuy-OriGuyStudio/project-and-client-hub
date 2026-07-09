@@ -159,6 +159,10 @@ export default function PackagesLanding() {
   const [svcTab, setSvcTab] = useState("speed");
   const [intro, setIntro] = useState(!introPlayed);
   useEffect(() => { introPlayed = true; }, []);
+  // Personal address moved out of the hero (it overloaded it) into a popup that
+  // greets the named recipient once the intro loader clears. Only on the load
+  // that actually showed the loader, and only for a personalized link.
+  const [greet, setGreet] = useState(false);
 
   // Hero counters start when the hero footer enters view.
   const [statsOn, setStatsOn] = useState(false);
@@ -256,7 +260,11 @@ export default function PackagesLanding() {
     <div className="dark pkl" dir="rtl" ref={rootRef}>
       <style>{CSS}</style>
 
-      {intro && <WelcomingWords onDone={() => setIntro(false)} />}
+      {intro && <WelcomingWords onDone={() => { setIntro(false); if (greetName) setGreet(true); }} />}
+
+      <AnimatePresence>
+        {greet && <GreetPopup name={greetName} gender={gender} onClose={() => setGreet(false)} />}
+      </AnimatePresence>
 
       {/* NAV */}
       <nav className="pkl-nav">
@@ -273,12 +281,9 @@ export default function PackagesLanding() {
       <header className="pkl-hero">
         <div className="pkl-wrap">
           <div className="hero-top">
-            <span className="eyebrow">{greetName ? `היי ${greetName} · הצעה אישית` : "ליווי · תחזוקה · פיתוח"}</span>
+            <span className="eyebrow">ליווי · תחזוקה · פיתוח</span>
             <span className="live"><b />דוגמה חיה · insights.origuystudio.com</span>
           </div>
-          {greetName && (
-            <p className="hero-hello">{g("הכנתי לך את הדף הזה במיוחד.", "הכנתי לך את הדף הזה במיוחד.")}</p>
-          )}
           <h1 className="htitle">
             <span>שומר על</span>
             <span className="l2">האתר <span className="out">שלך.</span></span>
@@ -638,6 +643,31 @@ export default function PackagesLanding() {
 }
 
 /* ---------- small helpers ---------- */
+/* Personal welcome popup, shown once after the intro loader for a named link.
+   Dismiss via the button, the X, a backdrop click, or Escape. */
+function GreetPopup({ name, gender, onClose }: { name: string; gender: Gender; onClose: () => void }) {
+  const g = (m: string, f: string) => (gender === "female" ? f : m);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <motion.div className="greet-backdrop" onClick={onClose}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+      <motion.div className="greet-card surf" role="dialog" aria-modal="true" aria-label="ברכה אישית"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, y: 26, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.98 }} transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}>
+        <button type="button" className="greet-x" onClick={onClose} aria-label="סגירה">×</button>
+        <span className="greet-badge"><b className="dot" aria-hidden="true" />Studio Ori Guy</span>
+        <h2 className="greet-h">היי {name},</h2>
+        <p className="greet-p">הכנתי לך את הדף הזה במיוחד. ריכזתי כאן את כל מה שחשוב על תחזוקה, אבטחה וליווי לאתר שלך, ואיך אני שומר עליו בשבילך.</p>
+        <button type="button" className="greet-cta" onClick={onClose}>{g("יאללה, בוא נתחיל", "יאללה, בואי נתחיל")}</button>
+      </motion.div>
+    </motion.div>
+  );
+}
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="s"><div className="n">{children}</div><div className="k">{label}</div></div>;
 }
@@ -714,7 +744,19 @@ const CSS = `
 .pkl ::-moz-selection{background:var(--green);color:var(--ink-on-green)}
 /* Latin brand text renders in Diplomat (the sans brand font), never a serif fallback */
 .pkl .latin{font-family:"Diplomat",system-ui,sans-serif !important}
-.pkl .hero-hello{margin-top:10px;font-size:15px;color:var(--green);font-weight:700}
+
+/* personal welcome popup (shown after the intro loader for a named link) */
+.pkl .greet-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:24px;background:rgba(6,5,14,.64);backdrop-filter:blur(7px)}
+.pkl .greet-card{position:relative;max-width:440px;width:100%;padding:36px 30px 32px;border-radius:24px;text-align:center}
+.pkl .greet-x{position:absolute;top:14px;inset-inline-start:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center;transition:color .2s,border-color .2s}
+.pkl .greet-x:hover{color:var(--ink);border-color:var(--green)}
+.pkl .greet-badge{display:inline-flex;align-items:center;gap:8px;font-family:"Diplomat",system-ui,sans-serif;font-weight:800;font-size:12px;color:var(--muted);border:1px solid var(--line);padding:6px 14px;border-radius:999px}
+.pkl .greet-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pl 2s infinite}
+.pkl .greet-h{font-family:"Kaha","Diplomat",system-ui,sans-serif;font-weight:900;font-size:clamp(30px,7vw,40px);margin-top:18px}
+.pkl .greet-p{color:var(--muted);font-size:15.5px;margin-top:14px;line-height:1.62;max-width:34ch;margin-inline:auto}
+.pkl .greet-cta{margin-top:26px;font-family:"Diplomat",system-ui,sans-serif;font-weight:800;font-size:15px;background:var(--green);color:var(--ink-on-green);border:0;padding:14px 30px;border-radius:999px;cursor:pointer;transition:filter .2s}
+.pkl .greet-cta:hover{filter:brightness(1.07)}
+@media(prefers-reduced-motion:reduce){.pkl .greet-badge .dot{animation:none}}
 .pkl .tcard .tessence{font-family:"Kaha","Diplomat",system-ui,sans-serif;font-weight:900;font-size:15px;color:var(--green);margin-top:6px}
 .pkl-wrap{max-width:1300px;margin-inline:auto;padding-inline:40px}
 @media(max-width:640px){.pkl-wrap{padding-inline:22px}}
@@ -753,6 +795,15 @@ const CSS = `
 .pkl .focus-container{gap:.7em !important}
 .pkl .hero-foot{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:end;margin-top:5vh}
 @media(max-width:820px){.pkl .hero-foot{grid-template-columns:1fr;gap:26px}.pkl .htitle .l2{padding-inline-start:6vw}}
+@media(max-width:640px){
+  .pkl-hero{padding:5vh 0 7vh;min-height:auto}
+  .pkl .hero-top{margin-bottom:7vh}
+  .pkl .hero-focus{margin-top:6vh}
+  .pkl .hero-foot{margin-top:8vh;gap:34px}
+  .pkl .hero-ctas{margin-top:22px}
+  .pkl .hero-cards{width:100%}
+  .pkl .hcard{width:100%}
+}
 .pkl .hero-foot p{font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:42ch}
 .pkl .hero-ctas{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
 .pkl .cta-btn.big{font-size:15px;padding:14px 26px}
@@ -762,7 +813,7 @@ const CSS = `
 .pkl .hero-cards::before{content:"";position:absolute;inset:-22% -14%;z-index:-1;background:radial-gradient(60% 70% at 70% 20%,rgba(180,214,112,.2),transparent 70%),radial-gradient(55% 65% at 20% 85%,rgba(119,190,207,.14),transparent 70%);filter:blur(40px);pointer-events:none}
 @media(max-width:820px){.pkl .hero-cards{justify-self:start;align-items:flex-start}}
 .pkl .hcard{padding:18px 20px;transform:rotate(-1.5deg);animation:hf1 8s ease-in-out infinite alternate}
-.pkl .hchip{display:inline-flex;align-items:center;gap:9px;padding:11px 17px;border-radius:999px;font-size:12.5px;color:var(--muted);white-space:nowrap;transform:rotate(2deg);animation:hf2 7s .6s ease-in-out infinite alternate;margin-inline-end:26px}
+.pkl .hchip{display:inline-flex;align-items:center;gap:9px;padding:11px 17px;border-radius:999px;font-size:12.5px;color:var(--muted);white-space:nowrap;transform:rotate(2deg);animation:hf2 7s .6s ease-in-out infinite alternate;align-self:center}
 .pkl .hchip .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pl 2s infinite}
 @keyframes hf1{to{transform:rotate(-1.5deg) translateY(-9px)}}
 @keyframes hf2{to{transform:rotate(2deg) translateY(-7px)}}
