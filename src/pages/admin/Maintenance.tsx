@@ -1,18 +1,80 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { isDemoEmail } from "@/lib/demo";
 import { TIER_META } from "@/lib/service-plans";
-import { useMaintenanceOverview, refreshSiteMetrics, type MaintenanceOverviewRow } from "@/hooks/useService";
+import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+
+/** AI review (Gemini) of a site: diagnosis + concrete recommendations. */
+function InsightsSheet({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<SiteInsights | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true);
+    setErr(null);
+    setData(null);
+    const res = await siteInsights(projectId);
+    setLoading(false);
+    if (res.error) setErr(res.error);
+    else setData(res.data);
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (o && !data && !loading) run(); }}>
+      <SheetTrigger asChild>
+        <Button size="sm" variant="secondary">
+          <Sparkles className="size-3.5" /> תובנות AI
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>תובנות AI · {projectTitle}</SheetTitle>
+          <SheetDescription>אבחון והמלצות שיפור על סמך המדדים ותוכן העמוד. סקירה, לא תחליף לשיקול דעת.</SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4">
+          {loading ? (
+            <div className="py-10">
+              <CenteredLoader label="מנתח את האתר…" />
+            </div>
+          ) : err ? (
+            <p className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>
+          ) : data ? (
+            <>
+              <p className="text-sm leading-relaxed text-foreground">{data.assessment}</p>
+              <div className="space-y-2">
+                {data.recommendations.map((r, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-background/40 p-3">
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">{r.area}</span>
+                    <p className="mt-1.5 text-sm text-foreground">{r.text}</p>
+                  </div>
+                ))}
+              </div>
+              {data.fetchedPage === false && (
+                <p className="text-xs text-muted-foreground">לא הצלחתי לקרוא את תוכן העמוד, ההמלצות מבוססות על המדדים בלבד.</p>
+              )}
+              <Button size="sm" variant="ghost" onClick={run}>
+                <RefreshCw className="size-3.5" /> נתח שוב
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 const hoursLabel = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
@@ -101,7 +163,8 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <InsightsSheet projectId={row.project_id} projectTitle={row.project_title} />
           {isDemoEmail(row.client_email) && (
             <Button size="sm" variant="secondary" onClick={copyPreview} disabled={copying}>
               <Copy className="size-3.5" /> העתק קישור תצוגה

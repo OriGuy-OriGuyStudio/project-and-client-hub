@@ -139,6 +139,20 @@ export async function refreshSiteMetrics() {
   return supabase.functions.invoke("poll-site-metrics", { body: {} });
 }
 
+export type SiteInsights = {
+  assessment: string;
+  recommendations: { area: string; text: string }[];
+  fetchedPage?: boolean;
+};
+
+/** Admin: AI (Gemini) performance/security/UX review + recommendations for a site. */
+export async function siteInsights(projectId: string): Promise<{ data: SiteInsights | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("site-insights", { body: { project_id: projectId } });
+  if (error) return { data: null, error: error.message };
+  if (data && data.ok === false) return { data: null, error: data.error ?? "failed" };
+  return { data: data as SiteInsights, error: null };
+}
+
 export type ServicePreview = {
   service: ProjectService;
   project_title: string;
