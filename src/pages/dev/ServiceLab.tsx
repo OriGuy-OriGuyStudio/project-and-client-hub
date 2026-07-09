@@ -117,7 +117,7 @@ const TYPES: Record<
     features: [
       "אחסון פרימיום, עדכונים וגיבויים בטוחים",
       "חבילת רישיונות בשווי ₪1,172 (Elementor Pro, Crocoblock)",
-      "מאיץ מהירות Cloudflare Enterprise",
+      "מאיץ מהירות ו-CDN (Cloudflare)",
       "הגנת Malware וסריקות בזמן אמת",
       "בדיקת ביצועים ומהירות חודשית",
       "עד 3 שעות עבודה / ייעוץ בחודש",

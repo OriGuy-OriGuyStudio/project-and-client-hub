@@ -51,6 +51,7 @@ const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
 const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
+const PackagesLanding = lazy(() => import("@/pages/public/PackagesLanding"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
@@ -168,6 +169,25 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <DiscoverySummary />
+                </Suspense>
+              }
+            />
+
+            {/* Public maintenance-packages marketing landing (no auth). Optional
+                token ties a signup to a client-lead or a partner referral. */}
+            <Route
+              path="/l/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <PackagesLanding />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/l"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <PackagesLanding />
                 </Suspense>
               }
             />

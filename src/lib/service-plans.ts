@@ -33,7 +33,7 @@ export const TIER_META: Record<
     name: "Studio Ultra VIP",
     label: "השותף הטכנולוגי",
     tagline: "ליווי צמוד ופיתוח שוטף",
-    price: 1950,
+    price: 1500,
     responseHours: 4,
     hours: 7,
   },
@@ -58,7 +58,7 @@ export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): stri
 
   const pro = wp
     ? [
-        "מאיץ מהירות Cloudflare Enterprise",
+        "מאיץ מהירות ו-CDN (Cloudflare)",
         "הגנת Malware וסריקות בזמן אמת",
         "בדיקת ביצועים ומהירות חודשית",
       ]

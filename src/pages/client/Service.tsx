@@ -706,7 +706,7 @@ function TeaserBackdrop() {
     "חבילת רישיונות בשווי ₪1,172 (Elementor, Crocoblock)",
     "הגנה היקפית וגיבויים אוטומטיים",
     "דו״ח פעילות וביצועים חודשי",
-    "מאיץ מהירות Cloudflare Enterprise",
+    "מאיץ מהירות ו-CDN (Cloudflare)",
     "עד 3 שעות עבודה / ייעוץ בחודש",
   ];
   return (
