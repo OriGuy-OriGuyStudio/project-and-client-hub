@@ -6,6 +6,7 @@ import { timer, ctxTitle, ctxFromSession } from "@/lib/timer-store";
 import { supabase } from "@/lib/supabase";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
+import { isInternalClient } from "@/lib/internal";
 import { clientLabel } from "@/components/timer/timer-controls";
 import { useProjectBilling, useTimeSessions } from "@/hooks/useTimeData";
 import {
@@ -149,9 +150,14 @@ export function TimerBoard() {
       const s = todayStart - (6 - i) * DAY;
       return { ts: s, sec: 0, label: new Date(s).toLocaleDateString("he-IL", { weekday: "narrow" }) };
     });
+    const internalIds = new Set(
+      (clientsData?.active ?? []).filter((c) => isInternalClient(c.email)).map((c) => c.id),
+    );
+    const projClient = new Map(projects.map((p) => [p.id, p.client_id]));
     let today = 0;
     let week = 0;
     let todayCount = 0;
+    let todayStudio = 0;
     const weekAgo = Date.now() - 7 * DAY;
     for (const s of sessions) {
       const t = new Date(s.started_at).getTime();
@@ -159,13 +165,15 @@ export function TimerBoard() {
       if (t >= todayStart) {
         today += s.duration_seconds;
         todayCount++;
+        const cid = s.client_id ?? (s.project_id ? projClient.get(s.project_id) ?? null : null);
+        if (cid && internalIds.has(cid)) todayStudio += s.duration_seconds;
       }
       const idx = Math.floor((t - days[0].ts) / DAY);
       if (idx >= 0 && idx < 7) days[idx].sec += s.duration_seconds;
     }
     const max = days.reduce((m, d) => Math.max(m, d.sec), 0) || 1;
-    return { days, max, today, week, todayCount };
-  }, [sessions]);
+    return { days, max, today, week, todayCount, todayStudio, todayClients: today - todayStudio };
+  }, [sessions, clientsData, projects]);
 
   return (
     <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] lg:items-start">
@@ -233,7 +241,10 @@ export function TimerBoard() {
               <p className="font-heading text-2xl font-bold tabular-nums" style={{ color: accent }}>
                 {hms(summary.today)}
               </p>
-              <p className="text-[11px] text-muted-foreground">{summary.todayCount} סשנים</p>
+              <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                <p>לקוחות <span className="tabular-nums text-foreground">{hms(summary.todayClients)}</span></p>
+                <p>סטודיו <span className="tabular-nums text-foreground">{hms(summary.todayStudio)}</span></p>
+              </div>
             </div>
             <div className="rounded-xl bg-background/40 p-3">
               <p className="text-[11px] text-muted-foreground">השבוע</p>
