@@ -145,6 +145,14 @@ export type SiteInsights = {
   fetchedPage?: boolean;
 };
 
+/** Admin: email the client their monthly report (+ ensure the report link). */
+export async function sendReport(projectId: string): Promise<{ link: string | null; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke("send-report", { body: { project_id: projectId } });
+  if (error) return { link: null, error: error.message };
+  if (data && data.ok === false) return { link: null, error: data.error ?? "failed" };
+  return { link: data?.link ?? null, error: null };
+}
+
 /** Admin: AI (Gemini) performance/security/UX review + recommendations for a site. */
 export async function siteInsights(projectId: string): Promise<{ data: SiteInsights | null; error: string | null }> {
   const { data, error } = await supabase.functions.invoke("site-insights", { body: { project_id: projectId } });

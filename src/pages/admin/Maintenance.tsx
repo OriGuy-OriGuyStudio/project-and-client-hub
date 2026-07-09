@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { isDemoEmail } from "@/lib/demo";
 import { TIER_META } from "@/lib/service-plans";
-import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
 import { PerfChart } from "@/components/service/PerfChart";
 
 const GREEN = "#B4D670";
@@ -170,6 +170,7 @@ function daysSince(date: string | null): number | null {
 function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
   const qc = useQueryClient();
   const [copying, setCopying] = useState(false);
+  const [sending, setSending] = useState(false);
   const meta = TIER_META[row.tier];
   const includedHours = meta.hours;
   const staleDays = daysSince(row.last_metric_date);
@@ -200,6 +201,16 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
       toastError(url);
     }
     setCopying(false);
+  }
+
+  async function sendClientReport() {
+    if (!window.confirm("לשלוח ללקוח את הדוח החודשי במייל?")) return;
+    setSending(true);
+    const { error } = await sendReport(row.project_id);
+    setSending(false);
+    if (error) return toastError(error);
+    toast({ title: "הדוח נשלח ללקוח ✓", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
   }
 
   return (
@@ -233,6 +244,9 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button size="sm" onClick={sendClientReport} disabled={sending}>
+            <Mail className="size-3.5" /> שלח דוח ללקוח
+          </Button>
           <PerformanceSheet projectId={row.project_id} projectTitle={row.project_title} />
           <InsightsSheet projectId={row.project_id} projectTitle={row.project_title} />
           {isDemoEmail(row.client_email) && (

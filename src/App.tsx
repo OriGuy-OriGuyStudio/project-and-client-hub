@@ -50,6 +50,7 @@ const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
 const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
+const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
@@ -137,6 +138,16 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <ServicePreview />
+                </Suspense>
+              }
+            />
+
+            {/* Public monthly client report (no auth, token-gated) */}
+            <Route
+              path="/report/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <ClientReport />
                 </Suspense>
               }
             />

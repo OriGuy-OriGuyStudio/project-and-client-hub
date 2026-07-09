@@ -75,7 +75,7 @@ async function cfZones(token: string): Promise<Record<string, string>> {
 async function cfTraffic(token: string, zoneId: string) {
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const query = `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:1,filter:{date_geq:$since,date_leq:$until},orderBy:[date_DESC]){sum{pageViews threats}uniq{uniques}}}}}`;
+  const query = `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:1,filter:{date_geq:$since,date_leq:$until},orderBy:[date_DESC]){dimensions{date}sum{pageViews threats}uniq{uniques}}}}}`;
   const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
