@@ -63,9 +63,11 @@ Deno.serve(async (req) => {
     const siteUrl = p.site_url as string;
     try {
       const m = await pollOne(siteUrl, key);
-      const { error } = await admin
-        .from("site_metrics")
-        .upsert({ project_id: p.project_id, metric_date: today, ...m }, { onConflict: "project_id,metric_date" });
+      // merge-upsert: only overwrites the speed columns, keeps uptime/traffic
+      const { error } = await admin.rpc("upsert_site_metrics", {
+        p_project: p.project_id, p_date: today,
+        p_pagespeed: m.pagespeed, p_lcp_ms: m.lcp_ms, p_cls: m.cls, p_inp_ms: m.inp_ms,
+      });
       if (error) throw new Error(error.message);
       results.push({ site: siteUrl, ...m });
     } catch (e) {

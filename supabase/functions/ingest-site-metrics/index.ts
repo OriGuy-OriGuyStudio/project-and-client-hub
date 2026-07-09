@@ -57,15 +57,16 @@ Deno.serve(async (req) => {
 
   const m = body.metrics as Record<string, unknown> | undefined;
   if (m && typeof m === "object") {
-    const row = {
-      project_id: projectId,
-      metric_date: (m.metric_date as string) || new Date().toISOString().slice(0, 10),
-      visitors: num(m.visitors), pageviews: num(m.pageviews), sessions: num(m.sessions),
-      pagespeed: num(m.pagespeed), lcp_ms: num(m.lcp_ms), cls: num(m.cls), inp_ms: num(m.inp_ms),
-      uptime_pct: num(m.uptime_pct), threats_blocked: num(m.threats_blocked),
-      meta: (m.meta as unknown) ?? null,
-    };
-    const { error } = await admin.from("site_metrics").upsert(row, { onConflict: "project_id,metric_date" });
+    // merge-upsert so a source that sends only some fields (e.g. uptime) doesn't
+    // null the columns another source wrote for the same day.
+    const { error } = await admin.rpc("upsert_site_metrics", {
+      p_project: projectId,
+      p_date: (m.metric_date as string) || new Date().toISOString().slice(0, 10),
+      p_visitors: num(m.visitors), p_pageviews: num(m.pageviews), p_sessions: num(m.sessions),
+      p_pagespeed: num(m.pagespeed), p_lcp_ms: num(m.lcp_ms), p_cls: num(m.cls), p_inp_ms: num(m.inp_ms),
+      p_uptime_pct: num(m.uptime_pct), p_threats_blocked: num(m.threats_blocked),
+      p_meta: (m.meta as unknown) ?? null,
+    });
     if (error) return json({ ok: false, error: `site_metrics: ${error.message}` }, 500);
     results.metrics = "ok";
   }
