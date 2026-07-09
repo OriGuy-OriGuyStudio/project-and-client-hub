@@ -42,6 +42,7 @@ import { gendered } from "@/lib/gender";
 import { toast, toastError } from "@/hooks/use-toast";
 import { notifyAdminTask } from "@/lib/invite";
 import { uploadServiceCallMedia } from "@/lib/files";
+import { PerfChart } from "@/components/service/PerfChart";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 import {
@@ -503,34 +504,45 @@ export function ServiceBoard({
             נתוני הביצועים (תנועה, מהירות, זמינות) יתחילו להופיע כאן ברגע שהניטור יופעל לאתר שלך.
           </div>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-card p-4 lg:col-span-2">
+          <div className="space-y-3">
+            {/* speed over time */}
+            <div className="rounded-2xl border border-border bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">תנועה, 7 ימים אחרונים</p>
-                <span className="text-xs text-muted-foreground">
-                  <b className="text-foreground">{totalVisitors.toLocaleString("he-IL")}</b> מבקרים ·{" "}
-                  <b className="text-foreground">{totalViews.toLocaleString("he-IL")}</b> צפיות
-                </span>
+                <p className="text-sm font-semibold text-foreground">מגמת מהירות (PageSpeed)</p>
+                <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
               </div>
-              {hasTraffic ? (
-                <Spark data={traffic7} color={CYAN} />
-              ) : (
-                <p className="py-4 text-center text-xs text-muted-foreground">נתוני תנועה יופיעו בקרוב.</p>
-              )}
+              <PerfChart metrics={metrics} field="pagespeed" color={GREEN} name="PageSpeed" domain={[0, 100]} />
             </div>
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-4">
-              {latest.pagespeed != null ? (
-                <>
-                  <Ring value={latest.pagespeed} color={CYAN} label="PageSpeed" />
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    {[latest.lcp_ms != null && `LCP ${(latest.lcp_ms / 1000).toFixed(1)}s`, latest.cls != null && `CLS ${latest.cls}`, latest.inp_ms != null && `INP ${latest.inp_ms}ms`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </>
-              ) : (
-                <p className="text-center text-xs text-muted-foreground">ציון מהירות יופיע בקרוב.</p>
-              )}
+
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-card p-4 lg:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">תנועה לאורך זמן</p>
+                  <span className="text-xs text-muted-foreground">
+                    <b className="text-foreground">{totalVisitors.toLocaleString("he-IL")}</b> מבקרים ·{" "}
+                    <b className="text-foreground">{totalViews.toLocaleString("he-IL")}</b> צפיות
+                  </span>
+                </div>
+                {hasTraffic ? (
+                  <PerfChart metrics={metrics} field="visitors" color={CYAN} name="מבקרים" height={150} />
+                ) : (
+                  <p className="py-8 text-center text-xs text-muted-foreground">נתוני תנועה יופיעו בקרוב.</p>
+                )}
+              </div>
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-4">
+                {latest.pagespeed != null ? (
+                  <>
+                    <Ring value={latest.pagespeed} color={CYAN} label="עכשיו" />
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {[latest.lcp_ms != null && `LCP ${(latest.lcp_ms / 1000).toFixed(1)}s`, latest.cls != null && `CLS ${latest.cls}`, latest.inp_ms != null && `INP ${latest.inp_ms}ms`]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-center text-xs text-muted-foreground">ציון מהירות יופיע בקרוב.</p>
+                )}
+              </div>
             </div>
           </div>
         )}

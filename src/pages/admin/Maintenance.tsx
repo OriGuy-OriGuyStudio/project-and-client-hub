@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,7 +13,76 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { isDemoEmail } from "@/lib/demo";
 import { TIER_META } from "@/lib/service-plans";
-import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+import { PerfChart } from "@/components/service/PerfChart";
+
+const GREEN = "#B4D670";
+const CYAN = "#77BECF";
+
+/** Big per-site performance window: trends over time + a recent-days table. */
+function PerformanceSheet({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
+  const [open, setOpen] = useState(false);
+  const { data: metrics = [] } = useSiteMetrics(open ? projectId : null, 60);
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button size="sm" variant="secondary">
+          <LineChart className="size-3.5" /> ביצועים
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>ביצועים · {projectTitle}</SheetTitle>
+          <SheetDescription>מגמות ומדדים לאורך זמן (עד 60 יום), מעבר לסעיפי התחזוקה.</SheetDescription>
+        </SheetHeader>
+        <div className="space-y-5">
+          <div>
+            <p className="mb-1 text-sm font-semibold text-foreground">מהירות (PageSpeed)</p>
+            <PerfChart metrics={metrics} field="pagespeed" color={GREEN} name="PageSpeed" domain={[0, 100]} />
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-semibold text-foreground">זמינות</p>
+            <PerfChart metrics={metrics} field="uptime_pct" color={GREEN} name="זמינות" unit="%" domain={[95, 100]} height={140} />
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-semibold text-foreground">מבקרים</p>
+            <PerfChart metrics={metrics} field="visitors" color={CYAN} name="מבקרים" height={140} />
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-semibold text-foreground">איומים שנחסמו</p>
+            <PerfChart metrics={metrics} field="threats_blocked" color={CYAN} name="איומים" height={140} />
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold text-foreground">ימים אחרונים</p>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border/60 text-muted-foreground">
+                    {["תאריך", "מהירות", "LCP", "זמינות", "מבקרים", "איומים"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-start font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {metrics.slice(0, 14).map((m) => (
+                    <tr key={m.id} className="text-foreground">
+                      <td className="px-3 py-1.5">{new Date(`${m.metric_date}T00:00:00`).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{m.pagespeed ?? "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{m.lcp_ms != null ? `${(m.lcp_ms / 1000).toFixed(1)}s` : "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{m.uptime_pct != null ? `${m.uptime_pct}%` : "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{m.visitors ?? "—"}</td>
+                      <td className="px-3 py-1.5 tabular-nums">{m.threats_blocked ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 /** AI review (Gemini) of a site: diagnosis + concrete recommendations. */
 function InsightsSheet({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
@@ -164,6 +233,7 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <PerformanceSheet projectId={row.project_id} projectTitle={row.project_title} />
           <InsightsSheet projectId={row.project_id} projectTitle={row.project_title} />
           {isDemoEmail(row.client_email) && (
             <Button size="sm" variant="secondary" onClick={copyPreview} disabled={copying}>
