@@ -10,6 +10,7 @@ import {
   Play,
   Pencil,
   Building2,
+  FlaskConical,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { timer, ctxFromSession } from "@/lib/timer-store";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
 import { isInternalClient } from "@/lib/internal";
+import { isDemoEmail } from "@/lib/demo";
 import { clientLabel } from "@/components/timer/timer-controls";
 import { useTimeSessions } from "@/hooks/useTimeData";
 import { TimerBoard } from "@/components/timer/TimerBoard";
@@ -244,6 +246,10 @@ export function ReportsSection() {
     const internalIds = new Set(
       (clientsData?.active ?? []).filter((c) => isInternalClient(c.email)).map((c) => c.id),
     );
+    // Ori's demo/test accounts — kept out of the real-client analytics entirely.
+    const demoIds = new Set(
+      (clientsData?.active ?? []).filter((c) => isDemoEmail(c.email)).map((c) => c.id),
+    );
     const clientOf = (id: string | null | undefined) => (id ? clientName.get(id) || "לקוח" : "לקוח");
     const stageName = new Map(stages.map((s) => [s.id, s.title]));
     const value = new Map(billing.map((b) => [b.project_id, b.value]));
@@ -297,13 +303,15 @@ export function ReportsSection() {
       .map(([pid, agg]) => {
         const pre = pid.startsWith("noproj:");
         const internal = !!agg.clientId && internalIds.has(agg.clientId);
-        const val = pre || internal ? 0 : Number(value.get(pid) ?? 0);
+        const demo = !!agg.clientId && demoIds.has(agg.clientId);
+        const val = pre || internal || demo ? 0 : Number(value.get(pid) ?? 0);
         return {
           id: pid,
           name: pre ? "טרם פרויקט" : projTitle.get(pid) || projName.get(pid) || "פרויקט",
           client: clientOf(agg.clientId),
           preProject: pre,
           internal,
+          demo,
           total: agg.total,
           value: val,
           rate: val > 0 && agg.total > 0 ? val / (agg.total / 3600) : null,
@@ -335,9 +343,9 @@ export function ReportsSection() {
       .sort((a, b) => b.sec - a.sec);
     const maxPersonal = personalRows.reduce((m, r) => Math.max(m, r.sec), 0) || 1;
 
-    // time share per PAYING client, for the donut (studio/internal excluded)
+    // time share per PAYING client, for the donut (studio/internal + demo excluded)
     const clientTime = [...clientGroups.entries()]
-      .filter(([, projs]) => !projs[0]?.internal)
+      .filter(([, projs]) => !projs[0]?.internal && !projs[0]?.demo)
       .map(([client, projs]) => ({ client, sec: projs.reduce((a, p) => a + p.total, 0) }))
       .sort((a, b) => b.sec - a.sec);
 
@@ -449,8 +457,9 @@ export function ReportsSection() {
   const rangeLabels: Record<Range, string> = { today: "היום", week: "7 ימים", month: "החודש", all: "הכל", custom: "מותאם" };
 
   const groups = [...model.clientGroups.entries()];
-  const payingGroups = groups.filter(([, p]) => !p[0]?.internal);
+  const payingGroups = groups.filter(([, p]) => !p[0]?.internal && !p[0]?.demo);
   const internalGroups = groups.filter(([, p]) => p[0]?.internal);
+  const demoGroups = groups.filter(([, p]) => p[0]?.demo);
 
   const renderClientCard = (client: string, projs: typeof model.projectRows) => {
     const clientTotal = projs.reduce((a, p) => a + p.total, 0);
@@ -632,6 +641,16 @@ export function ReportsSection() {
             <Building2 className="size-5 text-primary" /> סטודיו — זמן פנימי
           </h2>
           {internalGroups.map(([client, projs]) => renderClientCard(client, projs))}
+        </div>
+      )}
+
+      {/* demo / test accounts — never mixed into the real-client analytics */}
+      {demoGroups.length > 0 && (
+        <div className="space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-amber-500">
+            <FlaskConical className="size-5" /> טסטים (דמה)
+          </h2>
+          {demoGroups.map(([client, projs]) => renderClientCard(client, projs))}
         </div>
       )}
 

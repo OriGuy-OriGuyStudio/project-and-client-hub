@@ -432,6 +432,7 @@ export type SiteMetric = {
   threats_blocked: number | null;
   meta: Json | null;
   created_at: string;
+  updated_at: string;
 }
 
 export type MaintenanceLog = {

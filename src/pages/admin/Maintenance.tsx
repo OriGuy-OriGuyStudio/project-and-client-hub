@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
@@ -19,6 +19,16 @@ import { OnboardingChecklist } from "@/components/service/OnboardingChecklist";
 
 const GREEN = "#B4D670";
 const CYAN = "#77BECF";
+
+/** "עודכן לאחרונה" date + time, Hebrew. */
+const fmtUpdated = (iso: string) =>
+  new Date(iso).toLocaleString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 /** Big per-site performance window: trends over time + a recent-days table. */
 function PerformanceSheet({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
@@ -283,12 +293,27 @@ export default function Maintenance() {
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
+  // When the site metrics were last refreshed (newest updated_at across all sites).
+  const { data: lastUpdated } = useQuery({
+    queryKey: ["site-metrics-last-updated"],
+    queryFn: async (): Promise<string | null> => {
+      const { data } = await supabase
+        .from("site_metrics")
+        .select("updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data?.updated_at as string | undefined) ?? null;
+    },
+  });
+
   async function refresh() {
     setRefreshing(true);
     const { error } = await refreshSiteMetrics();
     setRefreshing(false);
     if (error) return toastError("הרענון נכשל, נסה שוב.");
     qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
+    qc.invalidateQueries({ queryKey: ["site-metrics-last-updated"] });
     toast({ title: "הנתונים רועננו ✓", variant: "success" });
   }
 
@@ -303,6 +328,12 @@ export default function Maintenance() {
           </Button>
         </div>
       </div>
+
+      {lastUpdated && (
+        <p className="mb-4 -mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
+          <Clock className="size-3.5" /> הנתונים עודכנו לאחרונה: {fmtUpdated(lastUpdated)}
+        </p>
+      )}
 
       {isLoading ? (
         <CenteredLoader label="טוען…" />

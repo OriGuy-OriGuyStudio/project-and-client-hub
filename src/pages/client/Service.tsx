@@ -146,6 +146,16 @@ function Metric({
   );
 }
 
+/** "עודכן לאחרונה" date + time, Hebrew. */
+const fmtUpdated = (iso: string) =>
+  new Date(iso).toLocaleString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 const hoursLabel = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 /** Round to a single decimal so ₪ value matches the shown hours (3.9×300=1170, not 1176). */
 const roundH = (n: number) => Math.round(n * 10) / 10;
@@ -496,9 +506,16 @@ export function ServiceBoard({
 
       {/* site performance */}
       <div>
-        <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-          <GaugeIcon className="size-5 text-brand-cyan-base" /> ביצועי האתר
-        </h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <GaugeIcon className="size-5 text-brand-cyan-base" /> ביצועי האתר
+          </h3>
+          {latest?.updated_at && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <RefreshCw className="size-3.5" /> עודכן לאחרונה: {fmtUpdated(latest.updated_at)}
+            </span>
+          )}
+        </div>
         {!latest ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
             נתוני הביצועים (תנועה, מהירות, זמינות) יתחילו להופיע כאן ברגע שהניטור יופעל לאתר שלך.
