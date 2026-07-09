@@ -15,6 +15,7 @@ import { isDemoEmail } from "@/lib/demo";
 import { TIER_META } from "@/lib/service-plans";
 import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
 import { PerfChart } from "@/components/service/PerfChart";
+import { OnboardingChecklist } from "@/components/service/OnboardingChecklist";
 
 const GREEN = "#B4D670";
 const CYAN = "#77BECF";
@@ -295,7 +296,8 @@ export default function Maintenance() {
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
         <PageHeader title="חבילות תחזוקה" subtitle="כל החבילות הפעילות והביצועים שלהן, כדי לזהות חריגות ולהיות יוזם מול הלקוחות." />
-        <div className="pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <OnboardingChecklist />
           <Button size="sm" variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} /> רענן נתונים עכשיו
           </Button>

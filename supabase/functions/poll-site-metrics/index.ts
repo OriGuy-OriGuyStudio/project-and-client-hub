@@ -2,7 +2,7 @@
 // "refresh now" button). For every ACTIVE package with a site_url it collects:
 //   • PageSpeed Insights  → pagespeed / lcp_ms / cls / inp_ms
 //   • UptimeRobot         → uptime_pct   (matched by host)
-//   • Cloudflare          → visitors / pageviews / threats_blocked (matched by zone)
+//   • Cloudflare Web Analytics (RUM) → visitors / pageviews (matched by site host)
 // and merge-upserts today's site_metrics row. Each source is best-effort.
 //
 // Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT.
@@ -60,34 +60,50 @@ async function uptimeMap(key: string): Promise<Record<string, number>> {
   return map;
 }
 
-// Cloudflare: zones list → { zoneName: zoneId }
-async function cfZones(token: string): Promise<Record<string, string>> {
-  const r = await fetch("https://api.cloudflare.com/client/v4/zones?per_page=50", {
+// Cloudflare Web Analytics (RUM) sites → [{ host, siteTag }]. Works for any site
+// with a Web Analytics beacon (JS snippet OR proxied "automatic"), regardless of
+// whether the domain is proxied through Cloudflare. host comes from each site's
+// rules (snippet sites) and/or its zone_name (automatic sites).
+async function cfRumSites(token: string, account: string): Promise<Array<{ host: string; siteTag: string }>> {
+  const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/rum/site_info/list?per_page=100`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const d = await r.json();
-  const map: Record<string, string> = {};
-  for (const z of d.result ?? []) map[String(z.name).toLowerCase()] = z.id;
-  return map;
+  if (!d.success) throw new Error(`rum list ${r.status}: ${JSON.stringify(d.errors ?? d).slice(0, 300)}`);
+  const out: Array<{ host: string; siteTag: string }> = [];
+  for (const s of d.result ?? []) {
+    const tag = s.site_tag;
+    if (!tag) continue;
+    for (const rule of s.rules ?? []) {
+      const hh = String(rule.host ?? "").toLowerCase().replace(/\/\*?$/, "").replace(/^www\./, "").trim();
+      if (hh) out.push({ host: hh, siteTag: tag });
+    }
+    const zn = s.ruleset?.zone_name;
+    if (zn) out.push({ host: String(zn).toLowerCase().replace(/^www\./, ""), siteTag: tag });
+  }
+  return out;
 }
 
-// Cloudflare analytics for one zone (most recent day)
-async function cfTraffic(token: string, zoneId: string) {
+// Cloudflare Web Analytics (RUM) for one site (most recent day). count = page
+// views, sum.visits = visits. threats_blocked is a proxy-only metric that Web
+// Analytics does not expose, so it stays null.
+async function cfTraffic(token: string, account: string, siteTag: string) {
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const query = `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:1,filter:{date_geq:$since,date_leq:$until},orderBy:[date_DESC]){dimensions{date}sum{pageViews threats}uniq{uniques}}}}}`;
+  const query = `query($account:String!,$since:Date!,$until:Date!,$siteTag:String!){viewer{accounts(filter:{accountTag:$account}){rumPageloadEventsAdaptiveGroups(limit:1,filter:{date_geq:$since,date_leq:$until,siteTag:$siteTag},orderBy:[date_DESC]){count sum{visits}dimensions{date}}}}}`;
   const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { zone: zoneId, since, until: today } }),
+    body: JSON.stringify({ query, variables: { account, since, until: today, siteTag } }),
   });
   const d = await r.json();
-  const g = d.data?.viewer?.zones?.[0]?.httpRequests1dGroups?.[0];
+  if (d.errors?.length) throw new Error(`rum graphql: ${JSON.stringify(d.errors).slice(0, 300)}`);
+  const g = d.data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups?.[0];
   if (!g) return { visitors: null, pageviews: null, threats_blocked: null };
   return {
-    visitors: g.uniq?.uniques ?? null,
-    pageviews: g.sum?.pageViews ?? null,
-    threats_blocked: g.sum?.threats ?? null,
+    visitors: g.sum?.visits ?? null,
+    pageviews: g.count ?? null,
+    threats_blocked: null,
   };
 }
 
@@ -120,13 +136,16 @@ Deno.serve(async (req) => {
 
   // shared source maps (best-effort, once)
   let upMap: Record<string, number> = {};
-  let zones: Record<string, string> = {};
+  let cfSites: Array<{ host: string; siteTag: string }> = [];
   const sourceErrors: Record<string, string> = {};
   if (secrets.uptimerobot_key) {
     try { upMap = await uptimeMap(secrets.uptimerobot_key); } catch (e) { sourceErrors.uptimerobot = String(e); }
   }
-  if (secrets.cloudflare_token) {
-    try { zones = await cfZones(secrets.cloudflare_token); } catch (e) { sourceErrors.cloudflare = String(e); }
+  if (secrets.cloudflare_token && secrets.cloudflare_account) {
+    try { cfSites = await cfRumSites(secrets.cloudflare_token, secrets.cloudflare_account); }
+    catch (e) { sourceErrors.cloudflare = String(e); }
+  } else if (secrets.cloudflare_token && !secrets.cloudflare_account) {
+    sourceErrors.cloudflare = "missing cloudflare_account secret";
   }
 
   const { data: pkgs, error: pkgErr } = await admin
@@ -145,10 +164,17 @@ Deno.serve(async (req) => {
 
     if (upMap[h] != null) { metric.p_uptime_pct = upMap[h]; got.uptime_pct = upMap[h]; }
 
-    const zoneName = Object.keys(zones).find((z) => h === z || h.endsWith(`.${z}`));
-    if (zoneName) {
+    // Prefer the most specific matching site so insights.example.com uses its own
+    // snippet site rather than the parent example.com "automatic" site.
+    let site: { host: string; siteTag: string } | null = null;
+    for (const s of cfSites) {
+      if (h === s.host || h.endsWith(`.${s.host}`)) {
+        if (!site || s.host.length > site.host.length) site = s;
+      }
+    }
+    if (site) {
       try {
-        const cf = await cfTraffic(secrets.cloudflare_token, zones[zoneName]);
+        const cf = await cfTraffic(secrets.cloudflare_token, secrets.cloudflare_account, site.siteTag);
         metric.p_visitors = cf.visitors; metric.p_pageviews = cf.pageviews; metric.p_threats_blocked = cf.threats_blocked;
         got.cf = cf;
       } catch (e) { got.cf_err = String(e instanceof Error ? e.message : e); }
@@ -161,7 +187,7 @@ Deno.serve(async (req) => {
     results.push(got);
   }
 
-  return json({ ok: true, has_psi_key: !!psiKey, uptime_monitors: Object.keys(upMap).length, cf_zones: Object.keys(zones).length, sourceErrors, count: results.length, results });
+  return json({ ok: true, has_psi_key: !!psiKey, uptime_monitors: Object.keys(upMap).length, cf_sites: cfSites.length, sourceErrors, count: results.length, results });
 });
 
 // map pageSpeed fields to the RPC's p_* args
