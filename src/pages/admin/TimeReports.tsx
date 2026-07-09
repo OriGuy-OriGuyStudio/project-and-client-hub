@@ -343,6 +343,7 @@ export function ReportsSection() {
 
     return {
       projName,
+      projTitle,
       stageName,
       clientName,
       total,
@@ -398,7 +399,7 @@ export function ReportsSection() {
   function exportCsv() {
     const rows = [["תאריך", "סוג", "פרויקט/תווית", "לקוח", "שלב", "מצב", "משך (שניות)", "משך"]];
     for (const s of sessions) {
-      const linkedProj = s.project_id ? model.projName.get(s.project_id) || "" : "";
+      const linkedProj = s.project_id ? model.projTitle.get(s.project_id) || "" : "";
       const clientNm = s.client_id ? model.clientName.get(s.client_id) || "" : "";
       rows.push([
         new Date(s.started_at).toLocaleString("he-IL"),
@@ -676,7 +677,10 @@ export function ReportsSection() {
             </div>
             <div className="divide-y divide-border/60">
               {g.items.map((s) => {
-                const linkedProj = s.project_id ? model.projName.get(s.project_id) || null : null;
+                // Use the project's own TITLE (not the client-facing business
+                // name) so several projects under one client — e.g. the internal
+                // "Studio Ori Guy" — are distinguishable.
+                const linkedProj = s.project_id ? model.projTitle.get(s.project_id) || null : null;
                 const clientNm = s.client_id ? model.clientName.get(s.client_id) || null : null;
                 const name =
                   s.kind === "personal"
@@ -684,13 +688,16 @@ export function ReportsSection() {
                     : linkedProj || clientNm || "פרויקט";
                 const stage = s.stage_id ? model.stageName.get(s.stage_id) : null;
                 const down = s.mode === "down";
-                // linked-personal → show client; client-only stage → "טרם פרויקט"; else stage
+                // linked-personal → show project; client-only stage → "טרם פרויקט";
+                // project stage → show the client (+ stage) so the row is unambiguous
                 const belongsTo =
                   s.kind === "personal" && linkedProj
                     ? linkedProj
                     : s.kind === "stage" && !s.project_id && clientNm
                       ? "טרם פרויקט"
-                      : stage;
+                      : s.kind === "stage" && s.project_id
+                        ? [clientNm, stage].filter(Boolean).join(" · ") || null
+                        : stage;
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                     <div className="flex min-w-0 items-center gap-2">
