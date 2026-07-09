@@ -1,23 +1,29 @@
-// poll-site-metrics — daily PageSpeed poller. Triggered by pg_cron via pg_net.
-// Loops every ACTIVE package that has a site_url, calls the Google PageSpeed
-// Insights API, and upserts today's row into site_metrics. No external tooling.
+// poll-site-metrics — daily metrics poller (pg_cron via pg_net, or the admin
+// "refresh now" button). For every ACTIVE package with a site_url it collects:
+//   • PageSpeed Insights  → pagespeed / lcp_ms / cls / inp_ms
+//   • UptimeRobot         → uptime_pct   (matched by host)
+//   • Cloudflare          → visitors / pageviews / threats_blocked (matched by zone)
+// and merge-upserts today's site_metrics row. Each source is best-effort.
 //
-// Auth: x-webhook-secret must equal webhook_secrets['metrics_ingest'].
-// The PSI API key is read from webhook_secrets['pagespeed_key'] (or the
-// PAGESPEED_API_KEY env var). Without a key PSI is heavily rate-limited.
+// Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT.
+// Secrets (all in webhook_secrets): pagespeed_key, uptimerobot_key,
+// cloudflare_token, cloudflare_account.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type, x-webhook-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
+function host(u: string | null | undefined): string {
+  try { return new URL(u!).host.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
+}
 
-async function pollOne(siteUrl: string, key: string) {
+async function pageSpeed(siteUrl: string, key: string) {
   const api = new URL("https://www.googleapis.com/pagespeedonline/v5/runPagespeed");
   api.searchParams.set("url", siteUrl);
   api.searchParams.set("strategy", "mobile");
@@ -32,10 +38,57 @@ async function pollOne(siteUrl: string, key: string) {
   const lcp = Math.round(audits["largest-contentful-paint"]?.numericValue ?? 0) || null;
   const clsRaw = audits["cumulative-layout-shift"]?.numericValue;
   const cls = clsRaw != null ? Number(Number(clsRaw).toFixed(3)) : null;
-  // field INP (CrUX) if available, else null
   const inpField = d.loadingExperience?.metrics?.INTERACTION_TO_NEXT_PAINT_MS?.percentile;
   const inp = inpField != null ? Math.round(inpField) : null;
   return { pagespeed: score, lcp_ms: lcp, cls, inp_ms: inp };
+}
+
+// UptimeRobot: one call → { host: uptimePct }
+async function uptimeMap(key: string): Promise<Record<string, number>> {
+  const r = await fetch("https://api.uptimerobot.com/v2/getMonitors", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
+    body: new URLSearchParams({ api_key: key, format: "json", custom_uptime_ratios: "30" }),
+  });
+  const d = await r.json();
+  const map: Record<string, number> = {};
+  for (const m of d.monitors ?? []) {
+    const h = host(m.url);
+    const ratio = parseFloat(String(m.custom_uptime_ratio ?? "").split("-")[0]);
+    if (h && Number.isFinite(ratio)) map[h] = Number(ratio.toFixed(2));
+  }
+  return map;
+}
+
+// Cloudflare: zones list → { zoneName: zoneId }
+async function cfZones(token: string): Promise<Record<string, string>> {
+  const r = await fetch("https://api.cloudflare.com/client/v4/zones?per_page=50", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json();
+  const map: Record<string, string> = {};
+  for (const z of d.result ?? []) map[String(z.name).toLowerCase()] = z.id;
+  return map;
+}
+
+// Cloudflare analytics for one zone (most recent day)
+async function cfTraffic(token: string, zoneId: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const query = `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:1,filter:{date_geq:$since,date_leq:$until},orderBy:[date_DESC]){sum{pageViews threats}uniq{uniques}}}}}`;
+  const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables: { zone: zoneId, since, until: today } }),
+  });
+  const d = await r.json();
+  const g = d.data?.viewer?.zones?.[0]?.httpRequests1dGroups?.[0];
+  if (!g) return { visitors: null, pageviews: null, threats_blocked: null };
+  return {
+    visitors: g.uniq?.uniques ?? null,
+    pageviews: g.sum?.pageViews ?? null,
+    threats_blocked: g.sum?.threats ?? null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -45,13 +98,13 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(supabaseUrl, serviceKey);
 
-  const { data: secRows } = await admin
-    .from("webhook_secrets").select("name, value").in("name", ["metrics_ingest", "pagespeed_key"]);
+  const { data: secRows } = await admin.from("webhook_secrets").select("name, value")
+    .in("name", ["metrics_ingest", "pagespeed_key", "uptimerobot_key", "cloudflare_token", "cloudflare_account"]);
   const secrets: Record<string, string> = Object.fromEntries((secRows ?? []).map((r) => [r.name, r.value]));
+
   const provided = req.headers.get("x-webhook-secret") ?? "";
   let authed = !!secrets.metrics_ingest && provided === secrets.metrics_ingest;
   if (!authed) {
-    // also allow an admin JWT, for the manual "refresh now" button in the app
     const authHeader = req.headers.get("Authorization") ?? "";
     if (authHeader) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -62,8 +115,19 @@ Deno.serve(async (req) => {
   }
   if (!authed) return json({ error: "unauthorized" }, 401);
 
-  const key = secrets.pagespeed_key || Deno.env.get("PAGESPEED_API_KEY") || "";
+  const psiKey = secrets.pagespeed_key || "";
   const today = new Date().toISOString().slice(0, 10);
+
+  // shared source maps (best-effort, once)
+  let upMap: Record<string, number> = {};
+  let zones: Record<string, string> = {};
+  const sourceErrors: Record<string, string> = {};
+  if (secrets.uptimerobot_key) {
+    try { upMap = await uptimeMap(secrets.uptimerobot_key); } catch (e) { sourceErrors.uptimerobot = String(e); }
+  }
+  if (secrets.cloudflare_token) {
+    try { zones = await cfZones(secrets.cloudflare_token); } catch (e) { sourceErrors.cloudflare = String(e); }
+  }
 
   const { data: pkgs, error: pkgErr } = await admin
     .from("project_service").select("project_id, site_url").eq("active", true).not("site_url", "is", null);
@@ -72,19 +136,35 @@ Deno.serve(async (req) => {
   const results: Array<Record<string, unknown>> = [];
   for (const p of pkgs ?? []) {
     const siteUrl = p.site_url as string;
-    try {
-      const m = await pollOne(siteUrl, key);
-      // merge-upsert: only overwrites the speed columns, keeps uptime/traffic
-      const { error } = await admin.rpc("upsert_site_metrics", {
-        p_project: p.project_id, p_date: today,
-        p_pagespeed: m.pagespeed, p_lcp_ms: m.lcp_ms, p_cls: m.cls, p_inp_ms: m.inp_ms,
-      });
-      if (error) throw new Error(error.message);
-      results.push({ site: siteUrl, ...m });
-    } catch (e) {
-      results.push({ site: siteUrl, error: String(e instanceof Error ? e.message : e) });
+    const h = host(siteUrl);
+    const metric: Record<string, unknown> = { p_project: p.project_id, p_date: today };
+    const got: Record<string, unknown> = { site: siteUrl };
+
+    try { Object.assign(metric, prefix(await pageSpeed(siteUrl, psiKey))); got.pagespeed = metric.p_pagespeed; }
+    catch (e) { got.pagespeed_err = String(e instanceof Error ? e.message : e); }
+
+    if (upMap[h] != null) { metric.p_uptime_pct = upMap[h]; got.uptime_pct = upMap[h]; }
+
+    const zoneName = Object.keys(zones).find((z) => h === z || h.endsWith(`.${z}`));
+    if (zoneName) {
+      try {
+        const cf = await cfTraffic(secrets.cloudflare_token, zones[zoneName]);
+        metric.p_visitors = cf.visitors; metric.p_pageviews = cf.pageviews; metric.p_threats_blocked = cf.threats_blocked;
+        got.cf = cf;
+      } catch (e) { got.cf_err = String(e instanceof Error ? e.message : e); }
     }
+
+    try {
+      const { error } = await admin.rpc("upsert_site_metrics", metric);
+      if (error) throw new Error(error.message);
+    } catch (e) { got.save_err = String(e instanceof Error ? e.message : e); }
+    results.push(got);
   }
 
-  return json({ ok: true, has_key: !!key, count: results.length, results });
+  return json({ ok: true, has_psi_key: !!psiKey, uptime_monitors: Object.keys(upMap).length, cf_zones: Object.keys(zones).length, sourceErrors, count: results.length, results });
 });
+
+// map pageSpeed fields to the RPC's p_* args
+function prefix(m: { pagespeed: number | null; lcp_ms: number | null; cls: number | null; inp_ms: number | null }) {
+  return { p_pagespeed: m.pagespeed, p_lcp_ms: m.lcp_ms, p_cls: m.cls, p_inp_ms: m.inp_ms };
+}
