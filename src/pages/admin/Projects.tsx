@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderKanban, Plus, Building2 } from "lucide-react";
+import { FolderKanban, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ProjectCard } from "@/components/project/ProjectCard";
+import { ProjectSections } from "@/components/project/ProjectSections";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,7 @@ import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
-import { isInternalClient } from "@/lib/internal";
+import { groupProjects } from "@/lib/projectGroups";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { projectStatusHe } from "@/lib/status";
@@ -37,21 +37,8 @@ export default function Projects() {
   const { data: clients } = useClients();
   const { unreadProjectIds } = useNotifications();
 
-  // studio (internal) projects are kept in their own section, apart from clients
-  const internalIds = new Set(
-    (clients?.active ?? []).filter((c) => isInternalClient(c.email)).map((c) => c.id),
-  );
   const all = projects ?? [];
-  const clientProjects = all.filter((p) => !internalIds.has(p.client_id));
-  const studioProjects = all.filter((p) => internalIds.has(p.client_id));
-
-  const grid = (list: typeof all, offset = 0) => (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {list.map((p, i) => (
-        <ProjectCard key={p.id} project={p} index={offset + i} isNew={unreadProjectIds.has(p.id)} />
-      ))}
-    </div>
-  );
+  const groups = groupProjects(all, clients?.active);
 
   return (
     <div>
@@ -64,31 +51,7 @@ export default function Projects() {
       {isLoading ? (
         <CenteredLoader label="טוען פרויקטים…" />
       ) : all.length > 0 ? (
-        <div className="space-y-8">
-          <section className="space-y-3">
-            <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-              <FolderKanban className="size-5 text-brand-cyan-base" /> פרויקטים של לקוחות
-              <span className="text-sm font-normal text-muted-foreground">({clientProjects.length})</span>
-            </h2>
-            {clientProjects.length > 0 ? (
-              grid(clientProjects)
-            ) : (
-              <p className="text-sm text-muted-foreground">אין עדיין פרויקטים ללקוחות.</p>
-            )}
-          </section>
-
-          {studioProjects.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-                <Building2 className="size-5 text-primary" /> פרויקטים של הסטודיו
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({studioProjects.length}) , פנימי
-                </span>
-              </h2>
-              {grid(studioProjects, clientProjects.length)}
-            </section>
-          )}
-        </div>
+        <ProjectSections groups={groups} unread={unreadProjectIds} />
       ) : (
         <EmptyState
           icon={FolderKanban}
