@@ -7,6 +7,7 @@ import type {
   ServiceCall,
   ServiceCallStatus,
   ServiceCallAttachment,
+  ServiceAgreement,
 } from "@/types/database";
 
 /** Active service subscriptions the current user can see (client: their own). */
@@ -18,6 +19,21 @@ export function useMyServices() {
         .from("project_service")
         .select("*")
         .eq("active", true);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/** The current client's own signed service agreements (RLS-scoped to them). */
+export function useMyAgreements() {
+  return useQuery({
+    queryKey: ["my-agreements"],
+    queryFn: async (): Promise<ServiceAgreement[]> => {
+      const { data, error } = await supabase
+        .from("service_agreements")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

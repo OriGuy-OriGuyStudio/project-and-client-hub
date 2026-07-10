@@ -47,6 +47,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 import {
   useMyServices,
+  useMyAgreements,
   useSiteMetrics,
   useMaintenanceLog,
   useServiceSummary,
@@ -890,6 +891,54 @@ export default function Service() {
           <ServiceBoard svc={current} projectName={projName(current.project_id)} />
         </div>
       )}
+
+      {/* The client's signed agreements, always available regardless of whether
+          a package is active yet. */}
+      <MyAgreements projects={projects} />
+    </div>
+  );
+}
+
+/** The current client's signed service agreements, with a link to each frozen
+ * document. Renders nothing when there are none. */
+function MyAgreements({ projects }: { projects: { id: string; title: string }[] }) {
+  const { data: agreements = [] } = useMyAgreements();
+  if (!agreements.length) return null;
+  const projTitle = (id: string | null) => projects.find((p) => p.id === id)?.title ?? null;
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+      <h3 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+        <FileText className="size-5 text-muted-foreground" /> אישורי השירות שלך
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">האישורים החתומים שלך. אפשר לצפות ולהוריד בכל עת.</p>
+      <ul className="mt-4 space-y-2">
+        {agreements.map((a) => {
+          const snap = (a.terms_snapshot ?? {}) as { tier_name?: string };
+          const annual = a.billing_cycle === "annual";
+          return (
+            <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-3 py-2.5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {snap.tier_name || a.tier}
+                  <span className="mr-2 text-muted-foreground">
+                    ₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש · {annual ? "שנתי" : "חודשי"}
+                  </span>
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {projTitle(a.project_id) ? `${projTitle(a.project_id)} · ` : ""}
+                  {new Date(a.created_at).toLocaleDateString("he-IL")}
+                  {a.signature_image ? " · חתום ✓" : ""}
+                </p>
+              </div>
+              <Button variant="secondary" size="sm" asChild>
+                <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">
+                  <FileText className="ml-1.5 size-4" /> צפייה במסמך
+                </a>
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
