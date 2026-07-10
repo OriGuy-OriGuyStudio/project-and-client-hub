@@ -39,9 +39,10 @@ export default function AdminDashboard() {
     if (isError) toastError("טעינת הפרויקטים נכשלה.");
   }, [isError]);
 
-  const active = projects?.filter((p) => p.status === "active").length ?? 0;
-  const onHold = projects?.filter((p) => p.status === "on_hold").length ?? 0;
-  const completed = projects?.filter((p) => p.status === "completed").length ?? 0;
+  // Count real clients' projects only (exclude demo + studio/internal).
+  const active = groups.client.filter((p) => p.status === "active").length;
+  const onHold = groups.client.filter((p) => p.status === "on_hold").length;
+  const completed = groups.client.filter((p) => p.status === "completed").length;
 
   const firstName = profile?.full_name?.split(" ")[0] || "אורי";
 
