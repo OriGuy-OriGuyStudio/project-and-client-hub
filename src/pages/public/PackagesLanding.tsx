@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "motion/react";
 import { applyGender } from "@/lib/gender";
@@ -707,7 +707,11 @@ export default function PackagesLanding() {
         </div>
       </section>
 
-      <footer className="pkl-footer"><div className="pkl-wrap footer-in"><div className="wm">Studio Ori Guy</div><div>© {new Date().getFullYear()} · ליווי, תחזוקה ופיתוח לאתרים</div></div></footer>
+      <footer className="pkl-footer"><div className="pkl-wrap footer-in">
+        <div className="wm">Studio Ori Guy</div>
+        <div className="foot-links"><Link to="/terms">תקנון</Link><Link to="/privacy">מדיניות פרטיות</Link></div>
+        <div>© {new Date().getFullYear()} · ליווי, תחזוקה ופיתוח לאתרים</div>
+      </div></footer>
     </div>
   );
 }
@@ -1109,5 +1113,8 @@ const CSS = `
 /* footer */
 .pkl-footer{padding:8vh 0 6vh;border-top:0;position:relative}
 .pkl-footer::before{content:"";position:absolute;inset-inline:0;top:0;height:1px;background:linear-gradient(to left,transparent,rgba(180,214,112,.45) 30%,rgba(119,190,207,.35) 60%,rgba(84,62,224,.35) 85%,transparent)}
-.pkl .footer-in{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.pkl .footer-in{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.pkl .foot-links{display:flex;gap:18px}
+.pkl .foot-links a{color:var(--muted);transition:color .2s}
+.pkl .foot-links a:hover{color:var(--green)}
 `;

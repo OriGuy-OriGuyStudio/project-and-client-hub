@@ -120,10 +120,11 @@ const NAV = [
   { id: "contact", label: "צור קשר" },
 ];
 
-// Hosted legal docs (eLegal) - linked in the footer + the form's consent checkbox.
+// Internal policy pages (src/pages/public/LegalPage.tsx) - linked in the footer
+// + the form's consent checkbox.
 const LEGAL = {
-  terms: "https://app.elegal.io/legal-portal/1754972284112x251460122379026430/terms-of-use",
-  privacy: "https://app.elegal.io/legal-portal/1754972284112x251460122379026430/privacy-policy",
+  terms: "/terms",
+  privacy: "/privacy",
 };
 
 function waLink() {

@@ -53,6 +53,7 @@ const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
 const PackagesLanding = lazy(() => import("@/pages/public/PackagesLanding"));
 const AgreementConfirmation = lazy(() => import("@/pages/public/AgreementConfirmation"));
+const LegalPage = lazy(() => import("@/pages/public/LegalPage"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
@@ -173,6 +174,10 @@ function App() {
                 </Suspense>
               }
             />
+
+            {/* Public policy pages (terms + privacy), linked from footers everywhere. */}
+            <Route path="/terms" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><LegalPage slug="terms" /></Suspense>} />
+            <Route path="/privacy" element={<Suspense fallback={<div className="min-h-screen bg-background" />}><LegalPage slug="privacy" /></Suspense>} />
 
             {/* Permanent public confirmation of an approved package (frozen snapshot). */}
             <Route

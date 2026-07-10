@@ -1,4 +1,5 @@
 import { Rocket } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Copyright } from "@/components/ui/copyright";
 import { LiveClock } from "@/components/ui/live-clock";
 import { requestWarp } from "@/lib/warp";
@@ -19,7 +20,12 @@ export function Footer({ className }: { className?: string }) {
       )}
     >
       {/* Mobile: copyright + clock share row 1, the Orion credit drops to row 2. */}
-      <Copyright className="order-1 sm:col-start-1 sm:justify-self-start" />
+      <span className="order-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 sm:col-start-1 sm:justify-self-start">
+        <Copyright />
+        <span className="text-muted-foreground/40" aria-hidden="true">·</span>
+        <Link to="/terms" className="transition-colors hover:text-primary">תקנון</Link>
+        <Link to="/privacy" className="transition-colors hover:text-primary">פרטיות</Link>
+      </span>
       <span className="order-2 flex items-center gap-1.5 sm:order-3 sm:col-start-3 sm:justify-self-end">
         <span className="hidden sm:inline">שעון ישראל</span>
         <LiveClock className="text-foreground/80" />
