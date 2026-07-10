@@ -725,7 +725,10 @@ export default function PackagesLanding() {
                 ))}
                 <Legal title="אישור שימוש בחבילת תחזוקה">{usageApproval(current.fullName, gender)}</Legal>
               </div>
-              <label className="consent"><input type="checkbox" required /> {consentText(gender)}</label>
+              <label className="consent">
+                <input type="checkbox" required />
+                <span>{g("קראתי ואני מאשר", "קראתי ואני מאשרת")} את תנאי התשלום, הנספחים, מסמך אישור השימוש ו<Link to="/privacy" target="_blank" rel="noreferrer" className="lnk">מדיניות הפרטיות</Link>.</span>
+              </label>
               <div className="f full sigfield"><SignaturePad onChange={setSigImage} /></div>
               {submitErr && <p className="disc" style={{ color: "#ff7ea3" }}>{submitErr}</p>}
               <ClickSpark sparkColor={G} sparkCount={10} sparkRadius={18} duration={500}>
@@ -733,7 +736,6 @@ export default function PackagesLanding() {
                   {submitting ? "שולח…" : `${g("אני מאשר ובוחר", "אני מאשרת ובוחרת")} את ${current.name}`}
                 </button>
               </ClickSpark>
-              <p className="disc">הטקסט המשפטי הוא טיוטה שתעבור אצל עו״ד לפני פרסום.</p>
             </form>
           )}
         </div>
@@ -1155,6 +1157,8 @@ const CSS = `
 .pkl .sig-hint{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#9a98a6;font-size:14px}
 .pkl .consent{display:flex;gap:11px;align-items:flex-start;margin:24px 0 4px;font-size:14px;color:var(--muted)}
 .pkl .consent input{width:19px;height:19px;accent-color:var(--green);margin-top:2px;flex:none}
+.pkl .consent .lnk{color:var(--green);text-decoration:underline;text-underline-offset:2px}
+.pkl .consent .lnk:hover{filter:brightness(1.1)}
 .pkl .submit{font-family:"Diplomat";font-weight:800;font-size:16px;background:var(--green);color:var(--ink-on-green);border:0;padding:17px 28px;border-radius:999px;cursor:pointer;width:100%;margin-top:18px;transition:filter .2s}
 .pkl .submit:hover{filter:brightness(1.07)}
 .pkl .disc{margin-top:14px;font-size:12px;color:var(--faint);text-align:center}

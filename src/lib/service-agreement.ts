@@ -52,9 +52,13 @@ export function usageApproval(tierName: string, gender: Gender): string {
   );
 }
 
-/** The consent-checkbox line (gendered). */
+/** The consent-checkbox line (gendered). Kept in sync with the rendered label
+ * on the landing (which shows "מדיניות הפרטיות" as a link to /privacy). */
 export function consentText(gender: Gender): string {
-  return applyGender("קראתי ואני {מאשר|מאשרת} את תנאי התשלום, הנספחים ומסמך אישור השימוש.", gender);
+  return applyGender(
+    "קראתי ואני {מאשר|מאשרת} את תנאי התשלום, הנספחים, מסמך אישור השימוש ומדיניות הפרטיות.",
+    gender,
+  );
 }
 
 export interface TermsSnapshot {
