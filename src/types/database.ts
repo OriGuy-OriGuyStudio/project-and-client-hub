@@ -696,7 +696,10 @@ export type ServiceAgreement = {
   email: string | null;
   phone: string | null;
   signature: string | null;
+  signature_image: string | null;
   gender: string | null;
+  consent_accepted: boolean;
+  consent_text: string | null;
   terms_version: string;
   terms_snapshot: Json;
   status: string;

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import type { Gender, Json } from "@/types/database";
 import { TIER_ORDER, TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from "@/lib/service-plans";
 import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText } from "@/lib/service-agreement";
+import { SignaturePad } from "@/components/SignaturePad";
 import CounterComp from "@/components/react-bits/Counter";
 import TrueFocus from "@/components/react-bits/TrueFocus";
 import ClickSpark from "@/components/react-bits/ClickSpark";
@@ -175,6 +176,7 @@ export default function PackagesLanding() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
+  const [sigImage, setSigImage] = useState("");
 
   // Resolve the landing invite (token -> prefill + which client to attach to).
   useEffect(() => {
@@ -289,6 +291,7 @@ export default function PackagesLanding() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (submitting) return;
+    if (!sigImage) { setSubmitErr("צריך לחתום בשדה החתימה לפני האישור."); return; }
     const fd = new FormData(e.currentTarget);
     const meta = TIER_META[tier as ServiceTier];
     const snapshot = buildTermsSnapshot(tier as ServiceTier, siteType, gender);
@@ -302,7 +305,10 @@ export default function PackagesLanding() {
       business: String(fd.get("business") || ""),
       email: String(fd.get("email") || ""),
       phone: String(fd.get("phone") || ""),
-      signature: String(fd.get("signature") || ""),
+      signature: String(fd.get("full_name") || ""), // printed name alongside the drawn signature
+      signature_image: sigImage,
+      consent_accepted: true, // the consent checkbox is required to submit
+      consent_text: consentText(gender),
       gender,
       terms_version: snapshot.version,
       terms_snapshot: snapshot,
@@ -694,7 +700,7 @@ export default function PackagesLanding() {
                 <Legal title="אישור שימוש בחבילת תחזוקה">{usageApproval(current.fullName, gender)}</Legal>
               </div>
               <label className="consent"><input type="checkbox" required /> {consentText(gender)}</label>
-              <Field label="חתימה (הקלדת שם מלא)" id="f-sign" full><input id="f-sign" name="signature" placeholder={g("הקלד את שמך המלא כחתימה", "הקלדי את שמך המלא כחתימה")} required /></Field>
+              <div className="f full sigfield"><SignaturePad onChange={setSigImage} /></div>
               {submitErr && <p className="disc" style={{ color: "#ff7ea3" }}>{submitErr}</p>}
               <ClickSpark sparkColor={G} sparkCount={10} sparkRadius={18} duration={500}>
                 <button type="submit" className="submit" disabled={submitting}>
@@ -1102,6 +1108,14 @@ const CSS = `
 .pkl .legal .lbody{padding:0 0 16px;color:var(--muted);font-size:13.5px;line-height:1.75}
 .pkl .legal .lbody ul{margin:4px 0 0;padding-inline-start:18px}
 .pkl .legal .lbody b{color:var(--ink)}
+.pkl .sigfield{margin-top:16px}
+.pkl .sig-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.pkl .sig-head>span{font-size:12.5px;color:var(--muted);font-weight:700}
+.pkl .sig-clear{font-family:"Diplomat",system-ui,sans-serif;font-weight:700;font-size:12.5px;color:var(--muted);background:none;border:0;cursor:pointer;transition:color .2s}
+.pkl .sig-clear:hover{color:var(--green)}
+.pkl .sig-wrap{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.pkl .sig-canvas{display:block;width:100%;height:140px;touch-action:none;cursor:crosshair}
+.pkl .sig-hint{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#9a98a6;font-size:14px}
 .pkl .consent{display:flex;gap:11px;align-items:flex-start;margin:24px 0 4px;font-size:14px;color:var(--muted)}
 .pkl .consent input{width:19px;height:19px;accent-color:var(--green);margin-top:2px;flex:none}
 .pkl .submit{font-family:"Diplomat";font-weight:800;font-size:16px;background:var(--green);color:var(--ink-on-green);border:0;padding:17px 28px;border-radius:999px;cursor:pointer;width:100%;margin-top:18px;transition:filter .2s}

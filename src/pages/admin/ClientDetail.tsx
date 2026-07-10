@@ -505,8 +505,8 @@ export default function ClientDetail() {
                       <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש</span>
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleDateString("he-IL")}
-                      {a.signature ? ` · חתימה: ${a.signature}` : ""}
+                      {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {a.signature_image ? " · חתום ✓" : ""}
                     </p>
                   </div>
                   <Button variant="ghost" size="sm" asChild>

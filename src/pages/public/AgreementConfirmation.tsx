@@ -31,6 +31,9 @@ interface Agreement {
   email: string | null;
   phone: string | null;
   signature: string | null;
+  signature_image: string | null;
+  consent_accepted: boolean;
+  consent_text: string | null;
   terms_version: string;
   terms_snapshot: Snapshot;
   status: string;
@@ -68,7 +71,9 @@ export default function AgreementConfirmation() {
 
   const s = a.terms_snapshot || {};
   const price = a.monthly_price ?? s.price ?? 0;
-  const date = new Date(a.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "long", year: "numeric" });
+  const when = new Date(a.created_at);
+  const date = when.toLocaleDateString("he-IL", { day: "2-digit", month: "long", year: "numeric" });
+  const dateTime = when.toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   return (
     <Shell>
@@ -96,7 +101,7 @@ export default function AgreementConfirmation() {
         <Row k="עסק">{a.business || "לא צוין"}</Row>
         <Row k="אימייל">{a.email || "לא צוין"}</Row>
         <Row k="טלפון">{a.phone || "לא צוין"}</Row>
-        <Row k="תאריך אישור">{date}</Row>
+        <Row k="תאריך ושעת אישור">{dateTime}</Row>
         <Row k="סוג האתר">{s.site_type_label || a.site_type}</Row>
       </div>
 
@@ -141,15 +146,29 @@ export default function AgreementConfirmation() {
         {s.usage_approval && <p className="mt-4 text-sm text-muted-foreground">{s.usage_approval}</p>}
       </div>
 
-      {/* signature */}
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-6">
-        <div>
-          <div className="text-xs text-muted-foreground">חתימה</div>
-          <div className="mt-1 font-heading text-2xl font-black">{a.signature || a.full_name || "לא צוין"}</div>
+      {/* signature + consent record */}
+      <div className="mt-5 rounded-2xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground">חתימת {a.full_name || "הלקוח"}</div>
+            {a.signature_image ? (
+              <img src={a.signature_image} alt="חתימה" className="mt-2 h-24 w-auto max-w-[260px] rounded-lg bg-white p-1" />
+            ) : (
+              <div className="mt-1 font-heading text-2xl font-black">{a.signature || a.full_name || "לא צוין"}</div>
+            )}
+          </div>
+          <div className="text-start text-xs text-muted-foreground">
+            נחתם ב-{dateTime}
+            <br />
+            מסמך {a.terms_version} · Studio Ori Guy
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          מסמך {a.terms_version} · Studio Ori Guy
-        </div>
+        {a.consent_accepted && (
+          <p className="mt-4 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+            <span className="text-primary">✓</span> הלקוח/ה סימן/ה את תיבת ההסכמה ואישר/ה
+            {a.consent_text ? ` "${a.consent_text}"` : " את התנאים"} בתאריך {dateTime}.
+          </p>
+        )}
       </div>
     </Shell>
   );
