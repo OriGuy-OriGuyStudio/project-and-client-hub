@@ -668,7 +668,7 @@ export default function PackagesLanding() {
               <p className="muted" style={{ marginTop: 12 }}>קיבלתי את האישור על חבילת {current.name} ואחזור אליך בהקדם לתיאום. לא בוצע חיוב.</p>
             </div>
           ) : (
-            <form className="signcard surf rv" onSubmit={submit}>
+            <form className="signcard surf" onSubmit={submit}>
               <div className="chips" role="group" aria-label="בחירת חבילה">
                 {tiers.map((t) => (
                   <button type="button" key={t.id} aria-pressed={tier === t.id}
