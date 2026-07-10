@@ -182,6 +182,7 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
   const qc = useQueryClient();
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const meta = TIER_META[row.tier];
   const includedHours = meta.hours;
   const staleDays = daysSince(row.last_metric_date);
@@ -212,6 +213,15 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
       toastError(url);
     }
     setCopying(false);
+  }
+
+  async function refreshOne() {
+    setRefreshing(true);
+    const { error } = await refreshSiteMetrics(row.project_id);
+    setRefreshing(false);
+    if (error) return toastError("רענון הנתונים נכשל.");
+    toast({ title: `הנתונים של ${row.project_title} רועננו ✓`, variant: "success" });
+    qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
   }
 
   async function sendClientReport() {
@@ -255,6 +265,9 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={refreshOne} disabled={refreshing}>
+            <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} /> רענן
+          </Button>
           <Button size="sm" onClick={sendClientReport} disabled={sending}>
             <Mail className="size-3.5" /> שלח דוח ללקוח
           </Button>

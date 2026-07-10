@@ -151,8 +151,8 @@ export function useMaintenanceOverview() {
 }
 
 /** Admin: run the PageSpeed poll on demand (fills today's metrics now). */
-export async function refreshSiteMetrics() {
-  return supabase.functions.invoke("poll-site-metrics", { body: {} });
+export async function refreshSiteMetrics(projectId?: string) {
+  return supabase.functions.invoke("poll-site-metrics", { body: projectId ? { project_id: projectId } : {} });
 }
 
 export type SiteInsights = {

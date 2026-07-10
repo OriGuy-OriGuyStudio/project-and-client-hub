@@ -125,8 +125,17 @@ Deno.serve(async (req) => {
     sourceErrors.cloudflare = "missing cloudflare_account secret";
   }
 
-  const { data: pkgs, error: pkgErr } = await admin
+  // Optional { project_id } in the body → refresh just that one project.
+  let onlyProject: string | null = null;
+  try {
+    const body = await req.json();
+    if (body && typeof body.project_id === "string" && body.project_id) onlyProject = body.project_id;
+  } catch { /* no / empty body → poll all */ }
+
+  let pkgQuery = admin
     .from("project_service").select("project_id, site_url").eq("active", true).not("site_url", "is", null);
+  if (onlyProject) pkgQuery = pkgQuery.eq("project_id", onlyProject);
+  const { data: pkgs, error: pkgErr } = await pkgQuery;
   if (pkgErr) return json({ ok: false, error: pkgErr.message }, 500);
 
   const results: Array<Record<string, unknown>> = [];

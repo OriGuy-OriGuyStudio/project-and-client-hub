@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Building2, Link2 } from "lucide-react";
+import { ArrowLeft, Building2, Link2, HeartHandshake } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -17,6 +17,9 @@ export function ProjectCard({
   index?: number;
   isNew?: boolean;
 }) {
+  const tierShort = project.service_tier
+    ? ({ core: "Core", pro: "Pro", ultra: "Ultra VIP" } as Record<string, string>)[project.service_tier] ?? "תחזוקה"
+    : null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -25,10 +28,11 @@ export function ProjectCard({
     >
       <Link to={`/projects/${project.id}`} className="block">
         <Card
-          className={
-            "group relative h-full p-5 transition-colors hover:border-primary/40" +
-            (isNew ? " border-primary/50 ring-1 ring-primary/30" : "")
-          }
+          className={cn(
+            "group relative h-full p-5 transition-colors hover:border-primary/40",
+            isNew && "border-primary/50 ring-1 ring-primary/30",
+            tierShort && !isNew && "border-brand-cyan-base/40",
+          )}
         >
           {isNew && (
             <span className="absolute -end-1.5 -top-1.5 flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground shadow">
@@ -61,6 +65,11 @@ export function ProjectCard({
               <Badge variant={projectStatusVariant[project.status]}>
                 {projectStatusHe[project.status]}
               </Badge>
+              {tierShort && (
+                <span className="flex items-center gap-1 rounded-full border border-brand-cyan-base/30 bg-brand-cyan-base/10 px-2 py-0.5 text-[10px] font-semibold text-brand-cyan-base">
+                  <HeartHandshake className="size-2.5" /> תחזוקה · {tierShort}
+                </span>
+              )}
               {project.parent_project_id && (
                 <span
                   className={cn(
