@@ -10,6 +10,18 @@ import type { Gender } from "@/types/database";
 
 export const AGREEMENT_VERSION = "2026-07-10";
 
+/** Annual (yearly) billing discount, in percent. */
+export const ANNUAL_DISCOUNT_PCT = 15;
+
+/** Yearly total for a given monthly price, after the annual discount. */
+export function annualTotal(monthly: number): number {
+  return Math.round(monthly * 12 * (1 - ANNUAL_DISCOUNT_PCT / 100));
+}
+/** Effective monthly price under annual billing. */
+export function annualMonthly(monthly: number): number {
+  return Math.round(monthly * (1 - ANNUAL_DISCOUNT_PCT / 100));
+}
+
 export const TERMS_BLOCKS: { title: string; items: string[] }[] = [
   {
     title: "תנאי תשלום ו״האותיות הקטנות״",
@@ -58,6 +70,7 @@ export interface TermsSnapshot {
   blocks: { title: string; items: string[] }[];
   usage_approval: string;
   consent_text: string;
+  annual_discount_pct: number;
 }
 
 /** Freeze everything the client saw + agreed to, for the saved agreement. */
@@ -80,5 +93,6 @@ export function buildTermsSnapshot(
     blocks: TERMS_BLOCKS,
     usage_approval: usageApproval(meta.name, gender),
     consent_text: consentText(gender),
+    annual_discount_pct: ANNUAL_DISCOUNT_PCT,
   };
 }

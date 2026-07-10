@@ -667,6 +667,7 @@ export type EasterEggClaimResult = {
 export type LandingInvite = {
   token: string;
   client_id: string | null;
+  project_id: string | null;
   lead_name: string | null;
   business: string | null;
   email: string | null;
@@ -686,11 +687,13 @@ export type ServiceAgreement = {
   access_token: string;
   invite_token: string | null;
   client_id: string | null;
+  project_id: string | null;
   tier: string;
   site_type: string;
   monthly_price: number | null;
   response_hours: number | null;
   work_hours: number | null;
+  billing_cycle: string;
   full_name: string | null;
   business: string | null;
   email: string | null;
@@ -935,6 +938,7 @@ export interface Database {
           p_tier?: string | null;
           p_site_type?: string | null;
           p_gender?: string | null;
+          p_project_id?: string | null;
         };
         Returns: string;
       };

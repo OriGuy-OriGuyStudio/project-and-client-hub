@@ -5,7 +5,9 @@ import {
   ArrowRight,
   Building2,
   Coins,
+  Copy,
   FolderKanban,
+  Trash2,
   Gift,
   Globe,
   Handshake,
@@ -179,6 +181,11 @@ export default function ClientDetail() {
   const [giftOpen, setGiftOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<{ id: string; name?: string } | null>(null);
+  // Landing-link creation form (which project / tier / site type the link is for).
+  const [linkProject, setLinkProject] = useState("");
+  const [linkTier, setLinkTier] = useState("pro");
+  const [linkType, setLinkType] = useState("wordpress");
+  const [creatingLink, setCreatingLink] = useState(false);
 
   async function setRedemption(
     redId: string,
@@ -235,27 +242,44 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, agreements, invite } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, agreements, landingInvites, invite } = data;
 
-  // Generate a personal maintenance-landing link bound to this client, prefilled
-  // from their profile/brand, and copy it to the clipboard. Approvals from this
-  // link attach back to this card as immutable agreements.
+  const inviteUrl = (token: string) => `${window.location.origin}/l/${token}`;
+  const projectTitle = (pid: string | null) => projects.find((p) => p.id === pid)?.title ?? null;
+
+  // Generate a personal maintenance-landing link bound to this client (and, if
+  // chosen, a specific project) prefilled from their profile/brand. Approvals
+  // from this link attach back to this card as immutable agreements.
   async function generateLandingLink() {
+    setCreatingLink(true);
     const { data: token, error } = await supabase.rpc("create_landing_invite", {
       p_client_id: id!,
       p_lead_name: profile?.full_name ?? null,
       p_business: brand?.business_name ?? null,
       p_email: profile?.email ?? null,
       p_phone: profile?.phone ?? null,
+      p_tier: linkTier,
+      p_site_type: linkType,
+      p_project_id: linkProject || null,
     });
+    setCreatingLink(false);
     if (error || !token) return toastError(error?.message || "יצירת הלינק נכשלה.");
-    const url = `${window.location.origin}/l/${token}`;
     try {
-      await navigator.clipboard.writeText(url);
-      toast({ title: "הלינק נוצר והועתק", description: url, variant: "success" });
+      await navigator.clipboard.writeText(inviteUrl(token));
+      toast({ title: "הלינק נוצר והועתק", variant: "success" });
     } catch {
-      toast({ title: "הלינק נוצר", description: url, variant: "success" });
+      toast({ title: "הלינק נוצר", variant: "success" });
     }
+    qc.invalidateQueries({ queryKey: ["client-detail", id] });
+  }
+
+  // Remove a landing link (admin RLS allows delete). Any agreement created from
+  // it keeps its frozen snapshot; only its invite_token is nulled by the FK.
+  async function deleteInvite(token: string) {
+    const { error } = await supabase.from("landing_invites").delete().eq("token", token);
+    if (error) return toastError("מחיקת הלינק נכשלה.");
+    toast({ title: "הלינק נמחק", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["client-detail", id] });
   }
   const hasBrand =
     !!brand?.logo_url ||
@@ -479,44 +503,109 @@ export default function ClientDetail() {
         )}
       </div>
 
-      {/* Service agreements (immutable approval snapshots) */}
-      <Card id="cd-agreements" data-section className="scroll-mt-20 space-y-3 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-            <ScrollText className="size-5 text-muted-foreground" /> אישורי שירות
-          </h2>
-          <Button variant="secondary" size="sm" onClick={generateLandingLink}>
-            <Link2 className="ml-1.5 size-4" /> צור לינק נחיתה
+      {/* Service agreements + landing links */}
+      <Card id="cd-agreements" data-section className="scroll-mt-20 space-y-4 p-5">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+          <ScrollText className="size-5 text-muted-foreground" /> אישורי שירות ולינקים
+        </h2>
+
+        {/* create a personal landing link */}
+        <div className="rounded-xl border border-border bg-background/30 p-4">
+          <p className="mb-3 text-sm font-semibold text-foreground">צור לינק נחיתה חדש</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="text-xs text-muted-foreground">
+              פרויקט
+              <select value={linkProject} onChange={(e) => setLinkProject(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground">
+                <option value="">בלי פרויקט</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-muted-foreground">
+              חבילה מומלצת
+              <select value={linkTier} onChange={(e) => setLinkTier(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground">
+                <option value="core">Core</option>
+                <option value="pro">Pro</option>
+                <option value="ultra">Ultra VIP</option>
+              </select>
+            </label>
+            <label className="text-xs text-muted-foreground">
+              סוג אתר
+              <select value={linkType} onChange={(e) => setLinkType(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground">
+                <option value="wordpress">WordPress</option>
+                <option value="custom">אתר קוד</option>
+              </select>
+            </label>
+          </div>
+          <Button variant="secondary" size="sm" className="mt-3" onClick={generateLandingLink} disabled={creatingLink}>
+            <Link2 className="ml-1.5 size-4" /> {creatingLink ? "יוצר…" : "צור והעתק לינק"}
           </Button>
         </div>
-        {agreements.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            אין עדיין אישורים. צור לינק נחיתה ושלח ללקוח; כשיאשר חבילה, האישור המוקפא יופיע כאן.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {agreements.map((a) => {
-              const snap = (a.terms_snapshot ?? {}) as { tier_name?: string; site_type_label?: string };
-              return (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-3 py-2.5">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {snap.tier_name || a.tier}
-                      <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש</span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      {a.signature_image ? " · חתום ✓" : ""}
-                    </p>
-                  </div>
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">צפייה במסמך</a>
-                  </Button>
+
+        {/* existing links (so you reuse instead of minting duplicates) */}
+        {landingInvites.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-semibold text-foreground">לינקים שנוצרו</p>
+            <ul className="space-y-2">
+              {landingInvites.map((li) => (
+                <li key={li.token} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background/30 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">
+                    {projectTitle(li.project_id) ? `${projectTitle(li.project_id)} · ` : ""}
+                    {li.tier ?? "כללי"}
+                    {li.site_type ? ` · ${li.site_type === "wordpress" ? "WordPress" : "קוד"}` : ""}
+                    <span className="mr-2 text-xs text-muted-foreground/60">{new Date(li.created_at).toLocaleDateString("he-IL")}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => { void navigator.clipboard?.writeText(inviteUrl(li.token)); toast({ title: "הלינק הועתק", variant: "success" }); }}>
+                      <Copy className="ml-1 size-4" /> העתק
+                    </Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={inviteUrl(li.token)} target="_blank" rel="noreferrer">פתח</a>
+                    </Button>
+                    <Button variant="ghost" size="icon" aria-label="מחק לינק" onClick={() => deleteInvite(li.token)}>
+                      <Trash2 className="size-4 text-muted-foreground" />
+                    </Button>
+                  </span>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </div>
         )}
+
+        {/* signed, frozen agreements */}
+        <div>
+          <p className="mb-2 text-sm font-semibold text-foreground">אישורים חתומים</p>
+          {agreements.length === 0 ? (
+            <p className="text-sm text-muted-foreground">אין עדיין אישורים. שלח לינק ללקוח; כשיאשר חבילה, האישור המוקפא יופיע כאן.</p>
+          ) : (
+            <ul className="space-y-2">
+              {agreements.map((a) => {
+                const snap = (a.terms_snapshot ?? {}) as { tier_name?: string; site_type_label?: string };
+                const annual = a.billing_cycle === "annual";
+                return (
+                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-3 py-2.5">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {snap.tier_name || a.tier}
+                        <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש · {annual ? "שנתי" : "חודשי"}</span>
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {projectTitle(a.project_id) ? `${projectTitle(a.project_id)} · ` : ""}
+                        {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {a.signature_image ? " · חתום ✓" : ""}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">צפייה במסמך</a>
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </Card>
 
       {/* Referrals (partner program) */}

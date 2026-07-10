@@ -6,7 +6,7 @@ import { applyGender } from "@/lib/gender";
 import { supabase } from "@/lib/supabase";
 import type { Gender, Json } from "@/types/database";
 import { TIER_ORDER, TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from "@/lib/service-plans";
-import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText } from "@/lib/service-agreement";
+import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText, annualTotal, annualMonthly, ANNUAL_DISCOUNT_PCT } from "@/lib/service-agreement";
 import { SignaturePad } from "@/components/SignaturePad";
 import CounterComp from "@/components/react-bits/Counter";
 import TrueFocus from "@/components/react-bits/TrueFocus";
@@ -177,6 +177,7 @@ export default function PackagesLanding() {
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [sigImage, setSigImage] = useState("");
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   // Resolve the landing invite (token -> prefill + which client to attach to).
   useEffect(() => {
@@ -201,8 +202,19 @@ export default function PackagesLanding() {
   useEffect(() => { introPlayed = true; }, []);
   // Personal address moved out of the hero (it overloaded it) into a popup that
   // greets the named recipient once the intro loader clears. Only on the load
-  // that actually showed the loader, and only for a personalized link.
+  // that actually showed the loader, and only for a personalized link. The name
+  // can arrive async from the invite, so we open the popup from an effect once
+  // both the loader is done AND the name is known (whichever resolves last).
+  const loaderShownRef = useRef(!introPlayed);
+  const [loaderDone, setLoaderDone] = useState(!loaderShownRef.current);
   const [greet, setGreet] = useState(false);
+  const greetShownRef = useRef(false);
+  useEffect(() => {
+    if (loaderDone && loaderShownRef.current && greetName && !greetShownRef.current) {
+      greetShownRef.current = true;
+      setGreet(true);
+    }
+  }, [loaderDone, greetName]);
 
   // Hero counters start when the hero footer enters view.
   const [statsOn, setStatsOn] = useState(false);
@@ -301,6 +313,7 @@ export default function PackagesLanding() {
       monthly_price: String(meta.price),
       response_hours: String(meta.responseHours),
       work_hours: String(meta.hours),
+      billing_cycle: billing,
       full_name: String(fd.get("full_name") || ""),
       business: String(fd.get("business") || ""),
       email: String(fd.get("email") || ""),
@@ -333,7 +346,7 @@ export default function PackagesLanding() {
     <div className="dark pkl" dir="rtl" ref={rootRef}>
       <style>{CSS}</style>
 
-      {intro && <WelcomingWords onDone={() => { setIntro(false); if (greetName) setGreet(true); }} />}
+      {intro && <WelcomingWords onDone={() => { setIntro(false); setLoaderDone(true); }} />}
 
       <AnimatePresence>
         {greet && <GreetPopup name={greetName} gender={gender} onClose={() => setGreet(false)} />}
@@ -664,6 +677,19 @@ export default function PackagesLanding() {
                     <span className="cp">₪{t.price.toLocaleString("he-IL")} / חודש</span>
                   </button>
                 ))}
+              </div>
+              <div className="billing" role="group" aria-label="מחזור חיוב">
+                <button type="button" aria-pressed={billing === "monthly"}
+                  className={"bl" + (billing === "monthly" ? " on" : "")} onClick={() => setBilling("monthly")}>
+                  <span className="bl-t">חיוב חודשי</span>
+                  <span className="bl-p">₪{current.price.toLocaleString("he-IL")}<em> / חודש</em></span>
+                </button>
+                <button type="button" aria-pressed={billing === "annual"}
+                  className={"bl" + (billing === "annual" ? " on" : "")} onClick={() => setBilling("annual")}>
+                  <span className="bl-t">חיוב שנתי <span className="save">{ANNUAL_DISCOUNT_PCT}% הנחה</span></span>
+                  <span className="bl-p">₪{annualTotal(current.price).toLocaleString("he-IL")}<em> / שנה</em></span>
+                  <span className="bl-sub">שווה ל-₪{annualMonthly(current.price).toLocaleString("he-IL")} לחודש</span>
+                </button>
               </div>
               {prefilled && (
                 <p className="prefill-note"><Check s={13} /> {g("מילאתי מראש את הפרטים שיש לי, אפשר לעדכן כל שדה.", "מילאתי מראש את הפרטים שיש לי, אפשר לעדכן כל שדה.")}</p>
@@ -1088,6 +1114,17 @@ const CSS = `
 .pkl .chip .cp{font-size:12.5px;color:var(--muted)}
 .pkl .chip.sel{background:var(--green);border-color:var(--green);color:var(--ink-on-green)}
 .pkl .chip.sel .cp{color:rgba(10,10,12,.72)}
+/* billing cycle (monthly vs annual, 15% off) */
+.pkl .billing{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
+@media(max-width:520px){.pkl .billing{grid-template-columns:1fr}}
+.pkl .bl{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:start;padding:14px 16px;border-radius:14px;background:#1c1b28;border:1.5px solid rgba(243,242,238,.2);color:var(--ink);cursor:pointer;font-family:inherit;transition:border-color .2s,background .2s}
+.pkl .bl:hover{border-color:var(--green)}
+.pkl .bl.on{border-color:var(--green);background:rgba(180,214,112,.1)}
+.pkl .bl .bl-t{font-family:"Diplomat",system-ui,sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px}
+.pkl .bl .save{font-size:10.5px;font-weight:800;color:var(--ink-on-green);background:var(--green);padding:2px 8px;border-radius:999px}
+.pkl .bl .bl-p{font-family:"Kaha","Diplomat",system-ui,sans-serif;font-weight:900;font-size:20px;direction:rtl}
+.pkl .bl .bl-p em{font-family:"Diplomat";font-weight:600;font-size:12px;font-style:normal;color:var(--muted)}
+.pkl .bl .bl-sub{font-size:11.5px;color:var(--green)}
 .pkl .prefill-note{display:flex;align-items:center;gap:8px;margin:0 2px 16px;font-size:13px;color:var(--green)}
 .pkl .prefill-note svg{flex:none}
 .pkl .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}

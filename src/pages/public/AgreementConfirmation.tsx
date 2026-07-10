@@ -19,6 +19,7 @@ interface Snapshot {
   features?: string[];
   blocks?: { title: string; items: string[] }[];
   usage_approval?: string;
+  annual_discount_pct?: number;
 }
 interface Agreement {
   id: string;
@@ -26,6 +27,9 @@ interface Agreement {
   tier: string;
   site_type: string;
   monthly_price: number | null;
+  billing_cycle: string | null;
+  project_id: string | null;
+  project_title: string | null;
   full_name: string | null;
   business: string | null;
   email: string | null;
@@ -70,7 +74,11 @@ export default function AgreementConfirmation() {
     );
 
   const s = a.terms_snapshot || {};
-  const price = a.monthly_price ?? s.price ?? 0;
+  const monthly = a.monthly_price ?? s.price ?? 0;
+  const pct = s.annual_discount_pct ?? 15;
+  const isAnnual = a.billing_cycle === "annual";
+  const yearly = Math.round(monthly * 12 * (1 - pct / 100));
+  const effMonthly = Math.round(monthly * (1 - pct / 100));
   const when = new Date(a.created_at);
   const date = when.toLocaleDateString("he-IL", { day: "2-digit", month: "long", year: "numeric" });
   const dateTime = when.toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -103,15 +111,22 @@ export default function AgreementConfirmation() {
         <Row k="טלפון">{a.phone || "לא צוין"}</Row>
         <Row k="תאריך ושעת אישור">{dateTime}</Row>
         <Row k="סוג האתר">{s.site_type_label || a.site_type}</Row>
+        {a.project_title && <Row k="פרויקט">{a.project_title}</Row>}
+        <Row k="מחזור חיוב">{isAnnual ? "שנתי" : "חודשי"}</Row>
       </div>
 
       {/* the package */}
       <div className="mt-5 rounded-2xl border border-primary/30 bg-card p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-heading text-2xl font-black">{s.tier_name || a.tier}</h2>
-          <div className="font-heading text-3xl font-black">
-            ₪{Number(price).toLocaleString("he-IL")}
-            <span className="text-sm font-semibold text-muted-foreground"> / לחודש</span>
+          <div className="text-left">
+            <div className="font-heading text-3xl font-black">
+              ₪{Number(isAnnual ? yearly : monthly).toLocaleString("he-IL")}
+              <span className="text-sm font-semibold text-muted-foreground"> / {isAnnual ? "לשנה" : "לחודש"}</span>
+            </div>
+            {isAnnual && (
+              <div className="mt-1 text-xs text-primary">כולל {pct}% הנחה, שווה ל-₪{effMonthly.toLocaleString("he-IL")} לחודש</div>
+            )}
           </div>
         </div>
         {(s.response_hours != null || s.work_hours) && (

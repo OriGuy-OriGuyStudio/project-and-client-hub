@@ -10,6 +10,7 @@ import type {
   Project,
   RewardRedemption,
   ServiceAgreement,
+  LandingInvite,
 } from "@/types/database";
 
 export type ClientRedemptionRow = RewardRedemption & {
@@ -30,6 +31,7 @@ export interface ClientDetailData {
   grants: CoinGrant[];
   redemptions: ClientRedemptionRow[];
   agreements: ServiceAgreement[];
+  landingInvites: LandingInvite[];
   invite: {
     invite_sent_at: string | null;
     invite_send_count: number;
@@ -58,6 +60,7 @@ export function useClientDetail(clientId: string | undefined) {
         { data: grants },
         { data: redemptions },
         { data: agreements },
+        { data: landingInvites },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
@@ -77,6 +80,11 @@ export function useClientDetail(clientId: string | undefined) {
           .order("redeemed_at", { ascending: false }),
         supabase
           .from("service_agreements")
+          .select("*")
+          .eq("client_id", id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("landing_invites")
           .select("*")
           .eq("client_id", id)
           .order("created_at", { ascending: false }),
@@ -107,6 +115,7 @@ export function useClientDetail(clientId: string | undefined) {
         grants: grants ?? [],
         redemptions: (redemptions as unknown as ClientRedemptionRow[] | null) ?? [],
         agreements: (agreements as ServiceAgreement[] | null) ?? [],
+        landingInvites: (landingInvites as LandingInvite[] | null) ?? [],
         invite,
       };
     },
