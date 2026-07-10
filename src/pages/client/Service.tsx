@@ -386,6 +386,11 @@ export function ServiceBoard({
   const traffic7 = useMemo(() => metrics.slice(0, 7).reverse().map((m) => m.visitors ?? 0), [metrics]);
   const hasTraffic = traffic7.some((v) => v > 0);
 
+  // Health ring color + label must match the score, never green-on-bad.
+  const ps = latest?.pagespeed ?? null;
+  const healthColor = ps == null ? GREEN : ps >= 90 ? GREEN : ps >= 50 ? "#F5A623" : "#F22C61";
+  const healthWord = ps == null ? "" : ps >= 90 ? "מצוין" : ps >= 70 ? "טוב" : ps >= 50 ? "סביר" : "דורש שיפור";
+
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
@@ -442,8 +447,8 @@ export function ServiceBoard({
           <div className="flex flex-col items-center gap-3">
             {latest?.pagespeed != null && (
               <div className="flex flex-col items-center">
-                <Ring value={latest.pagespeed} color={GREEN} label="בריאות" />
-                <p className="mt-1 text-xs text-muted-foreground">ציון בריאות האתר</p>
+                <Ring value={latest.pagespeed} color={healthColor} label="בריאות" />
+                <p className="mt-1 text-xs text-muted-foreground">ציון בריאות{healthWord ? ` · ${healthWord}` : ""}</p>
               </div>
             )}
             {!readOnly && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
