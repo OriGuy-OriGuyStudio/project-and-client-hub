@@ -9,6 +9,7 @@ import type {
   Profile,
   Project,
   RewardRedemption,
+  ServiceAgreement,
 } from "@/types/database";
 
 export type ClientRedemptionRow = RewardRedemption & {
@@ -28,6 +29,7 @@ export interface ClientDetailData {
   curious: boolean;
   grants: CoinGrant[];
   redemptions: ClientRedemptionRow[];
+  agreements: ServiceAgreement[];
   invite: {
     invite_sent_at: string | null;
     invite_send_count: number;
@@ -55,6 +57,7 @@ export function useClientDetail(clientId: string | undefined) {
         { data: curious },
         { data: grants },
         { data: redemptions },
+        { data: agreements },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
         supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
@@ -72,6 +75,11 @@ export function useClientDetail(clientId: string | undefined) {
           .select("*, reward:rewards(name)")
           .eq("client_id", id)
           .order("redeemed_at", { ascending: false }),
+        supabase
+          .from("service_agreements")
+          .select("*")
+          .eq("client_id", id)
+          .order("created_at", { ascending: false }),
       ]);
 
       // Welcome-invite status lives on the whitelist row (keyed by email).
@@ -98,6 +106,7 @@ export function useClientDetail(clientId: string | undefined) {
         curious: !!curious,
         grants: grants ?? [],
         redemptions: (redemptions as unknown as ClientRedemptionRow[] | null) ?? [],
+        agreements: (agreements as ServiceAgreement[] | null) ?? [],
         invite,
       };
     },

@@ -52,6 +52,7 @@ const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
 const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
 const PackagesLanding = lazy(() => import("@/pages/public/PackagesLanding"));
+const AgreementConfirmation = lazy(() => import("@/pages/public/AgreementConfirmation"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
@@ -169,6 +170,16 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <DiscoverySummary />
+                </Suspense>
+              }
+            />
+
+            {/* Permanent public confirmation of an approved package (frozen snapshot). */}
+            <Route
+              path="/l/agreement/:accessToken"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <AgreementConfirmation />
                 </Suspense>
               }
             />

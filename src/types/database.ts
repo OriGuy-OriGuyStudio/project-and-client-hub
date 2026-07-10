@@ -662,6 +662,47 @@ export type EasterEggClaimResult = {
   reason?: string;
 };
 
+// Per-recipient landing link (admin-generated) that carries prefill + the
+// client it is bound to, so an approval attaches to the right client card.
+export type LandingInvite = {
+  token: string;
+  client_id: string | null;
+  lead_name: string | null;
+  business: string | null;
+  email: string | null;
+  phone: string | null;
+  tier: string | null;
+  site_type: string | null;
+  gender: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+// Immutable snapshot of a package approval. terms_snapshot freezes the package,
+// price and full legal text as they were at approval time.
+export type ServiceAgreement = {
+  id: string;
+  created_at: string;
+  access_token: string;
+  invite_token: string | null;
+  client_id: string | null;
+  tier: string;
+  site_type: string;
+  monthly_price: number | null;
+  response_hours: number | null;
+  work_hours: number | null;
+  full_name: string | null;
+  business: string | null;
+  email: string | null;
+  phone: string | null;
+  signature: string | null;
+  gender: string | null;
+  terms_version: string;
+  terms_snapshot: Json;
+  status: string;
+  updated_at: string;
+};
+
 export type AccessRequest = {
   id: string;
   user_id: string | null;
@@ -843,6 +884,8 @@ export interface Database {
       admin_tasks: TableShape<AdminTask>;
       discovery_sessions: TableShape<DiscoverySession>;
       dev_feedback: TableShape<DevFeedback>;
+      landing_invites: TableShape<LandingInvite>;
+      service_agreements: TableShape<ServiceAgreement>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -879,6 +922,25 @@ export interface Database {
       };
       admin_maintenance_overview: { Args: Record<string, never>; Returns: unknown };
       service_preview: { Args: { p_token: string }; Returns: Json };
+      create_landing_invite: {
+        Args: {
+          p_client_id?: string | null;
+          p_lead_name?: string | null;
+          p_business?: string | null;
+          p_email?: string | null;
+          p_phone?: string | null;
+          p_tier?: string | null;
+          p_site_type?: string | null;
+          p_gender?: string | null;
+        };
+        Returns: string;
+      };
+      get_landing_context: { Args: { p_token: string }; Returns: Json };
+      submit_service_agreement: {
+        Args: { p_token: string; p_payload: Json };
+        Returns: { ok: boolean; id: string; access_token: string };
+      };
+      get_service_agreement: { Args: { p_access_token: string }; Returns: Json };
       client_service_summary: {
         Args: { p_project: string };
         Returns: {

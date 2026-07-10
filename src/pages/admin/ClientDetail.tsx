@@ -13,6 +13,8 @@ import {
   MessageCircle,
   Palette,
   Phone,
+  ScrollText,
+  Link2,
   Sparkles,
   Unlock,
 } from "lucide-react";
@@ -233,7 +235,28 @@ export default function ClientDetail() {
     return <EmptyState icon={Building2} title="הלקוח לא נמצא" />;
   }
 
-  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, invite } = data;
+  const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, agreements, invite } = data;
+
+  // Generate a personal maintenance-landing link bound to this client, prefilled
+  // from their profile/brand, and copy it to the clipboard. Approvals from this
+  // link attach back to this card as immutable agreements.
+  async function generateLandingLink() {
+    const { data: token, error } = await supabase.rpc("create_landing_invite", {
+      p_client_id: id!,
+      p_lead_name: profile?.full_name ?? null,
+      p_business: brand?.business_name ?? null,
+      p_email: profile?.email ?? null,
+      p_phone: profile?.phone ?? null,
+    });
+    if (error || !token) return toastError(error?.message || "יצירת הלינק נכשלה.");
+    const url = `${window.location.origin}/l/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "הלינק נוצר והועתק", description: url, variant: "success" });
+    } catch {
+      toast({ title: "הלינק נוצר", description: url, variant: "success" });
+    }
+  }
   const hasBrand =
     !!brand?.logo_url ||
     !!brand?.business_name ||
@@ -455,6 +478,46 @@ export default function ClientDetail() {
           </div>
         )}
       </div>
+
+      {/* Service agreements (immutable approval snapshots) */}
+      <Card id="cd-agreements" data-section className="scroll-mt-20 space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <ScrollText className="size-5 text-muted-foreground" /> אישורי שירות
+          </h2>
+          <Button variant="secondary" size="sm" onClick={generateLandingLink}>
+            <Link2 className="ml-1.5 size-4" /> צור לינק נחיתה
+          </Button>
+        </div>
+        {agreements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            אין עדיין אישורים. צור לינק נחיתה ושלח ללקוח; כשיאשר חבילה, האישור המוקפא יופיע כאן.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {agreements.map((a) => {
+              const snap = (a.terms_snapshot ?? {}) as { tier_name?: string; site_type_label?: string };
+              return (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {snap.tier_name || a.tier}
+                      <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleDateString("he-IL")}
+                      {a.signature ? ` · חתימה: ${a.signature}` : ""}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">צפייה במסמך</a>
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
 
       {/* Referrals (partner program) */}
       {(enrolled || referralCount > 0) && (

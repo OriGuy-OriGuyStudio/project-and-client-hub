@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "motion/react";
 import { applyGender } from "@/lib/gender";
-import type { Gender } from "@/types/database";
+import { supabase } from "@/lib/supabase";
+import type { Gender, Json } from "@/types/database";
 import { TIER_ORDER, TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from "@/lib/service-plans";
+import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText } from "@/lib/service-agreement";
 import CounterComp from "@/components/react-bits/Counter";
 import TrueFocus from "@/components/react-bits/TrueFocus";
 import ClickSpark from "@/components/react-bits/ClickSpark";
@@ -136,17 +138,20 @@ export default function PackagesLanding() {
   // Gender + personal greeting. For now driven by query params so the page can
   // be previewed both ways (?g=f&name=דנה); once the token->lead/client lookup
   // is wired (DB phase), these come from the addressed client's profile.
-  const gender: Gender = params.get("g") === "f" ? "female" : "male";
-  const greetName = (params.get("name") || "").trim();
+  const navigate = useNavigate();
+  // Personalization + prefill come from the landing invite (token -> DB via
+  // get_landing_context) when present; query params are the fallback for
+  // previewing without a real link (?g=f&name=&business=&email=&phone=&tier=&type=).
+  const pf = (k: string) => (params.get(k) || "").trim();
+  const [gender, setGender] = useState<Gender>(params.get("g") === "f" ? "female" : "male");
+  const [greetName, setGreetName] = useState(pf("name"));
+  const [ctx, setCtx] = useState<Record<string, unknown> | null | undefined>(token ? undefined : null);
   const g = (male: string, female: string) => (gender === "female" ? female : male);
   const gt = (s: string) => applyGender(s, gender);
-
-  // Prefill the sign form from details we already have about the client/business,
-  // so they mostly confirm rather than type. For now these ride on query params
-  // for preview (?business=&email=&phone=&tier=); in the DB phase they come from
-  // the token -> lead/client lookup. Fields stay editable (uncontrolled defaults).
-  const pf = (k: string) => (params.get(k) || "").trim();
-  const prefilled = !!(greetName || pf("business") || pf("email") || pf("phone"));
+  // Merged prefill value: invite (DB) wins over query param.
+  const fill = (key: string) =>
+    (ctx && typeof ctx[key] === "string" ? (ctx[key] as string) : "") || pf(key);
+  const prefilled = !!(greetName || fill("business") || fill("email") || fill("phone"));
 
   // Site type (WordPress vs custom-code) tailors the feature copy. Ori sets it
   // per recipient via ?type=wp|custom (later from the client's project_service),
@@ -157,7 +162,8 @@ export default function PackagesLanding() {
     : params.get("type") === "wp" || params.get("type") === "wordpress" ? "wordpress"
     : null;
   const [siteType, setSiteType] = useState<ServiceSiteType>(forcedType ?? "wordpress");
-  const showTypeToggle = forcedType === null;
+  const typeFromCtx = !!ctx && (ctx.site_type === "wordpress" || ctx.site_type === "custom");
+  const showTypeToggle = forcedType === null && !typeFromCtx;
   const tiers = buildTiers(siteType);
 
   const rootRef = useReveal();
@@ -167,6 +173,27 @@ export default function PackagesLanding() {
     tierParam && (TIER_ORDER as string[]).includes(tierParam) ? tierParam : "pro"
   );
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitErr, setSubmitErr] = useState("");
+
+  // Resolve the landing invite (token -> prefill + which client to attach to).
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.rpc("get_landing_context", { p_token: token });
+      if (!alive) return;
+      const c = (data as Record<string, unknown> | null) || null;
+      setCtx(c);
+      if (c) {
+        if (typeof c.name === "string" && c.name.trim()) setGreetName(c.name.trim());
+        if (c.gender === "male" || c.gender === "female") setGender(c.gender);
+        if (c.site_type === "wordpress" || c.site_type === "custom") setSiteType(c.site_type);
+        if (c.tier === "core" || c.tier === "pro" || c.tier === "ultra") setTier(c.tier);
+      }
+    })();
+    return () => { alive = false; };
+  }, [token]);
   const [svcTab, setSvcTab] = useState("speed");
   const [intro, setIntro] = useState(!introPlayed);
   useEffect(() => { introPlayed = true; }, []);
@@ -259,12 +286,41 @@ export default function PackagesLanding() {
   const G = "#b4d670", CY = "#77becf";
   const current = tiers.find((t) => t.id === tier)!;
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSent(true);
+    if (submitting) return;
+    const fd = new FormData(e.currentTarget);
+    const meta = TIER_META[tier as ServiceTier];
+    const snapshot = buildTermsSnapshot(tier as ServiceTier, siteType, gender);
+    const payload = {
+      tier,
+      site_type: siteType,
+      monthly_price: String(meta.price),
+      response_hours: String(meta.responseHours),
+      work_hours: String(meta.hours),
+      full_name: String(fd.get("full_name") || ""),
+      business: String(fd.get("business") || ""),
+      email: String(fd.get("email") || ""),
+      phone: String(fd.get("phone") || ""),
+      signature: String(fd.get("signature") || ""),
+      gender,
+      terms_version: snapshot.version,
+      terms_snapshot: snapshot,
+    };
+    setSubmitErr("");
+    setSubmitting(true);
+    const { data, error } = await supabase.rpc("submit_service_agreement", {
+      p_token: token || "",
+      p_payload: payload as unknown as Json,
+    });
+    setSubmitting(false);
+    if (error) { setSubmitErr("קרתה שגיאה בשליחה, אפשר לנסות שוב."); return; }
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       confetti({ particleCount: 130, spread: 80, origin: { y: 0.72 }, colors: [G, CY, "#f3f2ee"] });
     }
+    const at = (data as { access_token?: string } | null)?.access_token;
+    if (at) navigate(`/l/agreement/${at}`);
+    else setSent(true);
   }
 
   return (
@@ -584,7 +640,9 @@ export default function PackagesLanding() {
       <section className="pkl-sec glow glow-g" id="choose">
         <div className="pkl-wrap" style={{ maxWidth: 880 }}>
           <div className="sec-lbl rv"><h2 className="big-h">בחירה ואישור.</h2><span className="eyebrow">בלי תשלום בשלב הזה</span></div>
-          {sent ? (
+          {ctx === undefined ? (
+            <div className="signcard surf" style={{ textAlign: "center", color: "var(--muted)" }}>טוען את הפרטים…</div>
+          ) : sent ? (
             <div className="ok signcard surf">
               <span className="okic"><Check s={30} /></span>
               <h2 style={{ fontSize: 40 }}>הבחירה נשלחה.</h2>
@@ -606,9 +664,9 @@ export default function PackagesLanding() {
               )}
               <div className="sgrid">
                 <Field label="שם מלא" id="f-name"><input id="f-name" name="full_name" placeholder="ישראל ישראלי" defaultValue={greetName} required /></Field>
-                <Field label="שם העסק" id="f-biz"><input id="f-biz" name="business" placeholder="העסק שלי בע״מ" defaultValue={pf("business")} required /></Field>
-                <Field label="אימייל" id="f-email"><input id="f-email" name="email" type="email" placeholder="you@business.co.il" defaultValue={pf("email")} required /></Field>
-                <Field label="טלפון" id="f-phone"><input id="f-phone" name="phone" placeholder="050-0000000" defaultValue={pf("phone")} required /></Field>
+                <Field label="שם העסק" id="f-biz"><input id="f-biz" name="business" placeholder="העסק שלי בע״מ" defaultValue={fill("business")} required /></Field>
+                <Field label="אימייל" id="f-email"><input id="f-email" name="email" type="email" placeholder="you@business.co.il" defaultValue={fill("email")} required /></Field>
+                <Field label="טלפון" id="f-phone"><input id="f-phone" name="phone" placeholder="050-0000000" defaultValue={fill("phone")} required /></Field>
               </div>
               {/* Site type is pre-determined (Ori knows the client's site), so it
                   is shown read-only here, not chosen. The hidden input carries it
@@ -618,34 +676,32 @@ export default function PackagesLanding() {
                 סוג האתר: <b>{siteType === "wordpress" ? "אתר WordPress" : "אתר מותאם אישית (קוד)"}</b>
                 {showTypeToggle && <span> · אפשר להחליף למעלה באזור החבילות</span>}
               </div>
+              {/* Legal blocks render from the versioned TERMS_BLOCKS source, the
+                  same text frozen into the saved agreement, so page == record. */}
               <div className="legal">
-                <Legal title="תנאי תשלום ו״האותיות הקטנות״" open>
-                  <ul>
-                    <li><b>שיטת התשלום:</b> כרטיס אשראי, חיוב חודשי מחזורי (ריטיינר).</li>
-                    <li><b>מועד החיוב:</b> בכל 1 לחודש עבור החודש הקרוב.</li>
-                    <li><b>הפסקת השירות:</b> בכל עת, בהודעה של 30 יום מראש בכתב.</li>
-                    <li><b>עלויות צד ג׳:</b> אחסון ורישיונות כלולים; דומיין ושירותים חיצוניים על הלקוח.</li>
-                    <li><b>אחריות:</b> הסטודיו אינו אחראי לתכני הלקוח או לנזק מהתערבות חיצונית בקוד.</li>
-                  </ul>
-                </Legal>
-                <Legal title="נספחים והגבלות אחריות">
-                  <ul>
-                    <li><b>רישיונות:</b> בתוקף כל עוד החבילה פעילה; בסיום, רכישה עצמאית באחריות הלקוח.</li>
-                    <li><b>זמני תגובה:</b> יעד שירות, לא ערבות לתיקון, ולא חלים על תקלות בשליטת צד ג׳.</li>
-                    <li><b>היקף:</b> תחזוקה, אבטחה, ביצועים ותיקונים. פיתוח או עיצוב מחדש בתמחור נפרד.</li>
-                    <li><b>דין:</b> הדין הישראלי, סמכות בישראל.</li>
-                  </ul>
-                </Legal>
-                <Legal title="אישור שימוש בחבילת תחזוקה">
-                  {g("אני מאשר שקראתי והבנתי", "אני מאשרת שקראתי והבנתי")} את תנאי החבילה הנבחרת ({current.name}), לרבות תנאי התשלום והנספחים, {g("ומסכים", "ומסכימה")} להם. אישור זה מהווה הזמנת שירות בלבד <b>ואינו כולל תשלום בשלב זה</b>; החיוב יתואם בנפרד.
-                </Legal>
+                {TERMS_BLOCKS.map((b, i) => (
+                  <Legal key={b.title} title={b.title} open={i === 0}>
+                    <ul>
+                      {b.items.map((it) => {
+                        const idx = it.indexOf(": ");
+                        return idx > 0
+                          ? <li key={it}><b>{it.slice(0, idx + 1)}</b>{it.slice(idx + 1)}</li>
+                          : <li key={it}>{it}</li>;
+                      })}
+                    </ul>
+                  </Legal>
+                ))}
+                <Legal title="אישור שימוש בחבילת תחזוקה">{usageApproval(current.fullName, gender)}</Legal>
               </div>
-              <label className="consent"><input type="checkbox" required /> {g("קראתי ואני מאשר", "קראתי ואני מאשרת")} את תנאי התשלום, הנספחים ומסמך אישור השימוש.</label>
+              <label className="consent"><input type="checkbox" required /> {consentText(gender)}</label>
               <Field label="חתימה (הקלדת שם מלא)" id="f-sign" full><input id="f-sign" name="signature" placeholder={g("הקלד את שמך המלא כחתימה", "הקלדי את שמך המלא כחתימה")} required /></Field>
+              {submitErr && <p className="disc" style={{ color: "#ff7ea3" }}>{submitErr}</p>}
               <ClickSpark sparkColor={G} sparkCount={10} sparkRadius={18} duration={500}>
-                <button type="submit" className="submit">{g("אני מאשר ובוחר", "אני מאשרת ובוחרת")} את {current.name}</button>
+                <button type="submit" className="submit" disabled={submitting}>
+                  {submitting ? "שולח…" : `${g("אני מאשר ובוחר", "אני מאשרת ובוחרת")} את ${current.name}`}
+                </button>
               </ClickSpark>
-              <p className="disc">הטקסט המשפטי הוא טיוטה שתעבור אצל עו״ד לפני פרסום.{token ? ` · קוד הפניה: ${token}` : ""}</p>
+              <p className="disc">הטקסט המשפטי הוא טיוטה שתעבור אצל עו״ד לפני פרסום.</p>
             </form>
           )}
         </div>
