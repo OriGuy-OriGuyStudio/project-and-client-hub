@@ -1,0 +1,77 @@
+# Off-site database backup — pg_dump of the Supabase Postgres DB, gzipped and
+# pushed to a Cloudflare R2 bucket (S3-compatible). This is a SECOND, independent
+# copy on top of Supabase's own automatic backups, so a full account loss can't
+# take the data with it.
+#
+# Runs daily at 03:15 Israel time (00:15 UTC) and on-demand. It self-skips with a
+# warning until the five repo secrets below are set, so it never fails noisily
+# before you've configured it.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL        Postgres URI from Supabase → Database → Connection string → URI
+#                          (the direct 5432 connection, includes the db password).
+#   R2_ENDPOINT            https://<account_id>.r2.cloudflarestorage.com
+#   R2_BUCKET              e.g. orion-db-backups
+#   R2_ACCESS_KEY_ID       R2 API token access key (Cloudflare → R2 → Manage API Tokens).
+#   R2_SECRET_ACCESS_KEY   R2 API token secret.
+#
+# Tip: set an R2 lifecycle rule to expire objects older than ~30 days so the
+# bucket doesn't grow forever.
+
+name: db-backup
+
+on:
+  schedule:
+    - cron: "15 0 * * *" # 00:15 UTC = 03:15 Asia/Jerusalem
+  workflow_dispatch: {}
+
+# Never run two dumps at once.
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Dump and upload
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_DB_URL}" ] || [ -z "${R2_ENDPOINT}" ] || [ -z "${R2_BUCKET}" ] || [ -z "${AWS_ACCESS_KEY_ID}" ] || [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
+            echo "::warning::db-backup secrets are not configured yet, skipping this run."
+            exit 0
+          fi
+
+          # PostgreSQL 17 client (matches Supabase; a newer client dumps older servers fine).
+          echo "Installing postgresql-client-17…"
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+          STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          FILE="orion-db-${STAMP}.sql.gz"
+
+          echo "Dumping database → ${FILE}…"
+          pg_dump "${SUPABASE_DB_URL}" --no-owner --no-privileges --clean --if-exists | gzip -9 > "${FILE}"
+
+          SIZE="$(du -h "${FILE}" | cut -f1)"
+          echo "Dump complete: ${FILE} (${SIZE})"
+          # A near-empty gzip (<1KB) means the dump produced nothing — fail loudly.
+          if [ "$(stat -c%s "${FILE}")" -lt 1024 ]; then
+            echo "::error::dump is suspiciously small (${SIZE}), aborting upload."
+            exit 1
+          fi
+
+          echo "Uploading to r2://${R2_BUCKET}/${FILE}…"
+          aws s3 cp "${FILE}" "s3://${R2_BUCKET}/${FILE}" --endpoint-url "${R2_ENDPOINT}" --only-show-errors
+          echo "Backup uploaded successfully."

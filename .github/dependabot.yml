@@ -1,0 +1,37 @@
+# Dependabot — automated dependency-security updates.
+# Opens PRs when a dependency has a newer (especially security-patched) version.
+# Grouped so you get a few tidy PRs a week, not dozens. Review + merge on green.
+version: 2
+updates:
+  # App dependencies (npm — this repo uses package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Jerusalem"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Non-breaking updates land together in one PR.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Majors can break the build; handle those deliberately, not automatically.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Keep the GitHub Actions used in our workflows (e.g. db-backup) patched too.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Jerusalem"
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "chore(ci)"
