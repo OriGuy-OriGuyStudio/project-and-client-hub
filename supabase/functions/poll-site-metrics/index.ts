@@ -3,11 +3,16 @@
 //   • PageSpeed Insights  → pagespeed / lcp_ms / cls / inp_ms
 //   • UptimeRobot         → uptime_pct   (matched by host)
 //   • Cloudflare Web Analytics (RUM) → visitors / pageviews (matched by site host)
+//   • Cloudflare firewall events → threats_blocked (30-day count for the site's
+//     zone; 0 when the zone is connected but had no events). Only sites whose
+//     domain is a zone in the account are covered — the checklist adds each
+//     client's domain to Cloudflare, so a newly onboarded client is covered too.
 // and merge-upserts today's site_metrics row. Each source is best-effort.
 //
 // Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT.
 // Secrets (all in webhook_secrets): pagespeed_key, uptimerobot_key,
-// cloudflare_token, cloudflare_account.
+// cloudflare_token, cloudflare_account. The token needs Zone Read + Analytics
+// Read for firewall events.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -61,11 +66,8 @@ async function uptimeMap(key: string): Promise<Record<string, number>> {
 }
 
 // Cloudflare Web Analytics (RUM) for one host (most recent day). Filters by
-// requestHost so each site gets ITS OWN numbers. The account's RUM data spans
-// every beacon-tracked host (apex + subdomains), and the automatic zone site
-// records proxied subdomains too — so matching by siteTag would sum unrelated
-// hosts together. count = page views, sum.visits = visits. threats_blocked is a
-// proxy-only metric Web Analytics does not expose, so it stays null.
+// requestHost so each site gets ITS OWN numbers. count = page views, sum.visits
+// = visits.
 async function cfTraffic(token: string, account: string, reqHost: string) {
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -78,12 +80,53 @@ async function cfTraffic(token: string, account: string, reqHost: string) {
   const d = await r.json();
   if (d.errors?.length) throw new Error(`rum graphql: ${JSON.stringify(d.errors).slice(0, 300)}`);
   const g = d.data?.viewer?.accounts?.[0]?.rumPageloadEventsAdaptiveGroups?.[0];
-  if (!g) return { visitors: null, pageviews: null, threats_blocked: null };
-  return {
-    visitors: g.sum?.visits ?? null,
-    pageviews: g.count ?? null,
-    threats_blocked: null,
-  };
+  if (!g) return { visitors: null, pageviews: null };
+  return { visitors: g.sum?.visits ?? null, pageviews: g.count ?? null };
+}
+
+// All zones in the account → { "example.com": "zoneTag" }. Used to resolve which
+// zone a site's host belongs to for firewall-event (threats) queries.
+async function fetchZones(token: string, account: string): Promise<Record<string, string>> {
+  const r = await fetch(`https://api.cloudflare.com/client/v4/zones?per_page=200&account.id=${account}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json();
+  if (!d.success) throw new Error(`zones: ${JSON.stringify(d.errors ?? d).slice(0, 200)}`);
+  const map: Record<string, string> = {};
+  for (const z of d.result ?? []) map[String(z.name).toLowerCase()] = z.id;
+  return map;
+}
+
+// The zone tag whose name is the host itself or its parent (longest match wins,
+// so multi-part TLDs like co.il resolve correctly). null if the site is not in
+// the account's Cloudflare.
+function zoneForHost(reqHost: string, zones: Record<string, string>): string | null {
+  let best: string | null = null;
+  let bestLen = -1;
+  for (const name of Object.keys(zones)) {
+    if ((reqHost === name || reqHost.endsWith("." + name)) && name.length > bestLen) {
+      best = name;
+      bestLen = name.length;
+    }
+  }
+  return best ? zones[best] : null;
+}
+
+// Threats blocked = firewall events for the host over the last 30 days. Returns
+// 0 when the zone is connected but had no events (a real, honest zero).
+async function cfThreats(token: string, zoneTag: string, reqHost: string): Promise<number> {
+  const until = new Date().toISOString();
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const query = `query($zone:String!,$since:Time!,$until:Time!,$host:String!){viewer{zones(filter:{zoneTag:$zone}){firewallEventsAdaptiveGroups(limit:1,filter:{datetime_geq:$since,datetime_leq:$until,clientRequestHTTPHost:$host}){count}}}}`;
+  const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables: { zone: zoneTag, since, until, host: reqHost } }),
+  });
+  const d = await r.json();
+  if (d.errors?.length) throw new Error(`fw graphql: ${JSON.stringify(d.errors).slice(0, 300)}`);
+  const g = d.data?.viewer?.zones?.[0]?.firewallEventsAdaptiveGroups?.[0];
+  return g?.count ?? 0;
 }
 
 Deno.serve(async (req) => {
@@ -124,6 +167,12 @@ Deno.serve(async (req) => {
   if (secrets.cloudflare_token && !secrets.cloudflare_account) {
     sourceErrors.cloudflare = "missing cloudflare_account secret";
   }
+  // Zones map (once) to resolve each site's zone for firewall-event (threats).
+  let zonesMap: Record<string, string> = {};
+  if (cfReady) {
+    try { zonesMap = await fetchZones(secrets.cloudflare_token, secrets.cloudflare_account); }
+    catch (e) { sourceErrors.cf_zones = String(e instanceof Error ? e.message : e); }
+  }
 
   // Optional { project_id } in the body → refresh just that one project.
   let onlyProject: string | null = null;
@@ -154,9 +203,20 @@ Deno.serve(async (req) => {
     if (cfReady) {
       try {
         const cf = await cfTraffic(secrets.cloudflare_token, secrets.cloudflare_account, h);
-        metric.p_visitors = cf.visitors; metric.p_pageviews = cf.pageviews; metric.p_threats_blocked = cf.threats_blocked;
+        metric.p_visitors = cf.visitors; metric.p_pageviews = cf.pageviews;
         got.cf = cf;
       } catch (e) { got.cf_err = String(e instanceof Error ? e.message : e); }
+
+      // Threats blocked = firewall events for the site's zone (0 when none).
+      const zoneTag = zoneForHost(h, zonesMap);
+      if (zoneTag) {
+        try {
+          const t = await cfThreats(secrets.cloudflare_token, zoneTag, h);
+          metric.p_threats_blocked = t; got.threats = t;
+        } catch (e) { got.threats_err = String(e instanceof Error ? e.message : e); }
+      } else {
+        got.threats = "no-zone-in-account";
+      }
     }
 
     try {
