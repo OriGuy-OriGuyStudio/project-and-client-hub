@@ -8,7 +8,7 @@ import { TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from 
 import { applyGender } from "./gender";
 import type { Gender } from "@/types/database";
 
-export const AGREEMENT_VERSION = "2026-07-10";
+export const AGREEMENT_VERSION = "2026-07-10b";
 
 /** Annual (yearly) billing discount, in percent. */
 export const ANNUAL_DISCOUNT_PCT = 15;
@@ -39,6 +39,7 @@ export const TERMS_BLOCKS: { title: string; items: string[] }[] = [
       "רישיונות: בתוקף כל עוד החבילה פעילה; בסיום, רכישה עצמאית באחריות הלקוח.",
       "זמני תגובה: יעד שירות, לא ערבות לתיקון, ולא חלים על תקלות בשליטת צד ג׳.",
       "היקף: תחזוקה, אבטחה, ביצועים ותיקונים. פיתוח או עיצוב מחדש בתמחור נפרד.",
+      "עדכון תנאים: בעל האתר רשאי לעדכן מעת לעת את תנאי התוכנית או את תוכן החבילה, בהודעה מוקדמת ללקוח. עדכון כזה חל ממועד ההודעה ואילך, ואינו משנה אישורים קודמים שכבר נחתמו.",
       "דין: הדין הישראלי, סמכות בישראל.",
     ],
   },
