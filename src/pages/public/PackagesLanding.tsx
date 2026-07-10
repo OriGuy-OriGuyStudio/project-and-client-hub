@@ -9,6 +9,8 @@ import { TIER_ORDER, type ServiceTier, type ServiceSiteType } from "@/lib/servic
 import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText, annualTotal, annualMonthly, ANNUAL_DISCOUNT_PCT } from "@/lib/service-agreement";
 import { usePlanConfig, planFeatures, type PlanConfigMap } from "@/lib/plan-config";
 import { SignaturePad } from "@/components/SignaturePad";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { verifyTurnstile } from "@/lib/turnstile";
 import CounterComp from "@/components/react-bits/Counter";
 import TrueFocus from "@/components/react-bits/TrueFocus";
 import ClickSpark from "@/components/react-bits/ClickSpark";
@@ -179,6 +181,7 @@ export default function PackagesLanding() {
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState("");
   const [sigImage, setSigImage] = useState("");
+  const [tfToken, setTfToken] = useState("");
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
 
   // Resolve the landing invite (token -> prefill + which client to attach to).
@@ -306,6 +309,7 @@ export default function PackagesLanding() {
     e.preventDefault();
     if (submitting) return;
     if (!sigImage) { setSubmitErr("צריך לחתום בשדה החתימה לפני האישור."); return; }
+    if (!tfToken) { setSubmitErr("אנא אשרו שאינכם רובוט לפני השליחה."); return; }
     const fd = new FormData(e.currentTarget);
     const cfg = planConfig[tier as ServiceTier];
     const snapshot = buildTermsSnapshot(tier as ServiceTier, siteType, gender, cfg);
@@ -330,6 +334,13 @@ export default function PackagesLanding() {
     };
     setSubmitErr("");
     setSubmitting(true);
+    const human = await verifyTurnstile(tfToken);
+    if (!human) {
+      setSubmitting(false);
+      setTfToken("");
+      setSubmitErr("אימות האבטחה נכשל, נסו שוב.");
+      return;
+    }
     const { data, error } = await supabase.rpc("submit_service_agreement", {
       p_token: token || "",
       p_payload: payload as unknown as Json,
@@ -732,6 +743,9 @@ export default function PackagesLanding() {
                 <span>{g("קראתי ואני מאשר", "קראתי ואני מאשרת")} את תנאי התשלום, הנספחים, מסמך אישור השימוש ו<Link to="/privacy" target="_blank" rel="noreferrer" className="lnk">מדיניות הפרטיות</Link>.</span>
               </label>
               <div className="f full sigfield"><SignaturePad onChange={setSigImage} /></div>
+              <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
+                <TurnstileWidget onToken={setTfToken} theme="dark" />
+              </div>
               {submitErr && <p className="disc" style={{ color: "#ff7ea3" }}>{submitErr}</p>}
               <ClickSpark sparkColor={G} sparkCount={10} sparkRadius={18} duration={500}>
                 <button type="submit" className="submit" disabled={submitting}>

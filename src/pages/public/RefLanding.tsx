@@ -35,6 +35,8 @@ import { WelcomingWords } from "@/components/layout/WelcomingWords";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 import { resolveReferral, trackReferralClick, submitReferralLead } from "@/lib/referral";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { verifyTurnstile } from "@/lib/turnstile";
 import { projectTypeHe } from "@/lib/status";
 import { celebrate } from "@/lib/confetti";
 import { isPhone, isEmail } from "@/lib/validation";
@@ -2194,6 +2196,7 @@ function LeadForm({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agree, setAgree] = useState(false);
+  const [tfToken, setTfToken] = useState("");
 
   function update<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -2217,7 +2220,18 @@ function LeadForm({
       setError("צריך לאשר את תנאי השימוש ומדיניות הפרטיות.");
       return;
     }
+    if (!tfToken) {
+      setError("אנא אשרו שאינכם רובוט לפני השליחה.");
+      return;
+    }
     setSending(true);
+    const human = await verifyTurnstile(tfToken);
+    if (!human) {
+      setSending(false);
+      setTfToken("");
+      setError("אימות האבטחה נכשל, נסו שוב.");
+      return;
+    }
     const r = await submitReferralLead({
       code,
       name: form.name,
@@ -2363,6 +2377,10 @@ function LeadForm({
             , ומסכים/ה שאורי יצור איתי קשר בנוגע לפנייה.
           </span>
         </label>
+
+        <div className="mt-4 flex justify-center">
+          <TurnstileWidget onToken={setTfToken} theme="auto" />
+        </div>
 
         {error && <p className="mt-3 text-center text-sm text-destructive">{error}</p>}
 

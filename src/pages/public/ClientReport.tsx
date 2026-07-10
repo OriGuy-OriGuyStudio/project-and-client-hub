@@ -91,6 +91,7 @@ export default function ClientReport() {
   const up = latest?.uptime_pct != null ? Number(latest.uptime_pct) : null;
   const uptimeExplain =
     up == null ? "" :
+    up >= 100 ? "האתר היה זמין לאורך כל החודש, בלי אף נפילה." :
     up >= 99.9 ? "האתר היה זמין כמעט כל הזמן החודש." :
     up >= 99 ? "האתר היה זמין כמעט כל הזמן, עם כמה רגעים בודדים בלבד." :
     "היו החודש כמה הפרעות בזמינות, ואנחנו במעקב צמוד כדי לצמצם אותן.";
