@@ -39,8 +39,10 @@ export const TIER_META: Record<
   },
 };
 
-/** The feature checklist shown on a client's plan card, by tier + site type. */
-export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): string[] {
+/** The descriptive feature list per tier + site type (what the plans editor
+ * stores and edits). The hours/response lines are NOT here, they are appended
+ * from the numbers by appendDerived() / tierFeatures(). */
+export function baseFeatures(tier: ServiceTier, siteType: ServiceSiteType): string[] {
   const wp = siteType === "wordpress";
   // Core: managed infrastructure, a safety net, passive protection, reporting.
   const base = [
@@ -76,11 +78,22 @@ export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): stri
   const list = [...base];
   if (tier === "pro" || tier === "ultra") list.push(...pro);
   if (tier === "ultra") list.push(...ultra);
-
-  const hours = TIER_META[tier].hours;
-  if (hours > 0) list.push(`עד ${hours} שעות עבודה / ייעוץ בחודש`);
-  list.push(`עדיפות, תגובה עד ${TIER_META[tier].responseHours} שעות`);
   return list;
+}
+
+/** Append the derived hours + response lines (from the numbers) to a feature
+ * list. Shared so DB-driven and code-default lists render identically. */
+export function appendDerived(features: string[], hours: number, responseHours: number): string[] {
+  const list = [...features];
+  if (hours > 0) list.push(`עד ${hours} שעות עבודה / ייעוץ בחודש`);
+  list.push(`עדיפות, תגובה עד ${responseHours} שעות`);
+  return list;
+}
+
+/** The full feature checklist (descriptive + derived) shown on a plan card. */
+export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): string[] {
+  const meta = TIER_META[tier];
+  return appendDerived(baseFeatures(tier, siteType), meta.hours, meta.responseHours);
 }
 
 /** Rough monthly infra value (hosting + CDN + monitoring), ₪. */

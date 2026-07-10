@@ -709,6 +709,22 @@ export type ServiceAgreement = {
   updated_at: string;
 };
 
+// Editable package content (admin plans editor). Seeded from service-plans.ts;
+// the landing + new agreements read this live.
+export type ServicePlanContent = {
+  tier: string;
+  sort: number;
+  name: string;
+  label: string;
+  tagline: string;
+  price: number;
+  response_hours: number;
+  hours: number;
+  features_wp: string[];
+  features_custom: string[];
+  updated_at: string;
+};
+
 export type AccessRequest = {
   id: string;
   user_id: string | null;
@@ -892,6 +908,7 @@ export interface Database {
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
+      service_plan_content: TableShape<ServicePlanContent>;
     };
     Views: Record<string, never>;
     Functions: {

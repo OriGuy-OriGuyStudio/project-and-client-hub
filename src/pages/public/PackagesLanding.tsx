@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { applyGender } from "@/lib/gender";
 import { supabase } from "@/lib/supabase";
 import type { Gender, Json } from "@/types/database";
-import { TIER_ORDER, TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from "@/lib/service-plans";
+import { TIER_ORDER, type ServiceTier, type ServiceSiteType } from "@/lib/service-plans";
 import { buildTermsSnapshot, TERMS_BLOCKS, usageApproval, consentText, annualTotal, annualMonthly, ANNUAL_DISCOUNT_PCT } from "@/lib/service-agreement";
+import { usePlanConfig, planFeatures, type PlanConfigMap } from "@/lib/plan-config";
 import { SignaturePad } from "@/components/SignaturePad";
 import CounterComp from "@/components/react-bits/Counter";
 import TrueFocus from "@/components/react-bits/TrueFocus";
@@ -41,23 +42,23 @@ const LANDING_COPY: Record<ServiceTier, { label: string; tagline: string; hot?: 
   ultra: { label: "ה-CTO האישי שלך", tagline: "שותף טכני זמין כמעט תמיד, כאילו יש לך CTO בבית." },
 };
 
-// Build the landing tier cards for a given site type, pulling all hard data
-// from the shared source and dropping the trailing "עדיפות, תגובה" line (shown
-// as its own badge on the card).
-function buildTiers(siteType: ServiceSiteType) {
+// Build the landing tier cards for a given site type from the live plan config
+// (DB, editable), dropping the trailing "עדיפות, תגובה" line (shown as its own
+// badge). The persuasive tagline + highlight stay landing-side (LANDING_COPY).
+function buildTiers(siteType: ServiceSiteType, config: PlanConfigMap) {
   return TIER_ORDER.map((id) => {
-    const meta = TIER_META[id];
+    const cfg = config[id];
     const copy = LANDING_COPY[id];
     return {
       id,
-      name: meta.name.replace(/^Studio\s+/, ""), // "Core" / "Pro" / "Ultra VIP"
-      fullName: meta.name, // "Studio Core"
-      label: copy.label,
+      name: cfg.name.replace(/^Studio\s+/, ""), // "Core" / "Pro" / "Ultra VIP"
+      fullName: cfg.name, // "Studio Core"
+      label: cfg.label,
       tagline: copy.tagline,
-      price: meta.price,
-      resp: meta.responseHours,
+      price: cfg.price,
+      resp: cfg.responseHours,
       hot: !!copy.hot,
-      feats: tierFeatures(id, siteType).filter((f) => !f.startsWith("עדיפות")),
+      feats: planFeatures(cfg, siteType).filter((f) => !f.startsWith("עדיפות")),
     };
   });
 }
@@ -165,7 +166,8 @@ export default function PackagesLanding() {
   const [siteType, setSiteType] = useState<ServiceSiteType>(forcedType ?? "wordpress");
   const typeFromCtx = !!ctx && (ctx.site_type === "wordpress" || ctx.site_type === "custom");
   const showTypeToggle = forcedType === null && !typeFromCtx;
-  const tiers = buildTiers(siteType);
+  const { config: planConfig } = usePlanConfig();
+  const tiers = buildTiers(siteType, planConfig);
 
   const rootRef = useReveal();
   // The recommended package can be pre-selected via ?tier=core|pro|ultra.
@@ -305,14 +307,14 @@ export default function PackagesLanding() {
     if (submitting) return;
     if (!sigImage) { setSubmitErr("צריך לחתום בשדה החתימה לפני האישור."); return; }
     const fd = new FormData(e.currentTarget);
-    const meta = TIER_META[tier as ServiceTier];
-    const snapshot = buildTermsSnapshot(tier as ServiceTier, siteType, gender);
+    const cfg = planConfig[tier as ServiceTier];
+    const snapshot = buildTermsSnapshot(tier as ServiceTier, siteType, gender, cfg);
     const payload = {
       tier,
       site_type: siteType,
-      monthly_price: String(meta.price),
-      response_hours: String(meta.responseHours),
-      work_hours: String(meta.hours),
+      monthly_price: String(cfg.price),
+      response_hours: String(cfg.responseHours),
+      work_hours: String(cfg.hours),
       billing_cycle: billing,
       full_name: String(fd.get("full_name") || ""),
       business: String(fd.get("business") || ""),

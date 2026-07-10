@@ -5,6 +5,7 @@
 // change what an earlier client agreed to. Bump AGREEMENT_VERSION on any change.
 
 import { TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from "./service-plans";
+import { planFeatures, type PlanConfig } from "./plan-config";
 import { applyGender } from "./gender";
 import type { Gender } from "@/types/database";
 
@@ -78,25 +79,33 @@ export interface TermsSnapshot {
   annual_discount_pct: number;
 }
 
-/** Freeze everything the client saw + agreed to, for the saved agreement. */
+/** Freeze everything the client saw + agreed to, for the saved agreement. When
+ * a live plan config is passed (from the DB / plans editor) it is used; otherwise
+ * the code defaults apply. */
 export function buildTermsSnapshot(
   tier: ServiceTier,
   siteType: ServiceSiteType,
   gender: Gender,
+  cfg?: PlanConfig,
 ): TermsSnapshot {
   const meta = TIER_META[tier];
+  const name = cfg?.name ?? meta.name;
+  const price = cfg?.price ?? meta.price;
+  const responseHours = cfg?.responseHours ?? meta.responseHours;
+  const hours = cfg?.hours ?? meta.hours;
+  const features = cfg ? planFeatures(cfg, siteType) : tierFeatures(tier, siteType);
   return {
     version: AGREEMENT_VERSION,
     tier,
-    tier_name: meta.name,
+    tier_name: name,
     site_type: siteType,
     site_type_label: siteType === "wordpress" ? "אתר WordPress" : "אתר מותאם אישית (קוד)",
-    price: meta.price,
-    response_hours: meta.responseHours,
-    work_hours: meta.hours,
-    features: tierFeatures(tier, siteType),
+    price,
+    response_hours: responseHours,
+    work_hours: hours,
+    features,
     blocks: TERMS_BLOCKS,
-    usage_approval: usageApproval(meta.name, gender),
+    usage_approval: usageApproval(name, gender),
     consent_text: consentText(gender),
     annual_discount_pct: ANNUAL_DISCOUNT_PCT,
   };

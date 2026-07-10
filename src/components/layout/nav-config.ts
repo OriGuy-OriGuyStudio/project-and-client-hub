@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LifeBuoy,
   HeartHandshake,
+  PackageOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ export const adminNav: NavItem[] = [
   { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"] },
   { to: "/admin/service-calls", label: "קריאות שירות", icon: LifeBuoy, badgeTypes: ["service_call"] },
   { to: "/admin/maintenance", label: "חבילות תחזוקה", icon: HeartHandshake },
+  { to: "/admin/plans", label: "עריכת חבילות", icon: PackageOpen },
   { to: "/admin/partners", label: "שותפים", icon: Handshake },
   { to: "/admin/referrals", label: "הפניות", icon: Handshake, badgeTypes: ["referral"] },
   {

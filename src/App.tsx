@@ -46,6 +46,7 @@ const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const TimeReports = lazy(() => import("@/pages/admin/TimeReports"));
 const ServiceCalls = lazy(() => import("@/pages/admin/ServiceCalls"));
 const Maintenance = lazy(() => import("@/pages/admin/Maintenance"));
+const PlansEditor = lazy(() => import("@/pages/admin/PlansEditor"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
@@ -131,6 +132,7 @@ function App() {
                   <Route path="/admin/time" element={<TimeReports />} />
                   <Route path="/admin/service-calls" element={<ServiceCalls />} />
                   <Route path="/admin/maintenance" element={<Maintenance />} />
+                  <Route path="/admin/plans" element={<PlansEditor />} />
                 </Route>
               </Route>
             </Route>

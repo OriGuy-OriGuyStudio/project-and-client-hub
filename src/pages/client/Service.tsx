@@ -366,6 +366,13 @@ export function ServiceBoard({
   const meta = TIER_META[svc.tier];
   const price = Number(svc.monthly_price ?? meta.price);
   const wp = svc.site_type === "wordpress";
+  // Show what THIS client actually signed (frozen agreement) so later edits to
+  // the plans editor never change what an existing client already has. Fall back
+  // to the live/code feature list when there is no agreement for this project.
+  const { data: myAgreements = [] } = useMyAgreements();
+  const agreement = preview ? undefined : myAgreements.find((a) => a.project_id === svc.project_id);
+  const frozenFeatures = (agreement?.terms_snapshot as { features?: string[] } | null)?.features;
+  const planCardFeatures = frozenFeatures?.length ? frozenFeatures : tierFeatures(svc.tier, svc.site_type);
   // In preview mode disable the live (RLS-gated) queries and use the snapshot.
   const pid = preview ? null : svc.project_id;
   const { data: liveMetrics = [] } = useSiteMetrics(pid, 30);
@@ -444,7 +451,7 @@ export function ServiceBoard({
         </div>
 
         <div className="relative mt-6 grid gap-2 border-t border-border/60 pt-5 sm:grid-cols-2">
-          {tierFeatures(svc.tier, svc.site_type).map((f) => (
+          {planCardFeatures.map((f) => (
             <div key={f} className="flex items-start gap-2 text-sm text-foreground">
               <Check className="mt-0.5 size-4 shrink-0 text-primary" />
               <span>{f}</span>
