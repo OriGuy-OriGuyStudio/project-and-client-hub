@@ -72,9 +72,53 @@ export default function ClientReport() {
       .reduce((a, m) => a + (m.count ?? 1), 0);
   const updates = monthCount(["update", "deploy"]);
   const backups = monthCount(["backup"]);
-  const threatsMonth = metrics
-    .filter((m) => new Date(`${m.metric_date}T00:00:00`).getTime() >= monthStart.getTime())
-    .reduce((a, m) => a + (m.threats_blocked ?? 0), 0);
+
+  // Dynamic copy: the wording MUST match the actual numbers (never claim "fast"
+  // on a low score, or "we blocked" when zero). threats_blocked is a rolling
+  // 30-day total per row, so we read the latest value, never sum it.
+  const ps = latest?.pagespeed ?? null;
+  const lcpNote = latest?.lcp_ms != null ? ` (כ-${(latest.lcp_ms / 1000).toFixed(1)} שניות)` : "";
+  const speedExplain =
+    ps == null ? "" :
+    ps >= 90 ? `האתר שלך נטען מהר מאוד${lcpNote}.` :
+    ps >= 70 ? `האתר שלך נטען במהירות טובה${lcpNote}.` :
+    ps >= 50 ? `יש מקום לשפר את מהירות האתר${lcpNote}, ואנחנו עובדים על זה.` :
+    `מהירות האתר דורשת שיפור${lcpNote}, וזה בטיפול אצלנו.`;
+  const speedBenefit = ps != null && ps >= 70
+    ? "מבקרים לא מתייאשים ועוזבים, וגם גוגל אוהב אתרים מהירים ומדרג אותך גבוה יותר."
+    : "שיפור המהירות ישמור על המבקרים באתר וישפר את הדירוג בגוגל, ואנחנו על זה.";
+
+  const up = latest?.uptime_pct != null ? Number(latest.uptime_pct) : null;
+  const uptimeExplain =
+    up == null ? "" :
+    up >= 99.9 ? "האתר היה זמין כמעט כל הזמן החודש." :
+    up >= 99 ? "האתר היה זמין כמעט כל הזמן, עם כמה רגעים בודדים בלבד." :
+    "היו החודש כמה הפרעות בזמינות, ואנחנו במעקב צמוד כדי לצמצם אותן.";
+  const uptimeBenefit = up != null && up >= 99
+    ? "הלקוחות שלך תמיד מוצאים אותך, בלי דלת סגורה ובלי הזדמנות שהולכת לאיבוד."
+    : "אנחנו עוקבים אחרי הזמינות מסביב לשעון ומטפלים בכל נפילה מיד.";
+
+  const threats = latest?.threats_blocked ?? 0;
+  const threatsExplain = threats > 0
+    ? `חסמנו ${threats} ניסיונות גישה וזדונות לפני שהגיעו לאתר.`
+    : "לא זוהו ניסיונות חדירה בחודש האחרון, ההגנות פעילות והאתר נקי.";
+  const threatsBenefit = threats > 0
+    ? "המידע שלך ושל הלקוחות שלך מוגן, בלי שתצטרך לחשוב על זה."
+    : "ההגנות רצות ברקע כל הזמן, כך שהאתר מוגן גם כשאין תקיפות.";
+
+  const updBackExplain =
+    updates > 0 && backups > 0 ? `ביצענו ${updates} עדכונים ו-${backups} גיבויים החודש.` :
+    updates > 0 ? `ביצענו ${updates} עדכונים החודש, והגיבויים רצים אוטומטית ברקע.` :
+    backups > 0 ? `בוצעו ${backups} גיבויים אוטומטיים החודש, ולא נדרשו עדכונים מיוחדים.` :
+    "האתר יציב, והגיבויים האוטומטיים ממשיכים לרוץ ברקע.";
+
+  const hoursNum = summary.hours_month ?? 0;
+  const hoursExplain =
+    hoursNum > 0
+      ? `השקענו בך ${hoursNum.toFixed(1)} שעות עבודה${summary.service_calls_month ? `, וטיפלנו ב-${summary.service_calls_month} קריאות שירות` : ""} החודש.`
+      : summary.service_calls_month
+        ? `החודש טיפלנו ב-${summary.service_calls_month} קריאות שירות, והכול התנהל חלק.`
+        : "החודש הכול התנהל חלק, בלי צורך בעבודה נוספת.";
 
   const rate = service.hourly_rate != null ? Number(service.hourly_rate) : 0;
   const hoursVal = Math.round((Math.round((summary.hours_month ?? 0) * 10) / 10) * rate);
@@ -109,31 +153,31 @@ export default function ClientReport() {
           {latest?.pagespeed != null && (
             <Block
               icon={Zap} kicker="מהירות האתר" value={`${latest.pagespeed}/100`}
-              explain={`האתר שלך נטען מהר${latest.lcp_ms != null ? ` (כ-${(latest.lcp_ms / 1000).toFixed(1)} שניות)` : ""}.`}
-              benefit="מבקרים לא מתייאשים ועוזבים, וגם גוגל אוהב אתרים מהירים ומדרג אותך גבוה יותר."
+              explain={speedExplain}
+              benefit={speedBenefit}
             />
           )}
           {latest?.uptime_pct != null && (
             <Block
               icon={TrendingUp} tone="cyan" kicker="זמינות" value={`${latest.uptime_pct}%`}
-              explain="האתר היה זמין כמעט כל הזמן החודש."
-              benefit="הלקוחות שלך תמיד מוצאים אותך, בלי דלת סגורה ובלי הזדמנות שהולכת לאיבוד."
+              explain={uptimeExplain}
+              benefit={uptimeBenefit}
             />
           )}
           <Block
-            icon={ShieldCheck} kicker="אבטחה" value={String(threatsMonth || summary.threats_total || 0)}
-            explain="חסמנו ניסיונות גישה וזדונות לפני שהגיעו לאתר."
-            benefit="המידע שלך ושל הלקוחות שלך מוגן, בלי שתצטרך לחשוב על זה."
+            icon={ShieldCheck} kicker="אבטחה" value={String(threats)}
+            explain={threatsExplain}
+            benefit={threatsBenefit}
           />
           <Block
             icon={RefreshCw} tone="cyan" kicker="עדכונים וגיבויים" value={`${updates} · ${backups}`}
-            explain={`ביצענו ${updates} עדכונים ו-${backups} גיבויים החודש.`}
+            explain={updBackExplain}
             benefit="האתר תמיד מעודכן ובטוח, ואם משהו משתבש, יש גיבוי לחזור אליו בשניות."
           />
           <Block
             icon={HeartHandshake} kicker="הליווי שלנו"
             value={`${summary.hours_month ? (Number.isInteger(summary.hours_month) ? summary.hours_month : summary.hours_month.toFixed(1)) : 0} שעות`}
-            explain={`השקענו בך ${summary.hours_month ? summary.hours_month.toFixed(1) : 0} שעות עבודה${summary.service_calls_month ? `, וטיפלנו ב-${summary.service_calls_month} קריאות שירות` : ""} החודש.`}
+            explain={hoursExplain}
             benefit="יש לך שותף טכנולוגי שדואג לאתר במקומך, אתה מתעסק בעסק, אני באתר."
           />
           {hoursVal > 0 && (
