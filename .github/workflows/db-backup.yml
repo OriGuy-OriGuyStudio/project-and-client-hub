@@ -61,8 +61,14 @@ jobs:
           STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
           FILE="orion-db-${STAMP}.sql.gz"
 
+          # The runner ships an older pg_dump (16) first on PATH, which refuses to
+          # dump a newer server. Pick the highest version we actually installed.
+          PGDUMP="$(ls -1 /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -n1)"
+          [ -z "${PGDUMP}" ] && PGDUMP="pg_dump"
+          echo "Using ${PGDUMP} ($("${PGDUMP}" --version))"
+
           echo "Dumping database → ${FILE}…"
-          pg_dump "${SUPABASE_DB_URL}" --no-owner --no-privileges --clean --if-exists | gzip -9 > "${FILE}"
+          "${PGDUMP}" "${SUPABASE_DB_URL}" --no-owner --no-privileges --clean --if-exists | gzip -9 > "${FILE}"
 
           SIZE="$(du -h "${FILE}" | cut -f1)"
           echo "Dump complete: ${FILE} (${SIZE})"
