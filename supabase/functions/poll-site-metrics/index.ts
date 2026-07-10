@@ -3,16 +3,15 @@
 //   • PageSpeed Insights  → pagespeed / lcp_ms / cls / inp_ms
 //   • UptimeRobot         → uptime_pct   (matched by host)
 //   • Cloudflare Web Analytics (RUM) → visitors / pageviews (matched by site host)
-//   • Cloudflare firewall events → threats_blocked (30-day count for the site's
-//     zone; 0 when the zone is connected but had no events). Only sites whose
-//     domain is a zone in the account are covered — the checklist adds each
-//     client's domain to Cloudflare, so a newly onboarded client is covered too.
+//   • Cloudflare "threats" → threats_blocked (30-day sum for the site's zone via
+//     httpRequests1dGroups; 0 when the zone is connected but had none). Only
+//     sites whose domain is a zone in the account are covered — the checklist
+//     adds each client's domain to Cloudflare, so a new client is covered too.
 // and merge-upserts today's site_metrics row. Each source is best-effort.
 //
 // Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT.
 // Secrets (all in webhook_secrets): pagespeed_key, uptimerobot_key,
-// cloudflare_token, cloudflare_account. The token needs Zone Read + Analytics
-// Read for firewall events.
+// cloudflare_token, cloudflare_account.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -112,21 +111,24 @@ function zoneForHost(reqHost: string, zones: Record<string, string>): string | n
   return best ? zones[best] : null;
 }
 
-// Threats blocked = firewall events for the host over the last 30 days. Returns
-// 0 when the zone is connected but had no events (a real, honest zero).
-async function cfThreats(token: string, zoneTag: string, reqHost: string): Promise<number> {
-  const until = new Date().toISOString();
-  const since = new Date(Date.now() - 30 * 86400000).toISOString();
-  const query = `query($zone:String!,$since:Time!,$until:Time!,$host:String!){viewer{zones(filter:{zoneTag:$zone}){firewallEventsAdaptiveGroups(limit:1,filter:{datetime_geq:$since,datetime_leq:$until,clientRequestHTTPHost:$host}){count}}}}`;
+// Threats blocked = Cloudflare "threats" summed over the last 30 days for the
+// site's ZONE (the classic dashboard metric, via httpRequests1dGroups). Zone-
+// level: a real client is on its own domain/zone so this is exactly its number;
+// several subdomains sharing one zone share the zone total. Returns 0 when the
+// zone is connected but had no threats (a real, honest zero).
+async function cfThreats(token: string, zoneTag: string): Promise<number> {
+  const until = new Date().toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const query = `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:31,filter:{date_geq:$since,date_leq:$until}){sum{threats}}}}}`;
   const r = await fetch("https://api.cloudflare.com/client/v4/graphql", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { zone: zoneTag, since, until, host: reqHost } }),
+    body: JSON.stringify({ query, variables: { zone: zoneTag, since, until } }),
   });
   const d = await r.json();
-  if (d.errors?.length) throw new Error(`fw graphql: ${JSON.stringify(d.errors).slice(0, 300)}`);
-  const g = d.data?.viewer?.zones?.[0]?.firewallEventsAdaptiveGroups?.[0];
-  return g?.count ?? 0;
+  if (d.errors?.length) throw new Error(`threats graphql: ${JSON.stringify(d.errors).slice(0, 300)}`);
+  const groups = d.data?.viewer?.zones?.[0]?.httpRequests1dGroups ?? [];
+  return groups.reduce((sum: number, g: { sum?: { threats?: number } }) => sum + (g.sum?.threats ?? 0), 0);
 }
 
 Deno.serve(async (req) => {
@@ -211,7 +213,7 @@ Deno.serve(async (req) => {
       const zoneTag = zoneForHost(h, zonesMap);
       if (zoneTag) {
         try {
-          const t = await cfThreats(secrets.cloudflare_token, zoneTag, h);
+          const t = await cfThreats(secrets.cloudflare_token, zoneTag);
           metric.p_threats_blocked = t; got.threats = t;
         } catch (e) { got.threats_err = String(e instanceof Error ? e.message : e); }
       } else {
