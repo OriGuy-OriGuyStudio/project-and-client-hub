@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { LEGAL_DOCS, TERMS_DOC, PRIVACY_DOC } from "@/lib/legal-content";
 
@@ -8,16 +8,28 @@ import { LEGAL_DOCS, TERMS_DOC, PRIVACY_DOC } from "@/lib/legal-content";
  */
 export default function LegalPage({ slug: slugProp }: { slug?: string }) {
   const params = useParams();
+  const navigate = useNavigate();
   const slug = slugProp || params.slug || "terms";
   const doc = LEGAL_DOCS[slug] ?? TERMS_DOC;
   const other = doc.slug === "terms" ? PRIVACY_DOC : TERMS_DOC;
+  // Go back to wherever the reader came from (e.g. the sign form), not a hardcoded
+  // "/" which is the dashboard for a signed-in user. When opened in a fresh tab
+  // (the consent-checkbox link uses target=_blank) there is no history to go back
+  // to, so we hide the link and the reader just closes the tab.
+  const canGoBack = typeof window !== "undefined" && window.history.length > 1;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground" dir="rtl">
       <div className="mx-auto max-w-2xl px-5 py-10 sm:py-16">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-primary">
-          <ArrowRight className="size-4" /> חזרה
-        </Link>
+        {canGoBack && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition hover:text-primary"
+          >
+            <ArrowRight className="size-4" /> חזרה
+          </button>
+        )}
 
         <h1 className="mt-6 font-heading text-3xl font-black sm:text-4xl">{doc.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">עדכון אחרון: {doc.updated}</p>
