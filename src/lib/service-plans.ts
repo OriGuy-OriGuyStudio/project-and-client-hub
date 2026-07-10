@@ -15,7 +15,7 @@ export const TIER_META: Record<
 > = {
   core: {
     name: "Studio Core",
-    label: "יסוד",
+    label: "שקט נפשי",
     tagline: "שקט ואתר תקין ומאובטח",
     price: 450,
     responseHours: 48,
@@ -23,16 +23,16 @@ export const TIER_META: Record<
   },
   pro: {
     name: "Studio Pro",
-    label: "ביצוע פרימיום",
-    tagline: "השותף הטכנולוגי שלך",
+    label: "השותף הטכני שלך",
+    tagline: "השותף הטכני שלך",
     price: 800,
     responseHours: 24,
     hours: 3,
   },
   ultra: {
     name: "Studio Ultra VIP",
-    label: "השותף הטכנולוגי",
-    tagline: "ליווי צמוד ופיתוח שוטף",
+    label: "ה-CTO האישי שלך",
+    tagline: "ה-CTO האישי שלך",
     price: 1500,
     responseHours: 4,
     hours: 7,
@@ -42,33 +42,36 @@ export const TIER_META: Record<
 /** The feature checklist shown on a client's plan card, by tier + site type. */
 export function tierFeatures(tier: ServiceTier, siteType: ServiceSiteType): string[] {
   const wp = siteType === "wordpress";
-  const base = wp
-    ? [
-        "אחסון פרימיום, עדכונים וגיבויים בטוחים",
-        `חבילת רישיונות בשווי ₪${WP_LICENSE_VALUE.toLocaleString("he-IL")} (Elementor Pro, Crocoblock)`,
-        "הגנה היקפית וגיבויים אוטומטיים",
-        "דו״ח פעילות וביצועים חודשי",
-      ]
-    : [
-        "אחסון מהיר בענן, פריסה אוטומטית לכל עדכון",
-        "SSL, גיבויי קוד ומסד נתונים",
-        "רשת CDN גלובלית, טעינה מהירה מכל מקום",
-        "דו״ח פעילות וביצועים חודשי",
-      ];
+  // Core: managed infrastructure, a safety net, passive protection, reporting.
+  const base = [
+    "כל התשתית מנוהלת: שרת, אחסון וחידושים",
+    wp
+      ? `רישיונות עיצוב כלולים: Elementor Pro + Crocoblock (שווי מעל ₪${WP_LICENSE_VALUE.toLocaleString("he-IL")} בשנה)`
+      : "SSL, גיבויי קוד ומסד נתונים, ו-CDN גלובלי מהיר",
+    "רשת ביטחון: גרסה שמורה מוצגת גם אם השרת נופל לרגע",
+    "הגנה אוטומטית מפני בוטים זדוניים, ברקע",
+    "דו״ח פעילות וביצועים חודשי",
+  ];
 
-  const pro = wp
-    ? [
-        "מאיץ מהירות ו-CDN (Cloudflare)",
-        "הגנת Malware וסריקות בזמן אמת",
-        "בדיקת ביצועים ומהירות חודשית",
-      ]
-    : [
-        "מאיץ מהירות ו-CDN מתקדם (Cloudflare)",
-        "סריקת חולשות אבטחה ב-dependencies",
-        "בדיקת ביצועים ומהירות חודשית",
-      ];
+  // Pro: active, targeted protection + performance (site-type aware).
+  const pro = [
+    "מאיץ מהירות ו-CDN מתקדם",
+    wp
+      ? "הגנת נוזקות וסריקות בזמן אמת, כולל בדיקת שלמות קבצים"
+      : "סריקת חולשות אבטחה בכל ה-dependencies",
+    "הגנת ספאם על הטפסים, בלי תיבות אימות מעצבנות",
+    ...(wp ? ["הגנה על עמוד ניהול האתר מפני ניסיונות פריצה"] : []),
+    ...(wp ? ["תמונות מומרות ומואצות אוטומטית בהעלאה"] : []),
+    "מעקב ביצועים ומהירות בזמן אמת",
+  ];
 
-  const ultra = ["משאבי שרת ייעודיים", "חשיבה אסטרטגית רבעונית"];
+  // Ultra: dedicated resources, redundancy, priority, strategy.
+  const ultra = [
+    "משאבי שרת ייעודיים, בלי לחלוק תשתית",
+    "גיבוי כפול, במיקום נפרד לגמרי מהאחסון הראשי",
+    "קדימות בתור על פני עבודות חדשות",
+    "פגישת חשיבה אסטרטגית רבעונית",
+  ];
 
   const list = [...base];
   if (tier === "pro" || tier === "ultra") list.push(...pro);

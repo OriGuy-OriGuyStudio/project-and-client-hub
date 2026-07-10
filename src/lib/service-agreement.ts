@@ -8,7 +8,7 @@ import { TIER_META, tierFeatures, type ServiceTier, type ServiceSiteType } from 
 import { applyGender } from "./gender";
 import type { Gender } from "@/types/database";
 
-export const AGREEMENT_VERSION = "2026-07-10b";
+export const AGREEMENT_VERSION = "2026-07-10c";
 
 /** Annual (yearly) billing discount, in percent. */
 export const ANNUAL_DISCOUNT_PCT = 15;

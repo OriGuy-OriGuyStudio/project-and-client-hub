@@ -37,8 +37,8 @@ let introPlayed = false;
 // two surfaces can never drift. Adapts to WordPress vs custom-code per siteType.
 const LANDING_COPY: Record<ServiceTier, { label: string; tagline: string; hot?: boolean }> = {
   core: { label: "שקט נפשי", tagline: "האתר מתוחזק, מאובטח ומגובה, בלי ש{תצטרך|תצטרכי} לחשוב על זה." },
-  pro: { label: "השותף שלך", tagline: "כל השקט הנפשי, ובנוסף אני דוחף את האתר קדימה כל חודש.", hot: true },
-  ultra: { label: "צמוד אליך", tagline: "ליווי צמוד ופיתוח שוטף, כאילו יש לך איש טכנולוגיה בבית." },
+  pro: { label: "השותף הטכני שלך", tagline: "כל השקט הנפשי, ובנוסף אני דוחף את האתר קדימה כל חודש.", hot: true },
+  ultra: { label: "ה-CTO האישי שלך", tagline: "שותף טכני זמין כמעט תמיד, כאילו יש לך CTO בבית." },
 };
 
 // Build the landing tier cards for a given site type, pulling all hard data
