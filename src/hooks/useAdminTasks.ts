@@ -137,6 +137,7 @@ export function useAdminTasks(adminId?: string) {
         supabase
           .from("service_agreements")
           .select("id, client_id, project_id, full_name, business, phone, tier, monthly_price, billing_cycle, created_at")
+          .eq("status", "submitted")
           .order("created_at", { ascending: false })
           .limit(50),
         supabase

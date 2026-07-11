@@ -193,6 +193,12 @@ export async function fetchServicePreview(token: string): Promise<ServicePreview
   return (data as ServicePreview) ?? null;
 }
 
+/** Admin: reject a signed agreement request (test/duplicate). Sets it to
+ *  'cancelled' → clears it from the dashboard + unlocks the landing form. */
+export async function dismissAgreement(id: string) {
+  return supabase.rpc("dismiss_service_agreement", { p_id: id });
+}
+
 /** Admin opens a service call on a client's behalf (proactive). */
 export async function adminOpenServiceCall(projectId: string, title: string, description: string) {
   const { data, error } = await supabase.rpc("admin_open_service_call", {

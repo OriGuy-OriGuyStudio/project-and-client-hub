@@ -14,6 +14,7 @@ import { sendRedemptionNotice } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminTasks, type AdminTaskRedemption } from "@/hooks/useAdminTasks";
+import { dismissAgreement } from "@/hooks/useService";
 
 const PROJECT_TYPE_HE: Record<string, string> = {
   business_site: "אתר תדמית",
@@ -55,6 +56,16 @@ export function AdminTasksPanel() {
     if (error) return toastError("הפעולה נכשלה.");
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
     qc.invalidateQueries({ queryKey: ["notifications"] });
+  }
+
+  async function rejectAgreement(id: string) {
+    if (!window.confirm("לדחות את הבקשה? היא תוסר מהרשימה והטופס יתאפשר שוב עבור הפרויקט.")) return;
+    setBusy(id);
+    const { error } = await dismissAgreement(id);
+    setBusy(null);
+    if (error) return toastError(error.message || "הפעולה נכשלה.");
+    toast({ title: "הבקשה נדחתה", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["admin-tasks"] });
   }
 
   async function decideAccess(id: string, approve: boolean) {
@@ -173,11 +184,16 @@ export function AdminTasksPanel() {
                     </p>
                   </div>
                 </div>
-                <Button asChild size="sm">
-                  <Link to={a.clientId ? `/admin/clients/${a.clientId}` : "/admin/clients"}>
-                    פתח חבילה <ExternalLink className="size-3.5" />
-                  </Link>
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to={a.clientId ? `/admin/clients/${a.clientId}` : "/admin/clients"}>
+                      פתח חבילה <ExternalLink className="size-3.5" />
+                    </Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={busy === a.id} onClick={() => rejectAgreement(a.id)}>
+                    <X className="size-4" /> דחה
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

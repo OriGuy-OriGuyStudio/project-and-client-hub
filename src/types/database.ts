@@ -922,6 +922,7 @@ export interface Database {
         Args: { p_event: string; p_path?: string | null; p_meta?: Record<string, unknown> | null };
         Returns: undefined;
       };
+      dismiss_service_agreement: { Args: { p_id: string }; Returns: { ok: boolean } };
       get_my_role: { Args: Record<string, never>; Returns: string };
       ensure_my_profile: { Args: Record<string, never>; Returns: string | null };
       is_admin: { Args: Record<string, never>; Returns: boolean };
