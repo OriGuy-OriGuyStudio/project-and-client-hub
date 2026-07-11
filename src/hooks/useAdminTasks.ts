@@ -141,7 +141,7 @@ export function useAdminTasks(adminId?: string) {
           .limit(50),
         supabase
           .from("project_service")
-          .select("project_id")
+          .select("project_id, project:projects(client_id)")
           .eq("active", true),
       ]);
 
@@ -222,20 +222,32 @@ export function useAdminTasks(adminId?: string) {
         createdAt: r.created_at,
       })));
 
-      // A signed agreement is "waiting" until Ori actually opens the package
-      // (an active project_service for that project). Once he does, it clears
-      // itself from the panel. Agreements not linked to a project are shown for
-      // a short window so they don't linger forever with no way to resolve.
-      const openServiceProjects = new Set<string>(
-        ((ps.data as any[]) ?? []).map((r) => r.project_id).filter(Boolean),
-      );
+      // A signed agreement is "waiting" until the client is actually set up.
+      // It clears once the client has ANY active package (or the linked project
+      // is opened). We also collapse multiple signings by the same client into a
+      // single card (a client who signed 3× shouldn't produce 3 to-dos).
+      const openServiceProjects = new Set<string>();
+      const openServiceClients = new Set<string>();
+      for (const r of (ps.data as any[]) ?? []) {
+        if (r.project_id) openServiceProjects.add(r.project_id);
+        const cid = r.project?.client_id;
+        if (cid) openServiceClients.add(cid);
+      }
       const recentCutoff = Date.now() - 21 * 864e5;
+      const seenAgreementClients = new Set<string>();
       const agreements: AdminTaskAgreement[] = (((ag.data as any[]) ?? [])
-        .filter((r) =>
-          r.project_id
-            ? !openServiceProjects.has(r.project_id)
-            : new Date(r.created_at).getTime() >= recentCutoff,
-        )
+        .filter((r) => {
+          // Client already has an active package → they're set up, hide it.
+          if (r.client_id && openServiceClients.has(r.client_id)) return false;
+          if (r.project_id && openServiceProjects.has(r.project_id)) return false;
+          // Unlinked agreements only show for a short window (no way to resolve).
+          if (!r.project_id && new Date(r.created_at).getTime() < recentCutoff) return false;
+          // One card per client (collapse duplicate signings).
+          const key = r.client_id || r.id;
+          if (seenAgreementClients.has(key)) return false;
+          seenAgreementClients.add(key);
+          return true;
+        })
         .map((r) => ({
           id: r.id,
           clientId: r.client_id,
