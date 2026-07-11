@@ -93,22 +93,15 @@ create index if not exists org_members_org_user_idx  on public.organization_memb
 alter table public.organizations       enable row level security;
 alter table public.organization_members enable row level security;
 
--- organizations: a member can read their org; only admin writes.
-create policy organizations_member_read on public.organizations
-  for select to authenticated
-  using ((select public.is_org_member(id)));
+-- Policies that need ONLY auth.uid()/is_admin (no helper dependency) go here.
+-- The helper-based read policies are added in Task 3, AFTER the helpers exist.
 create policy organizations_admin_all on public.organizations
   for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
--- organization_members: self-read always; managers read their whole org;
--- ONLY admin writes (no client ever edits capabilities).
 create policy org_members_self_read on public.organization_members
   for select to authenticated
   using (user_id = auth.uid());
-create policy org_members_manager_read on public.organization_members
-  for select to authenticated
-  using ((select public.is_org_manager(org_id)));
 create policy org_members_admin_all on public.organization_members
   for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
@@ -116,11 +109,11 @@ create policy org_members_admin_all on public.organization_members
 notify pgrst, 'reload schema';
 ```
 
-Note: `is_org_member` and `is_org_manager` are created in Task 3; this migration
-is applied AFTER Task 3's, OR reorder so helpers come first. **Reorder: apply
-Task 3 (helpers) before Task 1's policies.** Simplest: put the helper functions at
-the top of THIS file too if applying standalone. For the plan we apply Task 3
-first (see ordering note at Task 3).
+**Ordering:** apply this file (tables) FIRST, then Task 3 (helpers, which
+reference these tables), then the helper-based org-table read policies (appended
+to Task 3's file). SQL-language functions validate their table references at
+creation, and policies validate their function references at creation, so the
+order tables → helpers → helper-based-policies is mandatory.
 
 - [ ] **Step 2: Apply to branch**
 
@@ -252,8 +245,21 @@ $$;
 grant execute on function public.is_org_member(uuid), public.is_org_manager(uuid),
   public.can_access_project(uuid), public.member_can(uuid, text) to authenticated;
 
+-- Helper-based read policies on the org tables (helpers now exist).
+-- organizations: a member can read their org.
+create policy organizations_member_read on public.organizations
+  for select to authenticated
+  using ((select public.is_org_member(id)));
+-- organization_members: a manager reads their whole org's members.
+create policy org_members_manager_read on public.organization_members
+  for select to authenticated
+  using ((select public.is_org_manager(org_id)));
+
 notify pgrst, 'reload schema';
 ```
+
+**Apply Task 1 (tables) BEFORE this file.** (This migration's helpers reference
+the org tables, and these two policies reference the helpers.)
 
 - [ ] **Step 2: Apply to branch** (name `org_access_helpers`). Expected `{"success":true}`.
 
