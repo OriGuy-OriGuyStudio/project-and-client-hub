@@ -183,8 +183,10 @@ export default function PackagesLanding() {
   const [sigImage, setSigImage] = useState("");
   const [tfToken, setTfToken] = useState("");
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
-  // Already signed / has an active package → don't let them sign again.
-  const alreadyActive = !!(ctx && (ctx as Record<string, unknown>).already_active === true);
+  // Lock the form PER PROJECT (the invite carries the project): the project
+  // already has a package, or a request was already submitted for it.
+  const hasPackage = !!(ctx && (ctx as Record<string, unknown>).has_package === true);
+  const hasRequest = !!(ctx && (ctx as Record<string, unknown>).has_request === true);
 
   // Resolve the landing invite (token -> prefill + which client to attach to).
   useEffect(() => {
@@ -682,12 +684,20 @@ export default function PackagesLanding() {
               <h2 style={{ fontSize: 40 }}>הבחירה נשלחה.</h2>
               <p className="muted" style={{ marginTop: 12 }}>קיבלתי את האישור על חבילת {current.name} ואחזור אליך בהקדם לתיאום. לא בוצע חיוב.</p>
             </div>
-          ) : alreadyActive ? (
+          ) : hasPackage ? (
             <div className="ok signcard surf">
               <span className="okic"><Check s={30} /></span>
-              <h2 style={{ fontSize: 34 }}>יש לך כבר בקשה פעילה</h2>
+              <h2 style={{ fontSize: 34 }}>יש לך כבר חבילה פעילה על הפרויקט הזה</h2>
               <p className="muted" style={{ marginTop: 12 }}>
-                {g("קיבלתי את הבקשה שלך על חבילת השירות ואני כבר מטפל בה, אין צורך לחתום שוב.", "קיבלתי את הבקשה שלך על חבילת השירות ואני כבר מטפלת בה, אין צורך לחתום שוב.")} יש שאלה? פשוט חזרו אליי ונעדכן.
+                הכול פעיל ומטופל, אין צורך לחתום שוב. יש שאלה או בקשה? פשוט חזרו אליי ונעדכן.
+              </p>
+            </div>
+          ) : hasRequest ? (
+            <div className="ok signcard surf">
+              <span className="okic"><Check s={30} /></span>
+              <h2 style={{ fontSize: 34 }}>יש בקשה פעילה על הפרויקט הזה</h2>
+              <p className="muted" style={{ marginTop: 12 }}>
+                קיבלתי את הבקשה שלך על חבילת השירות ואני כבר מטפל בה, אין צורך לחתום שוב. יש שאלה? פשוט חזרו אליי ונעדכן.
               </p>
             </div>
           ) : (

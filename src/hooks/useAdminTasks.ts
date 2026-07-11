@@ -234,18 +234,23 @@ export function useAdminTasks(adminId?: string) {
         if (cid) openServiceClients.add(cid);
       }
       const recentCutoff = Date.now() - 21 * 864e5;
-      const seenAgreementClients = new Set<string>();
+      const seenAgreementKeys = new Set<string>();
       const agreements: AdminTaskAgreement[] = (((ag.data as any[]) ?? [])
         .filter((r) => {
-          // Client already has an active package → they're set up, hide it.
-          if (r.client_id && openServiceClients.has(r.client_id)) return false;
-          if (r.project_id && openServiceProjects.has(r.project_id)) return false;
-          // Unlinked agreements only show for a short window (no way to resolve).
-          if (!r.project_id && new Date(r.created_at).getTime() < recentCutoff) return false;
-          // One card per client (collapse duplicate signings).
-          const key = r.client_id || r.id;
-          if (seenAgreementClients.has(key)) return false;
-          seenAgreementClients.add(key);
+          if (r.project_id) {
+            // Linked: pending until THIS project has an active package (a client
+            // with another active project still gets a card for a new project).
+            if (openServiceProjects.has(r.project_id)) return false;
+          } else {
+            // Unlinked (legacy/anomaly): clear once the client is set up anywhere,
+            // or after a short window, since there's no project to resolve against.
+            if (r.client_id && openServiceClients.has(r.client_id)) return false;
+            if (new Date(r.created_at).getTime() < recentCutoff) return false;
+          }
+          // One card per project (linked) or per client (unlinked).
+          const key = r.project_id || r.client_id || r.id;
+          if (seenAgreementKeys.has(key)) return false;
+          seenAgreementKeys.add(key);
           return true;
         })
         .map((r) => ({
