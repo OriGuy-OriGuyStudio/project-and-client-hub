@@ -6,7 +6,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const FROM_NAME = "Orion · Studio Ori Guy";
+const FROM_NAME = "Ori Guy Studio";
 const FROM_EMAIL = "origuy@origuystudio.com";
 const PORTAL = "https://orion.origuystudio.com";
 const NL = String.fromCharCode(10);
@@ -97,14 +97,14 @@ Deno.serve(async (req: Request) => {
     ["⚡", "מהיר ומעודכן", "עדכונים שוטפים ותחזוקה שוטפת שומרים על האתר חד ובריא."],
   ];
   const benefitsHtml = benefits.map(([e, t, d]) =>
-    `<tr><td style="padding:10px 0;vertical-align:top;width:34px;font-size:20px">${e}</td>
-     <td style="padding:10px 0;text-align:right">
+    `<tr><td style="padding:10px 0;vertical-align:top;width:34px;font-size:20px;font-family:Arial,Helvetica,sans-serif">${e}</td>
+     <td style="padding:10px 0;text-align:right;font-family:Arial,Helvetica,sans-serif">
        <div style="font-weight:700;color:#fff;font-size:15px">${escapeHtml(t)}</div>
        <div style="color:#b9b9c2;font-size:13.5px;line-height:1.6">${escapeHtml(d)}</div>
      </td></tr>`).join("");
 
   const subject = g("ברוך הבא, החבילה שלך פעילה 🎉", "ברוכה הבאה, החבילה שלך פעילה 🎉");
-  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:20px;overflow:hidden">
       <div dir="rtl" style="padding:26px;border-bottom:1px solid #2a2a33;text-align:center;background:linear-gradient(135deg,rgba(180,214,112,.14),rgba(34,211,238,.08))">
@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
         <p style="margin:18px 0 0;color:#9a9aa4;font-size:13px;text-align:center">יש שאלה? פשוט ${g("השב", "השיבי")} למייל הזה, אני כאן.</p>
       </div>
     </div>
-    <div style="text-align:center;color:#6a6a72;font-size:12px;margin-top:14px">Orion · Studio Ori Guy</div>
+    <div style="text-align:center;color:#6a6a72;font-size:12px;margin-top:14px">Orion · Ori Guy Studio</div>
   </div></body></html>`;
 
   try {
