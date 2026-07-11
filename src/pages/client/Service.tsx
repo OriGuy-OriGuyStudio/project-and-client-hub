@@ -858,6 +858,9 @@ export default function Service() {
     const p = projects.find((x) => x.id === id);
     return p ? p.business_name || p.title : "האתר שלך";
   };
+  // The switcher must distinguish projects, and a client's projects share one
+  // business_name — so use the project title there (and on the agreements).
+  const projTitle = (id: string) => projects.find((x) => x.id === id)?.title ?? "פרויקט";
 
   const current = services.find((s) => s.project_id === activeId) ?? services[0];
 
@@ -897,7 +900,7 @@ export default function Service() {
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {projName(s.project_id)}
+                    {projTitle(s.project_id)}
                   </button>
                 ))}
               </div>
@@ -905,7 +908,7 @@ export default function Service() {
           )}
           <ServiceBoard svc={current} projectName={projName(current.project_id)} />
           {/* Agreements for the project currently in view (switches with the tabs). */}
-          <MyAgreements projects={projects} projectId={current.project_id} projectName={projName(current.project_id)} />
+          <MyAgreements projects={projects} projectId={current.project_id} projectName={projTitle(current.project_id)} />
         </div>
       )}
 
