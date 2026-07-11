@@ -860,7 +860,12 @@ export type AnnouncementDismissal = {
 };
 
 // ---- Phase 2: organizations multi-tenancy + member management (Phase 2B) ----
-export type Organization = { id: string; name: string; created_at: string };
+export type Organization = {
+  id: string;
+  name: string;
+  created_at: string;
+  kind: "real" | "demo" | "studio";
+};
 
 export type OrganizationMember = {
   id: string;
