@@ -16,6 +16,7 @@ import { GiftPopup } from "@/components/layout/GiftPopup";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { TeamSection } from "@/components/client/TeamSection";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -74,6 +75,8 @@ export default function Dashboard() {
       </div>
 
       <DiscoverySummaries />
+
+      <TeamSection />
 
       <WavePath className="my-10" />
 
