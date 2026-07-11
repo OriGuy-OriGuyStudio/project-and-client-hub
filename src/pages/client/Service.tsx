@@ -883,44 +883,61 @@ export default function Service() {
       ) : (
         <div className="space-y-4">
           {services.length > 1 && (
-            <div className="inline-flex flex-wrap gap-1 rounded-full border border-border/60 bg-card/60 p-1">
-              {services.map((s) => (
-                <button
-                  key={s.project_id}
-                  onClick={() => setActiveId(s.project_id)}
-                  className={cn(
-                    "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                    s.project_id === current.project_id
-                      ? "bg-primary text-[color:var(--ink,#0a0623)]"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {projName(s.project_id)}
-                </button>
-              ))}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">בחירת פרויקט</p>
+              <div className="inline-flex flex-wrap gap-1 rounded-full border border-border/60 bg-card/60 p-1">
+                {services.map((s) => (
+                  <button
+                    key={s.project_id}
+                    onClick={() => setActiveId(s.project_id)}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                      s.project_id === current.project_id
+                        ? "bg-primary text-[color:var(--ink,#0a0623)]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {projName(s.project_id)}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <ServiceBoard svc={current} projectName={projName(current.project_id)} />
+          {/* Agreements for the project currently in view (switches with the tabs). */}
+          <MyAgreements projects={projects} projectId={current.project_id} projectName={projName(current.project_id)} />
         </div>
       )}
 
-      {/* The client's signed agreements, always available regardless of whether
-          a package is active yet. */}
-      <MyAgreements projects={projects} />
+      {/* No active package: still let the client see any signed documents. */}
+      {!current && !isLoading && <MyAgreements projects={projects} />}
     </div>
   );
 }
 
 /** The current client's signed service agreements, with a link to each frozen
  * document. Renders nothing when there are none. */
-function MyAgreements({ projects }: { projects: { id: string; title: string }[] }) {
-  const { data: agreements = [] } = useMyAgreements();
+function MyAgreements({
+  projects,
+  projectId,
+  projectName,
+}: {
+  projects: { id: string; title: string }[];
+  projectId?: string;
+  projectName?: string;
+}) {
+  const { data: allAgreements = [] } = useMyAgreements();
+  // When viewing a specific project, show only that project's agreements so the
+  // documents match the dashboard above. Without a project (no active package),
+  // show everything so the client can still reach any signed document.
+  const agreements = projectId ? allAgreements.filter((a) => a.project_id === projectId) : allAgreements;
   if (!agreements.length) return null;
   const projTitle = (id: string | null) => projects.find((p) => p.id === id)?.title ?? null;
   return (
     <div className="mt-6 rounded-2xl border border-border bg-card p-5">
       <h3 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
         <FileText className="size-5 text-muted-foreground" /> אישורי השירות שלך
+        {projectName ? <span className="text-sm font-normal text-muted-foreground">· {projectName}</span> : null}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">האישורים החתומים שלך. אפשר לצפות ולהוריד בכל עת.</p>
       <ul className="mt-4 space-y-2">
