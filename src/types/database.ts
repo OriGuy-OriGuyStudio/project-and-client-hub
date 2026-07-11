@@ -408,8 +408,6 @@ export type ProjectService = {
   tier: "core" | "pro" | "ultra";
   site_type: "wordpress" | "custom";
   site_url: string | null;
-  monthly_price: number | null;
-  hourly_rate: number | null;
   started_at: string | null;
   billing_day: number;
   active: boolean;
@@ -417,6 +415,14 @@ export type ProjectService = {
   activated_at: string | null;
   welcome_seen_at: string | null;
   updated_at: string;
+}
+
+/** Finance-gated money for a project's package. Split out of project_service so
+ * RLS can restrict it to admins + can_finance members (Phase 2A hardening). */
+export type ProjectServiceMoney = {
+  project_id: string;
+  monthly_price: number | null;
+  hourly_rate: number | null;
 }
 
 export type SiteMetric = {
@@ -874,6 +880,7 @@ export interface Database {
       time_sessions: TableShape<TimeSession>;
       project_billing: TableShape<ProjectBilling>;
       project_service: TableShape<ProjectService>;
+      project_service_money: TableShape<ProjectServiceMoney>;
       site_metrics: TableShape<SiteMetric>;
       maintenance_log: TableShape<MaintenanceLog>;
       payments: TableShape<Payment>;

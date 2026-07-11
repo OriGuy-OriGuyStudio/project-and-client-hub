@@ -57,6 +57,25 @@ export function useProjectService(projectId: string | null | undefined) {
   });
 }
 
+/** Finance-gated money (price/rate) for a project. RLS returns a row only to
+ * admins + can_finance members; everyone else gets null. Used by the admin edit
+ * form to prefill the rate. */
+export function useProjectServiceMoney(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["project-service-money", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<{ monthly_price: number | null; hourly_rate: number | null } | null> => {
+      const { data, error } = await supabase
+        .from("project_service_money")
+        .select("monthly_price, hourly_rate")
+        .eq("project_id", projectId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
 /** Recent daily site metrics (newest first). */
 export function useSiteMetrics(projectId: string | null | undefined, days = 30) {
   return useQuery({
@@ -216,7 +235,10 @@ export async function siteInsights(projectId: string): Promise<{ data: SiteInsig
 }
 
 export type ServicePreview = {
-  service: ProjectService;
+  // The share token IS the authorization here (definer RPC), so the tokenized
+  // report may include the money that project_service no longer carries. Kept as
+  // an intersection so ProjectService itself stays money-free everywhere else.
+  service: ProjectService & { monthly_price?: number | null; hourly_rate?: number | null };
   project_title: string;
   business_name: string;
   metrics: SiteMetric[];

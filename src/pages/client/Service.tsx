@@ -371,9 +371,13 @@ export function ServiceBoard({
   // from the snapshot's svc. Live client -> only finance members see money, sourced
   // from the finance-gated client_service_money RPC.
   const showMoney = preview || readOnly || caps.finance;
+  // Money (price/rate) lives in the finance-gated project_service_money table and
+  // is fetched only for a live finance member via the client_service_money RPC.
+  // In readOnly/preview mode there is no member context, so it falls back to the
+  // tier's list price (meta.price) — the public snapshot never carried real money.
   const { data: money } = useServiceMoney(readOnly ? null : svc.project_id, showMoney && !readOnly);
-  const monthlyPrice = readOnly ? svc.monthly_price : (money?.monthly_price ?? null);
-  const hourlyRate = readOnly ? svc.hourly_rate : (money?.hourly_rate ?? null);
+  const monthlyPrice = money?.monthly_price ?? null;
+  const hourlyRate = money?.hourly_rate ?? null;
   const price = Number(monthlyPrice ?? meta.price);
   const wp = svc.site_type === "wordpress";
   // Show what THIS client actually signed (frozen agreement) so later edits to
