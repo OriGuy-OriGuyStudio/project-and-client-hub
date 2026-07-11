@@ -21,6 +21,7 @@ import { TasksSection } from "@/components/tasks/TasksSection";
 import { DocsSection } from "@/components/project/DocsSection";
 import { FileManager } from "@/components/files/FileManager";
 import { PaymentsSection } from "@/components/payments/PaymentsSection";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import { WarrantyCountdown } from "@/components/warranty/WarrantyCountdown";
 import { ActivityFeed } from "@/components/project/ActivityFeed";
 import { MaintenanceLogEditor } from "@/components/service/MaintenanceLogEditor";
@@ -46,6 +47,8 @@ function SectionUpdated({ show }: { show: boolean }) {
 export default function ProjectDetail() {
   const { id } = useParams();
   const { isAdmin, user } = useAuth();
+  // Capability gating for a client viewing their own project (admin bypasses).
+  const caps = useMyCapabilities(isAdmin ? null : id ?? null);
   const reduced = usePrefersReducedMotion();
   const { data, isLoading, isError } = useProject(id);
   const qc = useQueryClient();
@@ -215,9 +218,11 @@ export default function ProjectDetail() {
           <div data-reveal data-section className="scroll-mt-20">
             <DocsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal data-section className="scroll-mt-20">
-            <PaymentsSection projectId={project.id} isAdmin={isAdmin} />
-          </div>
+          {(isAdmin || caps.finance) && (
+            <div data-reveal data-section className="scroll-mt-20">
+              <PaymentsSection projectId={project.id} isAdmin={isAdmin} />
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 space-y-6">

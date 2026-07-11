@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { sanitizeHtml, clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import type { ProjectDoc } from "@/types/database";
 
 export function DocsSection({
@@ -35,6 +36,9 @@ export function DocsSection({
   actorId: string | null;
 }) {
   const qc = useQueryClient();
+  // Creating/editing docs requires the files capability (a viewer is read-only).
+  const { files: canFiles } = useMyCapabilities(isAdmin ? null : projectId);
+  const canWrite = isAdmin || canFiles;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
@@ -105,12 +109,14 @@ export function DocsSection({
           <FileText className="size-5 text-brand-cyan-base" />
           <h2 className="font-heading text-lg font-semibold text-foreground">מסמכים</h2>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setAdding((v) => !v)}>
-          <Plus className="size-4" /> מסמך
-        </Button>
+        {canWrite && (
+          <Button size="sm" variant="ghost" onClick={() => setAdding((v) => !v)}>
+            <Plus className="size-4" /> מסמך
+          </Button>
+        )}
       </div>
 
-      {adding && (
+      {adding && canWrite && (
         <div className="mb-4 flex items-center gap-2">
           <Input
             placeholder="שם המסמך (פרוטוקול, תוכן לאתר…)"
