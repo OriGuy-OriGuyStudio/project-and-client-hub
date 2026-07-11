@@ -981,6 +981,14 @@ export interface Database {
           threats_total: number;
         }[];
       };
+      client_service_money: {
+        Args: { p_project: string };
+        Returns: { monthly_price: number | null; hourly_rate: number | null }[];
+      };
+      my_capabilities: {
+        Args: { p_project: string };
+        Returns: { finance: boolean; service_calls: boolean; approve: boolean; files: boolean }[];
+      };
       resolve_referral: {
         Args: { p_code: string };
         Returns: { valid: boolean; partner_name?: string | null };

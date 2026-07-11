@@ -317,3 +317,18 @@ export function useServiceSummary(projectId: string | null | undefined) {
     },
   });
 }
+
+/** Finance-gated price/rate for a project (Option A). Only enabled for finance
+ * members; the DB RPC raises 'forbidden' otherwise, so gate `enabled` on finance. */
+export function useServiceMoney(projectId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["service-money", projectId],
+    enabled: !!projectId && enabled,
+    queryFn: async (): Promise<{ monthly_price: number | null; hourly_rate: number | null } | null> => {
+      const { data, error } = await supabase.rpc("client_service_money", { p_project: projectId! });
+      if (error) throw error;
+      const row = data?.[0];
+      return row ? { monthly_price: row.monthly_price, hourly_rate: row.hourly_rate } : null;
+    },
+  });
+}

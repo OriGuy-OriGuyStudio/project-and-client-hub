@@ -45,6 +45,7 @@ import { uploadServiceCallMedia } from "@/lib/files";
 import { PerfChart } from "@/components/service/PerfChart";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import {
   useMyServices,
   useMyAgreements,
@@ -52,6 +53,7 @@ import {
   useMaintenanceLog,
   useServiceSummary,
   useServiceCalls,
+  useServiceMoney,
   openServiceCall,
   type ServiceSummary,
 } from "@/hooks/useService";
@@ -364,7 +366,15 @@ export function ServiceBoard({
   readOnly?: boolean;
 }) {
   const meta = TIER_META[svc.tier];
-  const price = Number(svc.monthly_price ?? meta.price);
+  const caps = useMyCapabilities(readOnly ? null : svc.project_id);
+  // preview is always paired with readOnly (public snapshot) -> show money, source
+  // from the snapshot's svc. Live client -> only finance members see money, sourced
+  // from the finance-gated client_service_money RPC.
+  const showMoney = preview || readOnly || caps.finance;
+  const { data: money } = useServiceMoney(readOnly ? null : svc.project_id, showMoney && !readOnly);
+  const monthlyPrice = readOnly ? svc.monthly_price : (money?.monthly_price ?? null);
+  const hourlyRate = readOnly ? svc.hourly_rate : (money?.hourly_rate ?? null);
+  const price = Number(monthlyPrice ?? meta.price);
   const wp = svc.site_type === "wordpress";
   // Show what THIS client actually signed (frozen agreement) so later edits to
   // the plans editor never change what an existing client already has. Fall back
@@ -435,9 +445,11 @@ export function ServiceBoard({
               {meta.label} , {projectName}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-muted-foreground">
-                <b className="font-heading text-lg text-foreground">₪{price.toLocaleString("he-IL")}</b> / חודש
-              </span>
+              {showMoney && (
+                <span className="text-muted-foreground">
+                  <b className="font-heading text-lg text-foreground">₪{price.toLocaleString("he-IL")}</b> / חודש
+                </span>
+              )}
               <span className="flex items-center gap-1.5 rounded-full bg-brand-cyan-base/10 px-3 py-1 text-xs text-brand-cyan-base">
                 <Clock className="size-3.5" /> תגובה עד {meta.responseHours} שעות
               </span>
@@ -451,7 +463,7 @@ export function ServiceBoard({
                 <p className="mt-1 text-xs text-muted-foreground">ציון בריאות{healthWord ? ` · ${healthWord}` : ""}</p>
               </div>
             )}
-            {!readOnly && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
+            {!readOnly && caps.service_calls && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
           </div>
         </div>
 
@@ -501,8 +513,8 @@ export function ServiceBoard({
                   : hoursLabel(summary?.hours_month ?? 0)
               }
               sub={
-                svc.hourly_rate
-                  ? `שווי ₪${Math.round(roundH(summary?.hours_month ?? 0) * Number(svc.hourly_rate)).toLocaleString("he-IL")}`
+                showMoney && hourlyRate
+                  ? `שווי ₪${Math.round(roundH(summary?.hours_month ?? 0) * Number(hourlyRate)).toLocaleString("he-IL")}`
                   : "ייעוץ ופיתוח"
               }
             />
@@ -579,6 +591,7 @@ export function ServiceBoard({
       </div>
 
       {/* cumulative value */}
+      {showMoney && (
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
           <Sparkles className="size-5 text-primary" /> הערך שקיבלת מאיתנו
@@ -602,12 +615,12 @@ export function ServiceBoard({
           </div>
         </div>
         {(() => {
-          const val = packageValue(svc.tier, svc.site_type, svc.hourly_rate != null ? Number(svc.hourly_rate) : null);
+          const val = packageValue(svc.tier, svc.site_type, hourlyRate != null ? Number(hourlyRate) : null);
           const shekel = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
           const rows: { l: string; v: string }[] = [];
           // Value of the work delivered: actual hours this month × rate, falling
           // back to the plan's included hours when nothing was logged yet.
-          const rate = svc.hourly_rate != null ? Number(svc.hourly_rate) : 0;
+          const rate = hourlyRate != null ? Number(hourlyRate) : 0;
           const hoursMonth = summary?.hours_month ?? 0;
           const workHours = hoursMonth > 0 ? hoursMonth : val.hours;
           const workShekel = Math.round(roundH(workHours) * rate);
@@ -658,6 +671,7 @@ export function ServiceBoard({
           );
         })()}
       </div>
+      )}
 
       {/* client's own service calls */}
       {!readOnly && <ServiceCallsList projectId={svc.project_id} />}
@@ -863,6 +877,7 @@ export default function Service() {
   const projTitle = (id: string) => projects.find((x) => x.id === id)?.title ?? "פרויקט";
 
   const current = services.find((s) => s.project_id === activeId) ?? services[0];
+  const caps = useMyCapabilities(current?.project_id ?? null);
 
   return (
     <div>
@@ -908,7 +923,9 @@ export default function Service() {
           )}
           <ServiceBoard svc={current} projectName={projName(current.project_id)} />
           {/* Agreements for the project currently in view (switches with the tabs). */}
-          <MyAgreements projects={projects} projectId={current.project_id} projectName={projTitle(current.project_id)} />
+          {caps.finance && (
+            <MyAgreements projects={projects} projectId={current.project_id} projectName={projTitle(current.project_id)} />
+          )}
         </div>
       )}
 
