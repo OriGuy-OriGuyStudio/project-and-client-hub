@@ -64,7 +64,7 @@ begin
     perform net.http_post(
       url := coalesce(v_base, 'https://tirasinbjsotcrqggipe.supabase.co') || '/functions/v1/notify-service-welcome',
       headers := jsonb_build_object('Content-Type', 'application/json', 'x-webhook-secret', coalesce(v_secret, '')),
-      body := jsonb_build_object('project_id', NEW.project_id, 'tier', NEW.tier, 'monthly_price', NEW.monthly_price)
+      body := jsonb_build_object('project_id', NEW.project_id, 'tier', NEW.tier)
     );
   end if;
   return NEW;

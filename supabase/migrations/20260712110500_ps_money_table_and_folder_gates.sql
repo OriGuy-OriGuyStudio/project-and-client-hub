@@ -87,6 +87,27 @@ begin
 end;
 $function$;
 
+-- notify_service_activated (activation-welcome trigger, migration
+-- 20260711120000) put NEW.monthly_price in its webhook payload. The
+-- notify-service-welcome edge function never reads it, so drop it from the
+-- payload — otherwise the trigger errors ("record new has no field
+-- monthly_price") on the next project_service UPDATE once the column is gone.
+create or replace function public.notify_service_activated()
+returns trigger language plpgsql security definer set search_path to 'public', 'extensions' as $function$
+declare v_secret text; v_base text;
+begin
+  if NEW.activated_at is not null and OLD.activated_at is null then
+    select value into v_secret from public.webhook_secrets where name = 'service_welcome_notify';
+    select value into v_base   from public.webhook_secrets where name = 'functions_base_url';
+    perform net.http_post(
+      url := coalesce(v_base, 'https://tirasinbjsotcrqggipe.supabase.co') || '/functions/v1/notify-service-welcome',
+      headers := jsonb_build_object('Content-Type', 'application/json', 'x-webhook-secret', coalesce(v_secret, '')),
+      body := jsonb_build_object('project_id', NEW.project_id, 'tier', NEW.tier)
+    );
+  end if;
+  return NEW;
+end $function$;
+
 -- money is now read only through the two definers above; drop the source columns
 -- so a non-finance member can no longer read them off project_service directly.
 alter table public.project_service drop column monthly_price, drop column hourly_rate;
