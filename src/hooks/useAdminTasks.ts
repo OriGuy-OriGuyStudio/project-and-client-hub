@@ -58,6 +58,19 @@ export interface AdminTaskServiceCall {
   createdAt: string;
 }
 
+export interface AdminTaskAgreement {
+  id: string;
+  clientId: string | null;
+  projectId: string | null;
+  fullName: string;
+  business: string | null;
+  phone: string | null;
+  tier: string;
+  monthlyPrice: number | null;
+  billingCycle: string | null;
+  createdAt: string;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
@@ -66,6 +79,7 @@ export interface AdminTasks {
   feedback: AdminTaskFeedback[];
   loginAttempts: AdminTaskLoginAttempt[];
   serviceCalls: AdminTaskServiceCall[];
+  agreements: AdminTaskAgreement[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -76,7 +90,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar, ld, pp, fb, la, sc] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp, fb, la, sc, ag, ps] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -120,6 +134,15 @@ export function useAdminTasks(adminId?: string) {
           .select("id, title, status, project_id, client_id, created_at, project:projects(title), client:profiles(full_name)")
           .in("status", ["new", "scheduled", "in_progress"])
           .order("created_at", { ascending: true }),
+        supabase
+          .from("service_agreements")
+          .select("id, client_id, project_id, full_name, business, phone, tier, monthly_price, billing_cycle, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("project_service")
+          .select("project_id")
+          .eq("active", true),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -199,7 +222,34 @@ export function useAdminTasks(adminId?: string) {
         createdAt: r.created_at,
       })));
 
-      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts, serviceCalls };
+      // A signed agreement is "waiting" until Ori actually opens the package
+      // (an active project_service for that project). Once he does, it clears
+      // itself from the panel. Agreements not linked to a project are shown for
+      // a short window so they don't linger forever with no way to resolve.
+      const openServiceProjects = new Set<string>(
+        ((ps.data as any[]) ?? []).map((r) => r.project_id).filter(Boolean),
+      );
+      const recentCutoff = Date.now() - 21 * 864e5;
+      const agreements: AdminTaskAgreement[] = (((ag.data as any[]) ?? [])
+        .filter((r) =>
+          r.project_id
+            ? !openServiceProjects.has(r.project_id)
+            : new Date(r.created_at).getTime() >= recentCutoff,
+        )
+        .map((r) => ({
+          id: r.id,
+          clientId: r.client_id,
+          projectId: r.project_id,
+          fullName: r.full_name ?? "לקוח",
+          business: r.business,
+          phone: r.phone,
+          tier: r.tier,
+          monthlyPrice: r.monthly_price != null ? Number(r.monthly_price) : null,
+          billingCycle: r.billing_cycle,
+          createdAt: r.created_at,
+        })));
+
+      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts, serviceCalls, agreements };
     },
   });
 }

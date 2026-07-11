@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert, LifeBuoy } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert, LifeBuoy, FileSignature } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +37,16 @@ export function AdminTasksPanel() {
   const feedback = data?.feedback ?? [];
   const loginAttempts = data?.loginAttempts ?? [];
   const serviceCalls = data?.serviceCalls ?? [];
+  const agreements = data?.agreements ?? [];
   const total =
     redemptions.length + messages.length + accessRequests.length + leads.length +
-    feedback.length + loginAttempts.length + serviceCalls.length;
+    feedback.length + loginAttempts.length + serviceCalls.length + agreements.length;
 
   const scStatusHe: Record<string, string> = {
     new: "חדשה", scheduled: "מתוזמנת", in_progress: "בטיפול",
   };
+  const tierHe: Record<string, string> = { core: "Core", pro: "Pro", ultra: "Ultra" };
+  const shekel = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
 
   async function dismissLoginAttempt(id: string) {
     setBusy(id);
@@ -150,6 +153,35 @@ export function AdminTasksPanel() {
         <p className="text-sm text-muted-foreground">הכול מטופל, אין משימות ממתינות 🎉</p>
       ) : (
         <div className="space-y-2.5">
+          {/* New signed service agreements — open the package for the client */}
+          {agreements.map((a) => (
+            <div key={a.id} className="rounded-xl border border-primary/40 bg-primary/[0.07] p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <FileSignature className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      חתם על חבילת שירות: <span className="font-semibold">{a.business || a.fullName}</span>
+                      <span className="text-muted-foreground">
+                        {" "}· {tierHe[a.tier] ?? a.tier}
+                        {a.monthlyPrice != null ? ` · ${shekel(a.monthlyPrice)}${a.billingCycle === "annual" ? "/שנה" : "/חודש"}` : ""}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      יש לפתוח לו את החבילה (הקצאת תוכנית לפרויקט)
+                      {a.phone ? <span className="font-mono-code"> · {a.phone}</span> : null}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm">
+                  <Link to={a.clientId ? `/admin/clients/${a.clientId}` : "/admin/clients"}>
+                    פתח חבילה <ExternalLink className="size-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
+
           {/* Access requests (someone tried to join) */}
           {accessRequests.map((r) => (
             <div
