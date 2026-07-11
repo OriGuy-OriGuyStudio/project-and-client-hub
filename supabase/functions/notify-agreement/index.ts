@@ -110,11 +110,13 @@ Deno.serve(async (req: Request) => {
   const annual = String(b?.billing_cycle ?? "") === "annual";
   const accessToken = String(b?.access_token ?? "").trim();
   const clientId = String(b?.client_id ?? "").trim();
+  const projectTitle = String(b?.project_title ?? "").trim();
 
   const priceStr = price ? `₪${price.toLocaleString("he-IL")} / חודש` : "";
   const lines = [
     `שם: ${name}`,
     business ? `עסק: ${business}` : null,
+    projectTitle ? `פרויקט לשיוך: ${projectTitle}` : "פרויקט לשיוך: לא צוין (לשייך ידנית)",
     `חבילה: ${tierName}${priceStr ? ` · ${priceStr}` : ""} · ${annual ? "חיוב שנתי" : "חיוב חודשי"}`,
     siteType ? `סוג אתר: ${siteType}` : null,
     email ? `מייל: ${email}` : null,

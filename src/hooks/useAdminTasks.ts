@@ -62,6 +62,7 @@ export interface AdminTaskAgreement {
   id: string;
   clientId: string | null;
   projectId: string | null;
+  projectTitle: string | null;
   fullName: string;
   business: string | null;
   phone: string | null;
@@ -136,7 +137,7 @@ export function useAdminTasks(adminId?: string) {
           .order("created_at", { ascending: true }),
         supabase
           .from("service_agreements")
-          .select("id, client_id, project_id, full_name, business, phone, tier, monthly_price, billing_cycle, created_at")
+          .select("id, client_id, project_id, full_name, business, phone, tier, monthly_price, billing_cycle, created_at, project:projects(title)")
           .eq("status", "submitted")
           .order("created_at", { ascending: false })
           .limit(50),
@@ -258,6 +259,7 @@ export function useAdminTasks(adminId?: string) {
           id: r.id,
           clientId: r.client_id,
           projectId: r.project_id,
+          projectTitle: r.project?.title ?? null,
           fullName: r.full_name ?? "לקוח",
           business: r.business,
           phone: r.phone,

@@ -179,7 +179,9 @@ export function AdminTasksPanel() {
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      יש לפתוח לו את החבילה (הקצאת תוכנית לפרויקט)
+                      {a.projectTitle
+                        ? <>לשייך לפרויקט: <span className="font-semibold text-foreground">{a.projectTitle}</span></>
+                        : "לא שויך לפרויקט, לשייך ידנית"}
                       {a.phone ? <span className="font-mono-code"> · {a.phone}</span> : null}
                     </p>
                   </div>
