@@ -16,6 +16,7 @@ import { GiftPopup } from "@/components/layout/GiftPopup";
 import { WhatsNew } from "@/components/layout/WhatsNew";
 import { PendingRedemptionsBanner } from "@/components/layout/PendingRedemptionsBanner";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { ServiceWelcomeModal } from "@/components/service/ServiceWelcomeModal";
 import { useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import { toastError } from "@/hooks/use-toast";
@@ -46,6 +47,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <ServiceWelcomeModal />
       <GiftPopup />
       <WhatsNew audience="client" />
       <PageHeader

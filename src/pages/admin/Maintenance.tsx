@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail, Rocket, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { isDemoEmail } from "@/lib/demo";
 import { TIER_META } from "@/lib/service-plans";
-import { useMaintenanceOverview, refreshSiteMetrics, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+import { useMaintenanceOverview, refreshSiteMetrics, activateService, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
 import { PerfChart } from "@/components/service/PerfChart";
 import { OnboardingChecklist } from "@/components/service/OnboardingChecklist";
 
@@ -183,6 +183,7 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activating, setActivating] = useState(false);
   const meta = TIER_META[row.tier];
   const includedHours = meta.hours;
   const staleDays = daysSince(row.last_metric_date);
@@ -224,6 +225,16 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
     qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
   }
 
+  async function activate() {
+    if (!window.confirm("לסמן שהתשתית הוקמה והחבילה פעילה?\nהלקוח יקבל מייל ברכה ופופאפ חגיגי בכניסה הבאה ל-Orion.")) return;
+    setActivating(true);
+    const { error } = await activateService(row.project_id);
+    setActivating(false);
+    if (error) return toastError(error.message || "ההפעלה נכשלה.");
+    toast({ title: "החבילה פעילה 🎉 הלקוח יקבל ברכה", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
+  }
+
   async function sendClientReport() {
     if (!window.confirm("לשלוח ללקוח את הדוח החודשי במייל?")) return;
     setSending(true);
@@ -241,6 +252,11 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-heading text-base font-semibold text-foreground">{row.project_title}</span>
             <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] text-muted-foreground">{meta.label}</span>
+            {row.activated_at && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                <CheckCircle2 className="size-3" /> פעילה
+              </span>
+            )}
             {row.open_calls > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
                 <LifeBuoy className="size-3" /> {row.open_calls} קריאות פתוחות
@@ -265,6 +281,11 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {!row.activated_at && (
+            <Button size="sm" onClick={activate} disabled={activating}>
+              <Rocket className="size-3.5" /> סמן כפעילה
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={refreshOne} disabled={refreshing}>
             <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} /> רענן
           </Button>

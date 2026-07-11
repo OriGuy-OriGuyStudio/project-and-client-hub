@@ -136,6 +136,7 @@ export type MaintenanceOverviewRow = {
   last_metric_date: string | null;
   hours_month: number;
   open_calls: number;
+  activated_at: string | null;
 };
 
 /** Admin: every active package with its latest metrics + open calls. */
@@ -153,6 +154,43 @@ export function useMaintenanceOverview() {
 /** Admin: run the PageSpeed poll on demand (fills today's metrics now). */
 export async function refreshSiteMetrics(projectId?: string) {
   return supabase.functions.invoke("poll-site-metrics", { body: projectId ? { project_id: projectId } : {} });
+}
+
+/** Admin: mark the package as fully set up + live. Stamps activated_at and
+ *  fires the client's welcome email (server-side trigger). Idempotent. */
+export async function activateService(projectId: string) {
+  return supabase.rpc("activate_service", { p_project: projectId });
+}
+
+/** Client: dismiss the one-time welcome celebration popup. */
+export async function ackServiceWelcome(projectId: string) {
+  return supabase.rpc("ack_service_welcome", { p_project: projectId });
+}
+
+export type ServiceWelcome = { projectId: string; tier: string; projectTitle: string };
+
+/** Client: the newly-activated package that hasn't been celebrated yet (drives
+ *  the one-time Orion welcome popup). null when there's nothing to show. */
+export function useMyServiceWelcome(enabled = true) {
+  return useQuery({
+    queryKey: ["my-service-welcome"],
+    enabled,
+    queryFn: async (): Promise<ServiceWelcome | null> => {
+      const { data, error } = await supabase
+        .from("project_service")
+        .select("project_id, tier, activated_at, welcome_seen_at, project:projects(title)")
+        .eq("active", true)
+        .not("activated_at", "is", null)
+        .is("welcome_seen_at", null)
+        .limit(1);
+      if (error) throw error;
+      const row = (data ?? [])[0] as unknown as
+        | { project_id: string; tier: string; project: { title: string } | null }
+        | undefined;
+      if (!row) return null;
+      return { projectId: row.project_id, tier: row.tier, projectTitle: row.project?.title ?? "" };
+    },
+  });
 }
 
 export type SiteInsights = {

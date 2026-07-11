@@ -414,6 +414,8 @@ export type ProjectService = {
   billing_day: number;
   active: boolean;
   preview_token: string | null;
+  activated_at: string | null;
+  welcome_seen_at: string | null;
   updated_at: string;
 }
 
@@ -923,6 +925,8 @@ export interface Database {
         Returns: undefined;
       };
       dismiss_service_agreement: { Args: { p_id: string }; Returns: { ok: boolean } };
+      activate_service: { Args: { p_project: string }; Returns: { ok: boolean; activated_at: string | null } };
+      ack_service_welcome: { Args: { p_project: string }; Returns: { ok: boolean } };
       get_my_role: { Args: Record<string, never>; Returns: string };
       ensure_my_profile: { Args: Record<string, never>; Returns: string | null };
       is_admin: { Args: Record<string, never>; Returns: boolean };
