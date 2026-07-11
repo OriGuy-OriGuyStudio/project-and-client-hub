@@ -175,7 +175,7 @@ export default function AgreementConfirmation() {
           <div className="text-start text-xs text-muted-foreground">
             נחתם ב-{dateTime}
             <br />
-            מסמך {a.terms_version} · Studio Ori Guy
+            מסמך {a.terms_version} · Ori Guy Studio
           </div>
         </div>
         {a.consent_accepted && (

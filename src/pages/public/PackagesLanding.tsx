@@ -372,7 +372,7 @@ export default function PackagesLanding() {
       {/* NAV */}
       <nav className="pkl-nav">
         <div className="pkl-wrap pkl-nav-in">
-          <div className="wm">Studio Ori Guy<small>תחזוקה וליווי</small></div>
+          <div className="wm">Ori Guy Studio<small>תחזוקה וליווי</small></div>
           <div className="nav-mid">
             <a href="#inside">מבפנים</a><a href="#why">למה תחזוקה</a><a href="#packages">החבילות</a><a href="#faq">שאלות</a>
           </div>
@@ -778,7 +778,7 @@ export default function PackagesLanding() {
       </section>
 
       <footer className="pkl-footer"><div className="pkl-wrap footer-in">
-        <div className="wm">Studio Ori Guy</div>
+        <div className="wm">Ori Guy Studio</div>
         <div className="foot-links"><Link to="/terms">תקנון</Link><Link to="/privacy">מדיניות פרטיות</Link></div>
         <div>© {new Date().getFullYear()} · ליווי, תחזוקה ופיתוח לאתרים</div>
       </div></footer>
@@ -804,7 +804,7 @@ function GreetPopup({ name, gender, onClose }: { name: string; gender: Gender; o
         initial={{ opacity: 0, y: 26, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.98 }} transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}>
         <button type="button" className="greet-x" onClick={onClose} aria-label="סגירה">×</button>
-        <span className="greet-badge"><b className="dot" aria-hidden="true" />Studio Ori Guy</span>
+        <span className="greet-badge"><b className="dot" aria-hidden="true" />Ori Guy Studio</span>
         <h2 className="greet-h">היי {name},</h2>
         <p className="greet-p">הכנתי לך את הדף הזה במיוחד. ריכזתי כאן את כל מה שחשוב על תחזוקה, אבטחה וליווי לאתר שלך, ואיך אני שומר עליו בשבילך.</p>
         <button type="button" className="greet-cta" onClick={onClose}>{g("יאללה, בוא נתחיל", "יאללה, בואי נתחיל")}</button>

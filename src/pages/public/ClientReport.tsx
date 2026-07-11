@@ -341,7 +341,7 @@ export default function ClientReport() {
           )}
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">Orion · Studio Ori Guy</p>
+        <p className="mt-6 text-center text-xs text-muted-foreground">Orion · Ori Guy Studio</p>
       </div>
     </div>
   );

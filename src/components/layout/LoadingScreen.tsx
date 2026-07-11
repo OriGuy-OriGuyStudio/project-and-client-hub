@@ -23,7 +23,7 @@ export function LoadingScreen() {
 
         <div className="flex flex-col items-center gap-1.5">
           <span className="font-heading text-2xl font-bold tracking-tight text-foreground">
-            Studio Ori Guy
+            Ori Guy Studio
           </span>
           <span className="text-sm text-muted-foreground">טוען את הפורטל שלך…</span>
         </div>

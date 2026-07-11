@@ -64,8 +64,8 @@ export function AppShell() {
       if (isTimerTitleActive()) return;
       const label = titleForPath(location.pathname);
       document.title = label
-        ? `${label} · Studio Ori Guy`
-        : "Studio Ori Guy · פורטל לקוחות";
+        ? `${label} · Ori Guy Studio`
+        : "Ori Guy Studio · פורטל לקוחות";
     };
     setPageTitle();
     document.addEventListener("timer-title-release", setPageTitle);

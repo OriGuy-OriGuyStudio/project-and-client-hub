@@ -41,9 +41,9 @@ export default function PartnerLogin() {
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 py-6 text-center sm:gap-8 sm:py-12">
         <div data-anim="mark" className="flex flex-col items-center gap-4">
-          <img src="/brand/logo-mark.svg" alt="Studio Ori Guy" className="h-16 w-16" />
+          <img src="/brand/logo-mark.svg" alt="Ori Guy Studio" className="h-16 w-16" />
           <div className="space-y-1">
-            <p className="font-heading text-lg font-black text-foreground">Studio Ori Guy</p>
+            <p className="font-heading text-lg font-black text-foreground">Ori Guy Studio</p>
             <p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               <Handshake className="size-4 text-primary" />
               Orion · פורטל השותפים

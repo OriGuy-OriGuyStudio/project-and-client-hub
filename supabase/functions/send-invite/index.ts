@@ -12,7 +12,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const FROM_NAME = "Studio Ori Guy";
+const FROM_NAME = "Ori Guy Studio";
 const FROM_EMAIL = "origuy@origuystudio.com";
 const STUDIO_BCC = "origuy@origuystudio.com"; // inbox copy for Ori
 const DEFAULT_PORTAL = "https://orion.origuystudio.com";

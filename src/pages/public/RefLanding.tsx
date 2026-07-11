@@ -143,7 +143,7 @@ export default function RefLanding() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.title = "Studio Ori Guy · אתרים שגורמים ללקוחות לבחור בך";
+    document.title = "Ori Guy Studio · אתרים שגורמים ללקוחות לבחור בך";
     let alive = true;
     resolveReferral(code).then((r) => {
       if (alive && r.valid && r.partner_name) setPartnerName(r.partner_name);
@@ -254,7 +254,7 @@ export default function RefLanding() {
               title="בא לך הפתעה?"
               className="group relative transition-transform hover:scale-[1.03]"
             >
-              Studio Ori Guy
+              Ori Guy Studio
               <span className="absolute -right-3.5 -top-1 text-primary opacity-0 transition-opacity group-hover:opacity-100">
                 ✦
               </span>
@@ -337,7 +337,7 @@ function GlassNav({ onCta }: { onCta: () => void }) {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="font-heading text-lg font-black tracking-tight text-foreground"
         >
-          Studio Ori Guy
+          Ori Guy Studio
         </button>
 
         <nav className="ref-glass hidden items-center gap-1 rounded-2xl px-1.5 py-1.5 sm:flex">

@@ -42,12 +42,12 @@ export default function Login() {
         <div data-anim="mark" className="flex flex-col items-center gap-4">
           <img
             src="/brand/logo-mark.svg"
-            alt="Studio Ori Guy"
+            alt="Ori Guy Studio"
             className="h-16 w-16"
           />
           <div className="space-y-1">
             <p className="font-heading text-lg font-black text-foreground">
-              Studio Ori Guy
+              Ori Guy Studio
             </p>
             <p className="text-sm text-muted-foreground">Orion · הפורטל שלך</p>
           </div>
