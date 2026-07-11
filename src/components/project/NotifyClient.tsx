@@ -146,17 +146,16 @@ function NotifyDialog({
     }
 
     setBusy(true);
-    // 1) In-app bell. With a custom note, the note itself becomes the body the
-    //    client reads in the bell — otherwise it's the generic update nudge.
+    // 1) In-app bell. Fans out to every manager of the project's organization
+    //    (not just the single client). With a custom note, the note itself
+    //    becomes the body the client reads in the bell.
     if (chInApp) {
-      const { error } = await supabase.from("notifications").insert({
-        audience: "client",
-        recipient_id: contact.clientId,
-        type: payload.type,
-        title: custom ? "הודעה מהסטודיו" : payload.title,
-        body: custom ? note.trim() : payload.body ?? null,
-        link: `/projects/${contact.projectId}`,
-        project_id: contact.projectId,
+      const { error } = await supabase.rpc("notify_org_managers", {
+        p_project: contact.projectId,
+        p_type: payload.type,
+        p_title: custom ? "הודעה מהסטודיו" : payload.title,
+        p_body: custom ? note.trim() : payload.body ?? null,
+        p_link: `/projects/${contact.projectId}`,
       });
       if (error) {
         setBusy(false);

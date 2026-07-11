@@ -1172,6 +1172,10 @@ export interface Database {
       reject_member_invite: { Args: { p_id: string }; Returns: undefined };
       my_org_members: { Args: Record<string, never>; Returns: OrgMemberRow[] };
       admin_org_members: { Args: { p_org: string }; Returns: OrgMemberRow[] };
+      notify_org_managers: {
+        Args: { p_project: string; p_type: string; p_title: string; p_body: string | null; p_link: string; p_entity_id?: string | null };
+        Returns: undefined;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
