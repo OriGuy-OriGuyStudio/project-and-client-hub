@@ -17,6 +17,7 @@ import { approvalStatusHe } from "@/lib/status";
 import { clampText } from "@/lib/sanitize";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useNotifyClient } from "@/components/project/NotifyClient";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import type { Approval } from "@/types/database";
 
 export function ApprovalsSection({
@@ -31,6 +32,7 @@ export function ApprovalsSection({
   const qc = useQueryClient();
   const reduced = usePrefersReducedMotion();
   const { requestNotify } = useNotifyClient();
+  const { approve: canApprove } = useMyCapabilities(projectId);
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
 
@@ -125,6 +127,7 @@ export function ApprovalsSection({
               <ApprovalRow
                 approval={a}
                 isAdmin={isAdmin}
+                canApprove={canApprove}
                 projectId={projectId}
                 actorId={actorId}
                 onChange={refresh}
@@ -140,12 +143,14 @@ export function ApprovalsSection({
 function ApprovalRow({
   approval,
   isAdmin,
+  canApprove,
   projectId,
   actorId,
   onChange,
 }: {
   approval: Approval;
   isAdmin: boolean;
+  canApprove: boolean;
   projectId: string;
   actorId: string | null;
   onChange: () => void;
@@ -202,7 +207,7 @@ function ApprovalRow({
       )}
 
       {/* Client decision controls (admins view status only) */}
-      {!isAdmin && approval.status === "pending" && (
+      {!isAdmin && canApprove && approval.status === "pending" && (
         <div className="mt-3">
           {noting ? (
             <div className="space-y-2">

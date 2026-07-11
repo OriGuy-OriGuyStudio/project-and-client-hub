@@ -37,6 +37,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import type { FileRow, ProjectFolder } from "@/types/database";
 
 const ROOT = "/";
@@ -53,6 +54,8 @@ export function FileManager({
   zipName: string;
 }) {
   const qc = useQueryClient();
+  const { files: canFiles } = useMyCapabilities(projectId);
+  const canManageFiles = isAdmin || canFiles;
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [zipping, setZipping] = useState(false);
@@ -245,17 +248,21 @@ export function FileManager({
           <h2 className="font-heading text-lg font-semibold text-foreground">קבצים ותיקיות</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setAddingFolder((v) => !v)}>
-            <FolderPlus className="size-4" /> תיקייה
-          </Button>
+          {canManageFiles && (
+            <Button size="sm" variant="ghost" onClick={() => setAddingFolder((v) => !v)}>
+              <FolderPlus className="size-4" /> תיקייה
+            </Button>
+          )}
           {!!files?.length && (
             <Button size="sm" variant="secondary" onClick={() => zipDownload("all")} disabled={zipping}>
               <Download className="size-4" /> {zipping ? "מכין…" : "הורד הכל"}
             </Button>
           )}
-          <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-            <Upload className="size-4" /> {uploading ? "מעלה…" : "העלאה"}
-          </Button>
+          {canManageFiles && (
+            <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
+              <Upload className="size-4" /> {uploading ? "מעלה…" : "העלאה"}
+            </Button>
+          )}
           <input
             ref={inputRef}
             type="file"
@@ -267,7 +274,7 @@ export function FileManager({
         </div>
       </div>
 
-      {addingFolder && (
+      {addingFolder && canManageFiles && (
         <div className="mb-4 flex items-center gap-2">
           <Input
             placeholder="שם התיקייה (לדוגמה: פרויקט שדרה 12)"
@@ -313,7 +320,7 @@ export function FileManager({
                 <Download className="size-4" /> הורד תיקייה
               </Button>
             )}
-            {(isAdmin || folderRecord(current)?.created_by === actorId) && (
+            {(isAdmin || (canFiles && folderRecord(current)?.created_by === actorId)) && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -368,7 +375,7 @@ export function FileManager({
                 <Button size="sm" variant="ghost" onClick={() => download(file)}>
                   <Download className="size-4" /> הורדה
                 </Button>
-                {(isAdmin || file.uploaded_by === actorId) && (
+                {(isAdmin || (canFiles && file.uploaded_by === actorId)) && (
                   <Button
                     size="sm"
                     variant="ghost"

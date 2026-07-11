@@ -24,7 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useClients } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
 import { useProjectBilling, saveProjectValue } from "@/hooks/useTimeData";
-import { useProjectService } from "@/hooks/useService";
+import { useProjectService, useProjectServiceMoney } from "@/hooks/useService";
 import { TIER_META } from "@/lib/service-plans";
 import { projectStatusHe } from "@/lib/status";
 import type { Project, ProjectStatus } from "@/types/database";
@@ -67,6 +67,9 @@ export function EditProjectSheet({ project }: { project: Project }) {
 
   // Service & maintenance plan (shown to the client on "השירות שלך").
   const { data: service } = useProjectService(project.id);
+  // Money (hourly_rate) now lives in the finance-gated project_service_money
+  // table; the admin reads it here to prefill the rate field.
+  const { data: serviceMoney } = useProjectServiceMoney(project.id);
   const [svcTier, setSvcTier] = useState<"none" | "core" | "pro" | "ultra">("none");
   const [svcSiteType, setSvcSiteType] = useState<"wordpress" | "custom">("wordpress");
   const [svcUrl, setSvcUrl] = useState("");
@@ -77,8 +80,10 @@ export function EditProjectSheet({ project }: { project: Project }) {
     setSvcSiteType(service?.site_type ?? "wordpress");
     setSvcUrl(service?.site_url ?? "");
     setSvcBillingDay(String(service?.billing_day ?? 1));
-    setSvcHourly(service?.hourly_rate != null ? String(service.hourly_rate) : "");
   }, [service]);
+  useEffect(() => {
+    setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
+  }, [serviceMoney]);
 
   async function save() {
     const title = clampText(draft.title.trim(), 200);
@@ -122,15 +127,20 @@ export function EditProjectSheet({ project }: { project: Project }) {
           tier: svcTier === "none" ? "core" : svcTier,
           site_type: svcSiteType,
           site_url: svcUrl.trim() || null,
-          hourly_rate: svcHourly.trim() ? Number(svcHourly) : null,
           billing_day: billingDay,
           active: svcTier !== "none",
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" },
       );
+      // Money lives in the finance-gated companion table (admin-writable).
+      await supabase.from("project_service_money").upsert(
+        { project_id: project.id, hourly_rate: svcHourly.trim() ? Number(svcHourly) : null },
+        { onConflict: "project_id" },
+      );
     }
     qc.invalidateQueries({ queryKey: ["project-service", project.id] });
+    qc.invalidateQueries({ queryKey: ["project-service-money", project.id] });
     qc.invalidateQueries({ queryKey: ["my-services"] });
     setSaving(false);
 

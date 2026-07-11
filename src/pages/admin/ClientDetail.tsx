@@ -45,6 +45,7 @@ import type { AdminReferral } from "@/hooks/useAdminReferrals";
 import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
+import { OrgMembersSection } from "@/components/admin/OrgMembersSection";
 import { supabase } from "@/lib/supabase";
 import { sendInvite, sendRedemptionNotice } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
@@ -402,6 +403,9 @@ export default function ClientDetail() {
           </div>
         )}
       </Card>
+
+      {/* Team + access (organization members) */}
+      <OrgMembersSection clientId={id!} />
 
       {/* Brand identity */}
       <Card id="cd-brand" data-section className="scroll-mt-20 space-y-4 p-5">

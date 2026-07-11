@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert, LifeBuoy, FileSignature } from "lucide-react";
+import { Check, X, Gift, MessagesSquare, ExternalLink, Send, CheckCircle2, UserPlus, Phone, Handshake, MessageSquareHeart, ShieldAlert, LifeBuoy, FileSignature, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,10 @@ import { feedbackStatusHe } from "@/hooks/useClientFeedback";
 import { sendRedemptionNotice } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useAdminTasks, type AdminTaskRedemption } from "@/hooks/useAdminTasks";
+import { useAdminTasks, type AdminTaskRedemption, type AdminTaskMemberInvite } from "@/hooks/useAdminTasks";
 import { dismissAgreement } from "@/hooks/useService";
+import { rejectMemberInvite } from "@/hooks/useOrg";
+import { ApproveMemberInviteSheet } from "@/components/admin/ApproveMemberInviteSheet";
 
 const PROJECT_TYPE_HE: Record<string, string> = {
   business_site: "אתר תדמית",
@@ -30,6 +32,7 @@ export function AdminTasksPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [fbStatus, setFbStatus] = useState<Record<string, "open" | "in_progress" | "resolved">>({});
+  const [approveTarget, setApproveTarget] = useState<AdminTaskMemberInvite | null>(null);
 
   const redemptions = data?.redemptions ?? [];
   const messages = data?.messages ?? [];
@@ -39,9 +42,11 @@ export function AdminTasksPanel() {
   const loginAttempts = data?.loginAttempts ?? [];
   const serviceCalls = data?.serviceCalls ?? [];
   const agreements = data?.agreements ?? [];
+  const memberInvites = data?.memberInvites ?? [];
   const total =
     redemptions.length + messages.length + accessRequests.length + leads.length +
-    feedback.length + loginAttempts.length + serviceCalls.length + agreements.length;
+    feedback.length + loginAttempts.length + serviceCalls.length + agreements.length +
+    memberInvites.length;
 
   const scStatusHe: Record<string, string> = {
     new: "חדשה", scheduled: "מתוזמנת", in_progress: "בטיפול",
@@ -56,6 +61,15 @@ export function AdminTasksPanel() {
     if (error) return toastError("הפעולה נכשלה.");
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
     qc.invalidateQueries({ queryKey: ["notifications"] });
+  }
+
+  async function rejectInvite(id: string) {
+    setBusy(id);
+    const { error } = await rejectMemberInvite(id);
+    setBusy(null);
+    if (error) return toastError(error.message || "הפעולה נכשלה.");
+    toast({ title: "הבקשה נדחתה", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["admin-tasks"] });
   }
 
   async function rejectAgreement(id: string) {
@@ -194,6 +208,48 @@ export function AdminTasksPanel() {
                   </Button>
                   <Button size="sm" variant="ghost" disabled={busy === a.id} onClick={() => rejectAgreement(a.id)}>
                     <X className="size-4" /> דחה
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Manager requests to add a teammate */}
+          {memberInvites.map((r) => (
+            <div key={r.id} className="rounded-xl border border-brand-cyan-base/30 bg-background/30 p-3.5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Users className="mt-0.5 size-4 shrink-0 text-brand-cyan-base" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground">
+                      בקשה להוספת איש צוות מ<span className="font-semibold">{r.orgName}</span>
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{r.fullName || r.email}</p>
+                    <p className="font-mono-code text-xs text-muted-foreground">
+                      {r.email}
+                      {r.phone ? ` · ${r.phone}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {[
+                        r.reqFinance && "כספים",
+                        r.reqServiceCalls && "קריאות שירות",
+                        r.reqApprove && "אישור עבודות",
+                        r.reqFiles && "קבצים",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "ללא הרשאות"}
+                    </p>
+                    {r.note && (
+                      <p className="mt-1 rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">{r.note}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button size="sm" onClick={() => setApproveTarget(r)}>
+                    <Check className="size-4" /> אישור
+                  </Button>
+                  <Button size="sm" variant="secondary" disabled={busy === r.id} onClick={() => rejectInvite(r.id)}>
+                    <X className="size-4" /> דחייה
                   </Button>
                 </div>
               </div>
@@ -448,6 +504,16 @@ export function AdminTasksPanel() {
           ))}
         </div>
       )}
+
+      <ApproveMemberInviteSheet
+        request={approveTarget}
+        onClose={() => setApproveTarget(null)}
+        onApproved={() => {
+          setApproveTarget(null);
+          qc.invalidateQueries({ queryKey: ["admin-tasks"] });
+          qc.invalidateQueries({ queryKey: ["member-invite-requests"] });
+        }}
+      />
     </Card>
   );
 }

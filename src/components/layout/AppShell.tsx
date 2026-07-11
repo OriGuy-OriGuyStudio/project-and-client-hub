@@ -14,6 +14,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useAuth } from "@/hooks/useAuth";
 import { TimerWidget } from "@/components/timer/TimerWidget";
+import { ServiceWelcomeModal } from "@/components/service/ServiceWelcomeModal";
 import { isTimerTitleActive } from "@/lib/timer-store";
 import { toast } from "@/hooks/use-toast";
 
@@ -117,6 +118,7 @@ export function AppShell() {
       <BackToTop />
       <WarpOverlay />
       {isAdmin && <TimerWidget />}
+      <ServiceWelcomeModal />
     </div>
   );
 }

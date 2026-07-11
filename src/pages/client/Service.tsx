@@ -45,6 +45,7 @@ import { uploadServiceCallMedia } from "@/lib/files";
 import { PerfChart } from "@/components/service/PerfChart";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import {
   useMyServices,
   useMyAgreements,
@@ -52,6 +53,7 @@ import {
   useMaintenanceLog,
   useServiceSummary,
   useServiceCalls,
+  useServiceMoney,
   openServiceCall,
   type ServiceSummary,
 } from "@/hooks/useService";
@@ -364,7 +366,19 @@ export function ServiceBoard({
   readOnly?: boolean;
 }) {
   const meta = TIER_META[svc.tier];
-  const price = Number(svc.monthly_price ?? meta.price);
+  const caps = useMyCapabilities(readOnly ? null : svc.project_id);
+  // preview is always paired with readOnly (public snapshot) -> show money, source
+  // from the snapshot's svc. Live client -> only finance members see money, sourced
+  // from the finance-gated client_service_money RPC.
+  const showMoney = preview || readOnly || caps.finance;
+  // Money (price/rate) lives in the finance-gated project_service_money table and
+  // is fetched only for a live finance member via the client_service_money RPC.
+  // In readOnly/preview mode there is no member context, so it falls back to the
+  // tier's list price (meta.price) — the public snapshot never carried real money.
+  const { data: money } = useServiceMoney(readOnly ? null : svc.project_id, showMoney && !readOnly);
+  const monthlyPrice = money?.monthly_price ?? null;
+  const hourlyRate = money?.hourly_rate ?? null;
+  const price = Number(monthlyPrice ?? meta.price);
   const wp = svc.site_type === "wordpress";
   // Show what THIS client actually signed (frozen agreement) so later edits to
   // the plans editor never change what an existing client already has. Fall back
@@ -435,9 +449,11 @@ export function ServiceBoard({
               {meta.label} , {projectName}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-muted-foreground">
-                <b className="font-heading text-lg text-foreground">₪{price.toLocaleString("he-IL")}</b> / חודש
-              </span>
+              {showMoney && (
+                <span className="text-muted-foreground">
+                  <b className="font-heading text-lg text-foreground">₪{price.toLocaleString("he-IL")}</b> / חודש
+                </span>
+              )}
               <span className="flex items-center gap-1.5 rounded-full bg-brand-cyan-base/10 px-3 py-1 text-xs text-brand-cyan-base">
                 <Clock className="size-3.5" /> תגובה עד {meta.responseHours} שעות
               </span>
@@ -451,7 +467,7 @@ export function ServiceBoard({
                 <p className="mt-1 text-xs text-muted-foreground">ציון בריאות{healthWord ? ` · ${healthWord}` : ""}</p>
               </div>
             )}
-            {!readOnly && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
+            {!readOnly && caps.service_calls && <ServiceCallSheet projectId={svc.project_id} projectName={projectName} />}
           </div>
         </div>
 
@@ -501,8 +517,8 @@ export function ServiceBoard({
                   : hoursLabel(summary?.hours_month ?? 0)
               }
               sub={
-                svc.hourly_rate
-                  ? `שווי ₪${Math.round(roundH(summary?.hours_month ?? 0) * Number(svc.hourly_rate)).toLocaleString("he-IL")}`
+                showMoney && hourlyRate
+                  ? `שווי ₪${Math.round(roundH(summary?.hours_month ?? 0) * Number(hourlyRate)).toLocaleString("he-IL")}`
                   : "ייעוץ ופיתוח"
               }
             />
@@ -579,6 +595,7 @@ export function ServiceBoard({
       </div>
 
       {/* cumulative value */}
+      {showMoney && (
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
           <Sparkles className="size-5 text-primary" /> הערך שקיבלת מאיתנו
@@ -602,12 +619,12 @@ export function ServiceBoard({
           </div>
         </div>
         {(() => {
-          const val = packageValue(svc.tier, svc.site_type, svc.hourly_rate != null ? Number(svc.hourly_rate) : null);
+          const val = packageValue(svc.tier, svc.site_type, hourlyRate != null ? Number(hourlyRate) : null);
           const shekel = (n: number) => "₪" + Math.round(n).toLocaleString("he-IL");
           const rows: { l: string; v: string }[] = [];
           // Value of the work delivered: actual hours this month × rate, falling
           // back to the plan's included hours when nothing was logged yet.
-          const rate = svc.hourly_rate != null ? Number(svc.hourly_rate) : 0;
+          const rate = hourlyRate != null ? Number(hourlyRate) : 0;
           const hoursMonth = summary?.hours_month ?? 0;
           const workHours = hoursMonth > 0 ? hoursMonth : val.hours;
           const workShekel = Math.round(roundH(workHours) * rate);
@@ -658,6 +675,7 @@ export function ServiceBoard({
           );
         })()}
       </div>
+      )}
 
       {/* client's own service calls */}
       {!readOnly && <ServiceCallsList projectId={svc.project_id} />}
@@ -858,8 +876,12 @@ export default function Service() {
     const p = projects.find((x) => x.id === id);
     return p ? p.business_name || p.title : "האתר שלך";
   };
+  // The switcher must distinguish projects, and a client's projects share one
+  // business_name — so use the project title there (and on the agreements).
+  const projTitle = (id: string) => projects.find((x) => x.id === id)?.title ?? "פרויקט";
 
   const current = services.find((s) => s.project_id === activeId) ?? services[0];
+  const caps = useMyCapabilities(current?.project_id ?? null);
 
   return (
     <div>
@@ -883,44 +905,63 @@ export default function Service() {
       ) : (
         <div className="space-y-4">
           {services.length > 1 && (
-            <div className="inline-flex flex-wrap gap-1 rounded-full border border-border/60 bg-card/60 p-1">
-              {services.map((s) => (
-                <button
-                  key={s.project_id}
-                  onClick={() => setActiveId(s.project_id)}
-                  className={cn(
-                    "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                    s.project_id === current.project_id
-                      ? "bg-primary text-[color:var(--ink,#0a0623)]"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {projName(s.project_id)}
-                </button>
-              ))}
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">בחירת פרויקט</p>
+              <div className="inline-flex flex-wrap gap-1 rounded-full border border-border/60 bg-card/60 p-1">
+                {services.map((s) => (
+                  <button
+                    key={s.project_id}
+                    onClick={() => setActiveId(s.project_id)}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                      s.project_id === current.project_id
+                        ? "bg-primary text-[color:var(--ink,#0a0623)]"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {projTitle(s.project_id)}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <ServiceBoard svc={current} projectName={projName(current.project_id)} />
+          {/* Agreements for the project currently in view (switches with the tabs). */}
+          {caps.finance && (
+            <MyAgreements projects={projects} projectId={current.project_id} projectName={projTitle(current.project_id)} />
+          )}
         </div>
       )}
 
-      {/* The client's signed agreements, always available regardless of whether
-          a package is active yet. */}
-      <MyAgreements projects={projects} />
+      {/* No active package: still let the client see any signed documents. */}
+      {!current && !isLoading && <MyAgreements projects={projects} />}
     </div>
   );
 }
 
 /** The current client's signed service agreements, with a link to each frozen
  * document. Renders nothing when there are none. */
-function MyAgreements({ projects }: { projects: { id: string; title: string }[] }) {
-  const { data: agreements = [] } = useMyAgreements();
+function MyAgreements({
+  projects,
+  projectId,
+  projectName,
+}: {
+  projects: { id: string; title: string }[];
+  projectId?: string;
+  projectName?: string;
+}) {
+  const { data: allAgreements = [] } = useMyAgreements();
+  // When viewing a specific project, show only that project's agreements so the
+  // documents match the dashboard above. Without a project (no active package),
+  // show everything so the client can still reach any signed document.
+  const agreements = projectId ? allAgreements.filter((a) => a.project_id === projectId) : allAgreements;
   if (!agreements.length) return null;
   const projTitle = (id: string | null) => projects.find((p) => p.id === id)?.title ?? null;
   return (
     <div className="mt-6 rounded-2xl border border-border bg-card p-5">
       <h3 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
         <FileText className="size-5 text-muted-foreground" /> אישורי השירות שלך
+        {projectName ? <span className="text-sm font-normal text-muted-foreground">· {projectName}</span> : null}
       </h3>
       <p className="mt-1 text-sm text-muted-foreground">האישורים החתומים שלך. אפשר לצפות ולהוריד בכל עת.</p>
       <ul className="mt-4 space-y-2">

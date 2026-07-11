@@ -72,6 +72,21 @@ export interface AdminTaskAgreement {
   createdAt: string;
 }
 
+export interface AdminTaskMemberInvite {
+  id: string;
+  orgId: string;
+  orgName: string;
+  fullName: string | null;
+  email: string;
+  phone: string | null;
+  note: string | null;
+  reqFinance: boolean;
+  reqServiceCalls: boolean;
+  reqApprove: boolean;
+  reqFiles: boolean;
+  createdAt: string;
+}
+
 export interface AdminTasks {
   redemptions: AdminTaskRedemption[];
   messages: AdminTaskMessage[];
@@ -81,6 +96,7 @@ export interface AdminTasks {
   loginAttempts: AdminTaskLoginAttempt[];
   serviceCalls: AdminTaskServiceCall[];
   agreements: AdminTaskAgreement[];
+  memberInvites: AdminTaskMemberInvite[];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -91,7 +107,7 @@ export function useAdminTasks(adminId?: string) {
   return useQuery({
     queryKey: ["admin-tasks", adminId],
     queryFn: async (): Promise<AdminTasks> => {
-      const [pr, cr, msgs, ar, ld, pp, fb, la, sc, ag, ps] = await Promise.all([
+      const [pr, cr, msgs, ar, ld, pp, fb, la, sc, ag, ps, mi] = await Promise.all([
         supabase
           .from("partner_reward_redemptions")
           .select("id, coins_spent, partner_id, reward:rewards(name), partner:profiles(full_name)")
@@ -145,6 +161,13 @@ export function useAdminTasks(adminId?: string) {
           .from("project_service")
           .select("project_id, project:projects(client_id)")
           .eq("active", true),
+        supabase
+          .from("member_invite_requests")
+          .select(
+            "id, org_id, full_name, email, phone, note, req_can_finance, req_can_service_calls, req_can_approve, req_can_files, created_at, org:organizations(name)"
+          )
+          .eq("status", "pending")
+          .order("created_at", { ascending: true }),
       ]);
 
       const redemptions: AdminTaskRedemption[] = [
@@ -269,7 +292,22 @@ export function useAdminTasks(adminId?: string) {
           createdAt: r.created_at,
         })));
 
-      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts, serviceCalls, agreements };
+      const memberInvites: AdminTaskMemberInvite[] = (((mi.data as any[]) ?? []).map((r) => ({
+        id: r.id,
+        orgId: r.org_id,
+        orgName: r.org?.name ?? "עסק",
+        fullName: r.full_name,
+        email: r.email,
+        phone: r.phone,
+        note: r.note,
+        reqFinance: r.req_can_finance,
+        reqServiceCalls: r.req_can_service_calls,
+        reqApprove: r.req_can_approve,
+        reqFiles: r.req_can_files,
+        createdAt: r.created_at,
+      })));
+
+      return { redemptions, messages, accessRequests, leads, feedback, loginAttempts, serviceCalls, agreements, memberInvites };
     },
   });
 }

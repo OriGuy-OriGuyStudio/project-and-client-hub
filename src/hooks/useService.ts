@@ -57,6 +57,25 @@ export function useProjectService(projectId: string | null | undefined) {
   });
 }
 
+/** Finance-gated money (price/rate) for a project. RLS returns a row only to
+ * admins + can_finance members; everyone else gets null. Used by the admin edit
+ * form to prefill the rate. */
+export function useProjectServiceMoney(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["project-service-money", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<{ monthly_price: number | null; hourly_rate: number | null } | null> => {
+      const { data, error } = await supabase
+        .from("project_service_money")
+        .select("monthly_price, hourly_rate")
+        .eq("project_id", projectId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+}
+
 /** Recent daily site metrics (newest first). */
 export function useSiteMetrics(projectId: string | null | undefined, days = 30) {
   return useQuery({
@@ -136,6 +155,7 @@ export type MaintenanceOverviewRow = {
   last_metric_date: string | null;
   hours_month: number;
   open_calls: number;
+  activated_at: string | null;
 };
 
 /** Admin: every active package with its latest metrics + open calls. */
@@ -153,6 +173,43 @@ export function useMaintenanceOverview() {
 /** Admin: run the PageSpeed poll on demand (fills today's metrics now). */
 export async function refreshSiteMetrics(projectId?: string) {
   return supabase.functions.invoke("poll-site-metrics", { body: projectId ? { project_id: projectId } : {} });
+}
+
+/** Admin: mark the package as fully set up + live. Stamps activated_at and
+ *  fires the client's welcome email (server-side trigger). Idempotent. */
+export async function activateService(projectId: string) {
+  return supabase.rpc("activate_service", { p_project: projectId });
+}
+
+/** Client: dismiss the one-time welcome celebration popup. */
+export async function ackServiceWelcome(projectId: string) {
+  return supabase.rpc("ack_service_welcome", { p_project: projectId });
+}
+
+export type ServiceWelcome = { projectId: string; tier: string; projectTitle: string };
+
+/** Client: the newly-activated package that hasn't been celebrated yet (drives
+ *  the one-time Orion welcome popup). null when there's nothing to show. */
+export function useMyServiceWelcome(enabled = true) {
+  return useQuery({
+    queryKey: ["my-service-welcome"],
+    enabled,
+    queryFn: async (): Promise<ServiceWelcome | null> => {
+      const { data, error } = await supabase
+        .from("project_service")
+        .select("project_id, tier, activated_at, welcome_seen_at, project:projects(title)")
+        .eq("active", true)
+        .not("activated_at", "is", null)
+        .is("welcome_seen_at", null)
+        .limit(1);
+      if (error) throw error;
+      const row = (data ?? [])[0] as unknown as
+        | { project_id: string; tier: string; project: { title: string } | null }
+        | undefined;
+      if (!row) return null;
+      return { projectId: row.project_id, tier: row.tier, projectTitle: row.project?.title ?? "" };
+    },
+  });
 }
 
 export type SiteInsights = {
@@ -178,7 +235,10 @@ export async function siteInsights(projectId: string): Promise<{ data: SiteInsig
 }
 
 export type ServicePreview = {
-  service: ProjectService;
+  // The share token IS the authorization here (definer RPC), so the tokenized
+  // report may include the money that project_service no longer carries. Kept as
+  // an intersection so ProjectService itself stays money-free everywhere else.
+  service: ProjectService & { monthly_price?: number | null; hourly_rate?: number | null };
   project_title: string;
   business_name: string;
   metrics: SiteMetric[];
@@ -276,6 +336,21 @@ export function useServiceSummary(projectId: string | null | undefined) {
       const { data, error } = await supabase.rpc("client_service_summary", { p_project: projectId! });
       if (error) throw error;
       return (data?.[0] as ServiceSummary) ?? null;
+    },
+  });
+}
+
+/** Finance-gated price/rate for a project (Option A). Only enabled for finance
+ * members; the DB RPC raises 'forbidden' otherwise, so gate `enabled` on finance. */
+export function useServiceMoney(projectId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["service-money", projectId],
+    enabled: !!projectId && enabled,
+    queryFn: async (): Promise<{ monthly_price: number | null; hourly_rate: number | null } | null> => {
+      const { data, error } = await supabase.rpc("client_service_money", { p_project: projectId! });
+      if (error) throw error;
+      const row = data?.[0];
+      return row ? { monthly_price: row.monthly_price, hourly_rate: row.hourly_rate } : null;
     },
   });
 }

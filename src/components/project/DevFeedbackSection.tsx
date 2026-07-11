@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { supabase, PROJECT_FILES_BUCKET } from "@/lib/supabase";
 import { getSignedUrl } from "@/lib/files";
 import { toast, toastError } from "@/hooks/use-toast";
+import { useMyCapabilities } from "@/hooks/useMyCapabilities";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { useDevFeedback } from "@/hooks/useDevFeedback";
@@ -45,6 +46,9 @@ export function DevFeedbackSection({
   actorId: string | null;
 }) {
   const qc = useQueryClient();
+  // Posting a dev-feedback note requires the files capability (a viewer is read-only).
+  const { files: canFiles } = useMyCapabilities(isAdmin ? null : projectId);
+  const canWrite = isAdmin || canFiles;
   const { data: items, isLoading } = useDevFeedback(projectId);
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState("");
@@ -124,18 +128,20 @@ export function DevFeedbackSection({
           <Bug className="size-5 text-brand-cyan-base" />
           <h2 className="font-heading text-lg font-semibold text-foreground">הערות פיתוח</h2>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
-          <Plus className="size-4" /> הערה
-        </Button>
+        {canWrite && (
+          <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
+            <Plus className="size-4" /> הערה
+          </Button>
+        )}
       </div>
 
-      {!isAdmin && (
+      {!isAdmin && canWrite && (
         <p className="mb-3 text-xs text-muted-foreground">
           ראית משהו באתר שצריך תיקון או שיפור? כתוב לי כאן, אפשר לצרף צילום מסך, ואני אטפל בזה.
         </p>
       )}
 
-      {open && (
+      {open && canWrite && (
         <div className="mb-4 space-y-2 rounded-xl border border-border bg-background/30 p-3">
           <Input
             placeholder="עמוד / אזור (לדוגמה: עמוד הבית, טופס יצירת קשר)"
