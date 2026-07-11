@@ -61,8 +61,10 @@ to a solo org, and rolls out in phases to keep break risk low.
 - `id uuid pk`
 - `org_id uuid not null -> organizations`
 - `user_id uuid not null -> profiles`
-- `is_manager boolean not null default false` — can request member invites; the
-  "primary contact". Presets aside, this is a real flag.
+- `is_manager boolean not null default false` — the "primary contact". Governs
+  ONE thing only: the right to open member-invite requests and to be the default
+  notification recipient. It does **not** auto-grant any of the four data
+  capabilities (see "is_manager is not a capability override" below).
 - `can_finance boolean not null default false` — sees money (see Capabilities)
 - `can_service_calls boolean not null default false`
 - `can_approve boolean not null default false`
@@ -100,10 +102,48 @@ change in one place, not thirty.
   of the project's org. **Replaces `owns_project()`** as the client-side gate on
   every project-scoped table (files, tasks, approvals, messages, project_service,
   site_metrics, maintenance_log, service_calls, agreements, folders, docs, ...).
-- `member_can(p_project uuid, p_cap text) -> boolean` — the member's capability
-  flag (`finance`/`service_calls`/`approve`/`files`) for that project's org.
-  `is_manager` implies all capabilities.
+- `member_can(p_project uuid, p_cap text) -> boolean` — reads the member's
+  explicit capability column (`can_finance`/`can_service_calls`/`can_approve`/
+  `can_files`) for that project's org. It does NOT consult `is_manager`.
 - `is_admin()` (studio) is unchanged and always full-access.
+
+### is_manager is not a capability override
+
+Capabilities are **always explicit columns**. `is_manager` is a separate flag and
+never silently grants a data capability. This avoids the trap where an admin
+un-checks "finance" on a manager and the toggle does nothing. The "מנהל" UI
+preset sets `is_manager = true` AND all four capability columns = `true`, but they
+remain independent, so the admin can still, say, leave a manager without
+`can_finance` and it takes effect. Every toggle in the UI is always meaningful.
+
+### RLS performance (must implement in Phase 1, not after)
+
+`can_access_project` runs as an RLS check on every row of many large tables
+(files, site_metrics, maintenance_log, messages, ...). Postgres can evaluate a
+function per-row instead of once per query, which turns a busy dashboard slow.
+Requirements:
+- **Wrap the helper call in a scalar subquery** in every policy — `USING ((select
+  can_access_project(project_id)))` — to force InitPlan caching (evaluated once
+  per query, not per row). Same for `member_can`.
+- Mark the helper functions `STABLE` (not `VOLATILE`).
+- Indexes: `organization_members (user_id, org_id)`, `organization_members
+  (org_id, user_id)`, and `projects (id, org_id)` (id is already the PK; add a
+  covering index on `(org_id)` for the reverse lookup).
+- Benchmark the heaviest client screen (service dashboard, files) on a seeded
+  multi-row org before shipping Phase 1.
+
+### RLS on the membership tables themselves (critical)
+
+`organization_members` holds the money permissions, so a read leak here is worse
+than any other table. Explicit policies:
+- **`organizations`**: a user can `SELECT` an org they are a member of; only admin
+  writes.
+- **`organization_members`**: a member can `SELECT` their **own** row; a member
+  with `is_manager` in that org can `SELECT` **all rows of their org** (to show
+  the team list in Phase 2); **only admin can INSERT/UPDATE/DELETE** (no client
+  ever edits capabilities — even a manager only *requests*).
+- **`member_invite_requests`**: a manager can `INSERT`/`SELECT` requests for
+  **their own org**; admin sees and updates all. No one else can read them.
 
 ### Capabilities (4 toggles + baseline)
 
@@ -144,6 +184,41 @@ For each existing `profiles` row with `role = 'client'`:
 Result: every existing client becomes a **solo org with full access** — visually
 and behaviorally identical to today. The migration is idempotent.
 
+## Onboarding a NEW business (the common case after Phase 1)
+
+The migration is one-time; from Phase 1 onward, a brand-new client must also get
+an org. The org is created at the moment the studio onboards the first person:
+- When the admin creates a client (the existing "create client" flow) or approves
+  an `access_request`, we **create the `organizations` row and an
+  `organization_members` row (that user, `is_manager = true`, all capabilities
+  on)** in the same definer RPC.
+- The maintenance-package landing/agreement flow (`submit_service_agreement`) must
+  resolve or create the org too, so `projects.org_id` and the agreement are tied
+  to a business, not a bare user.
+- There is never a project without an `org_id` after Phase 1 (enforce with a NOT
+  NULL + FK once the backfill is verified).
+
+## Invite flow — auth integration (the hidden gap)
+
+Auth is **Google OAuth only + `allowed_emails` whitelist**, and a `profiles` row
+is created only on first sign-in by `handle_new_user()`. So a new member's
+`user_id` does not exist yet when the admin "adds" them — we cannot insert an
+`organization_members` row keyed by a `user_id` that isn't there.
+
+Flow when the admin approves a `member_invite_requests` (or adds a member
+directly):
+1. Insert/ensure the email in `allowed_emails` (role `client`).
+2. Record a **pending membership keyed by email** — either a `pending_members`
+   table (`org_id`, `email`, capability flags, `is_manager`) or capability +
+   `org_id` columns on `allowed_emails`. (Pick one during planning; a dedicated
+   `pending_members` table is cleaner.)
+3. The person signs in with Google. `handle_new_user()` / `ensure_my_profile()`
+   is extended to, after creating the profile, **look up any pending membership by
+   email and materialize the `organization_members` row** (then clear the pending
+   record).
+This reuses the existing whitelist + OAuth path; no new magic-link/email-auth
+mechanism is introduced. This linkage must be spelled out and tested in Phase 2.
+
 ## Admin UI (studio)
 
 - The "Clients" page becomes "Businesses" (organizations). A business card shows:
@@ -165,6 +240,11 @@ and behaviorally identical to today. The migration is idempotent.
   `can_approve`; upload/delete only for `can_files`.
 - A **manager** gets an "הזמן איש צוות" (invite teammate) form that creates a
   `member_invite_requests` row (name, email, phone, requested capabilities, note).
+- **Business-name badge on project cards.** Even though there is no org switcher
+  in v1, if a user ends up in more than one org (e.g. a mistaken invite) the
+  dashboard would merge projects with no indication of which business each belongs
+  to. Show a small business-name badge on the project card whenever the user
+  belongs to more than one org. Cheap, and it prevents a real edge-case confusion.
 
 ## Phasing (keeps break risk low)
 
@@ -178,6 +258,25 @@ and behaviorally identical to today. The migration is idempotent.
 - **Phase 3 — later / optional.** Per-project block, business-level
   referral/credits, fuller self-service.
 
+## Rollback & safety (Phase 1 is the risk-bearing one)
+
+Phase 1 touches RLS on many tables, so plan the retreat before shipping:
+- **Additive schema is reversible.** `org_id` columns, the new tables, and the
+  helper functions are non-destructive; `projects.client_id` is retained through
+  Phase 1. Dropping the new objects restores the old shape.
+- **The policy swap is the risky part.** Before changing any policy, the migration
+  records the exact prior `USING`/`WITH CHECK` expression (in a comment or a
+  captured `pg_policies` snapshot) so a down-migration can restore it verbatim.
+- **`can_access_project` is written to be a strict superset of `owns_project`**
+  for solo orgs, so if something misbehaves we can temporarily point the helper
+  back at the old ownership check without touching 30 policies (single-function
+  revert).
+- **Roll out table-group by table-group**, verifying each on the Supabase branch
+  (simulate members of two different orgs and confirm zero cross-org read) before
+  prod. Never convert all tables in one migration.
+- **Cross-tenant isolation test is a release gate:** as user A (org 1), attempt to
+  read every project-scoped table for a project in org 2 — must return nothing.
+
 ## Risk / impact areas to audit (must review each)
 
 - Every RLS policy referencing `client_id` / `owns_project()`.
@@ -189,8 +288,15 @@ and behaviorally identical to today. The migration is idempotent.
   `open_service_call`, `admin_open_service_call`, discovery/referral RPCs.
 - Landing + agreements: `submit_service_agreement` must set `org_id`; the
   per-project landing lock still works.
-- Notifications: recipient is a user today. In Phase 2, "notify the client" should
-  target the org's manager(s) (or relevant members). Phase 1 unchanged.
+- Notifications:
+  - **Admin-directed** (client opens a service call, sends a message → studio
+    bell): these target the studio, not a specific client, so they fire correctly
+    for **any** member from Phase 1 — the admin sees secondary members' actions.
+    Verify this explicitly (don't assume).
+  - **Client-directed** (service status changed → "notify the client"): today
+    targets the single `client_id`. In Phase 1 (solo orgs) unchanged. From Phase 2
+    (real multiple members) it targets the org's manager(s), or all members with
+    the relevant capability. Decide the fan-out in Phase 2.
 - Demo/studio separation (`isInternalClient` / `isDemoEmail` by email) still holds.
 - Referral / credit program stays attached to the manager user (untouched).
 
@@ -199,4 +305,9 @@ and behaviorally identical to today. The migration is idempotent.
 - Exact list of money-bearing fields to gate behind `finance` (agreements vs
   project_service price vs ROI) and whether to gate `project_service` money at the
   RPC layer or UI-only.
-- Notification fan-out in Phase 2 (managers only vs all members).
+- Notification fan-out in Phase 2 (managers only vs all members with the relevant
+  capability).
+- Pending-membership storage for the invite flow: a dedicated `pending_members`
+  table (preferred) vs capability + `org_id` columns on `allowed_emails`.
+- Whether to enforce `projects.org_id` NOT NULL immediately after backfill or keep
+  it nullable through Phase 1 for safety.
