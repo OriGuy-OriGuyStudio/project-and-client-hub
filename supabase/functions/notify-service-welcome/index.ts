@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
         <div style="font-size:14px;color:#B4D670;margin-top:4px">החבילה שלך פעילה, האתר שלך בידיים טובות</div>
       </div>
       <div dir="rtl" style="padding:26px;text-align:right;color:#e8e8ea;font-size:15px;line-height:1.75">
-        <p style="margin:0 0 14px">היי ${escapeHtml(firstName)}, ${g("שמח שהצטרפת", "שמחה שהצטרפת")}. מהיום אני דואג לאתר של <b>${escapeHtml(proj.title || "העסק שלך")}</b> מאחורי הקלעים, ${g("ואתה", "ואת")} ${g("מתפנה", "מתפנה")} להתעסק בעסק.</p>
+        <p style="margin:0 0 14px">היי ${escapeHtml(firstName)}, שמח שהצטרפת. מהיום אני דואג לאתר שלך מאחורי הקלעים, ${g("ואתה מתפנה", "ואת מתפנה")} להתעסק בעסק.</p>
         <p style="margin:0 0 6px;color:#9a9aa4;font-size:13px">מה ${g("קיבלת", "קיבלת")} מהרגע הזה:</p>
         <table role="presentation" style="width:100%;border-collapse:collapse">${benefitsHtml}</table>
         <div style="text-align:center;margin-top:22px">
