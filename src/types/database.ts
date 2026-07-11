@@ -209,6 +209,8 @@ export type ClientBrand = {
   website_url: string | null;
   social_links: Json;
   logo_fit: LogoFit;
+  /** The organization (multi-tenancy) this client's brand/account belongs to. */
+  org_id: string | null;
   updated_at: string;
 }
 
@@ -857,6 +859,69 @@ export type AnnouncementDismissal = {
   dismissed_at: string;
 };
 
+// ---- Phase 2: organizations multi-tenancy + member management (Phase 2B) ----
+export type Organization = { id: string; name: string; created_at: string };
+
+export type OrganizationMember = {
+  id: string;
+  org_id: string;
+  user_id: string;
+  is_manager: boolean;
+  can_finance: boolean;
+  can_service_calls: boolean;
+  can_approve: boolean;
+  can_files: boolean;
+  created_at: string;
+};
+
+/** An invited email's future membership (org + caps), materialized into
+ * organization_members on the invitee's first login. */
+export type PendingMember = {
+  id: string;
+  org_id: string;
+  email: string;
+  is_manager: boolean;
+  can_finance: boolean;
+  can_service_calls: boolean;
+  can_approve: boolean;
+  can_files: boolean;
+  created_at: string;
+};
+
+/** A manager's request to add a teammate, awaiting admin approve/reject. */
+export type MemberInviteRequest = {
+  id: string;
+  org_id: string;
+  requested_by: string;
+  full_name: string | null;
+  email: string;
+  phone: string | null;
+  req_can_finance: boolean;
+  req_can_service_calls: boolean;
+  req_can_approve: boolean;
+  req_can_files: boolean;
+  note: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  handled_at: string | null;
+  handled_by: string | null;
+};
+
+/** Return row of my_org_members / admin_org_members. member_id/user_id null for pending. */
+export type OrgMemberRow = {
+  member_id: string | null;
+  user_id: string | null;
+  full_name: string;
+  email: string;
+  is_manager: boolean;
+  can_finance: boolean;
+  can_service_calls: boolean;
+  can_approve: boolean;
+  can_files: boolean;
+  is_pending: boolean;
+  created_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -918,6 +983,10 @@ export interface Database {
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
       service_plan_content: TableShape<ServicePlanContent>;
+      organizations: TableShape<Organization>;
+      organization_members: TableShape<OrganizationMember>;
+      pending_members: TableShape<PendingMember>;
+      member_invite_requests: TableShape<MemberInviteRequest>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -1051,6 +1120,58 @@ export interface Database {
           created_at: string;
         }[];
       };
+      admin_add_org_member: {
+        Args: {
+          p_org: string;
+          p_email: string;
+          p_full_name?: string | null;
+          p_is_manager: boolean;
+          p_finance: boolean;
+          p_service_calls: boolean;
+          p_approve: boolean;
+          p_files: boolean;
+        };
+        Returns: undefined;
+      };
+      set_member_capabilities: {
+        Args: {
+          p_member_id: string;
+          p_is_manager: boolean;
+          p_finance: boolean;
+          p_service_calls: boolean;
+          p_approve: boolean;
+          p_files: boolean;
+        };
+        Returns: undefined;
+      };
+      remove_org_member: { Args: { p_member_id: string }; Returns: undefined };
+      request_member_invite: {
+        Args: {
+          p_full_name?: string | null;
+          p_email: string;
+          p_phone?: string | null;
+          p_note?: string | null;
+          p_finance: boolean;
+          p_service_calls: boolean;
+          p_approve: boolean;
+          p_files: boolean;
+        };
+        Returns: string;
+      };
+      approve_member_invite: {
+        Args: {
+          p_id: string;
+          p_is_manager: boolean;
+          p_finance: boolean;
+          p_service_calls: boolean;
+          p_approve: boolean;
+          p_files: boolean;
+        };
+        Returns: undefined;
+      };
+      reject_member_invite: { Args: { p_id: string }; Returns: undefined };
+      my_org_members: { Args: Record<string, never>; Returns: OrgMemberRow[] };
+      admin_org_members: { Args: { p_org: string }; Returns: OrgMemberRow[] };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
