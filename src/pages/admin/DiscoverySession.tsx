@@ -303,10 +303,20 @@ export default function DiscoverySessionPage() {
               onChange={(v) => setDraft((d) => ({ ...d, project_id: v }))}
               options={[
                 { value: "", label: "ללא פרויקט" },
-                ...(projects ?? []).map((p) => ({
-                  value: p.id,
-                  label: p.business_name || p.title,
-                })),
+                // Show BOTH the business and the project title so identical
+                // titles (e.g. several "Studio Ori Guy" projects) are told
+                // apart; sorted so projects of the same business sit together.
+                ...(projects ?? [])
+                  .map((p) => {
+                    const biz = p.business_name?.trim();
+                    const title = p.title?.trim();
+                    const label =
+                      biz && title && biz !== title
+                        ? `${biz} · ${title}`
+                        : biz || title || "פרויקט ללא שם";
+                    return { value: p.id, label };
+                  })
+                  .sort((a, b) => a.label.localeCompare(b.label, "he")),
               ]}
             />
           </div>

@@ -210,10 +210,18 @@ function NewSessionDialog() {
                 onChange={(v) => setForm((f) => ({ ...f, project_id: v }))}
                 options={[
                   { value: "", label: "ללא פרויקט" },
-                  ...(projects ?? []).map((p) => ({
-                    value: p.id,
-                    label: p.business_name || p.title,
-                  })),
+                  // Business + project title so identical titles are distinguishable.
+                  ...(projects ?? [])
+                    .map((p) => {
+                      const biz = p.business_name?.trim();
+                      const title = p.title?.trim();
+                      const label =
+                        biz && title && biz !== title
+                          ? `${biz} · ${title}`
+                          : biz || title || "פרויקט ללא שם";
+                      return { value: p.id, label };
+                    })
+                    .sort((a, b) => a.label.localeCompare(b.label, "he")),
                 ]}
               />
             </div>
