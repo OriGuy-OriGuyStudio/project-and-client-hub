@@ -1206,7 +1206,7 @@ export interface Database {
       };
       admin_businesses: { Args: Record<string, never>; Returns: BusinessRow[] };
       admin_create_business: {
-        Args: { p_name: string; p_manager_email: string; p_kind?: string };
+        Args: { p_name: string; p_manager_name: string; p_manager_email: string; p_kind?: string };
         Returns: AdminCreateBusinessResult;
       };
       org_brand: { Args: { p_org: string }; Returns: ClientBrand | null };

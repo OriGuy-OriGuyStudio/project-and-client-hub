@@ -51,6 +51,7 @@ export function AddBusinessSheet({ open, onClose }: { open: boolean; onClose: ()
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [name, setName] = useState("");
+  const [managerName, setManagerName] = useState("");
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<Kind>("real");
   const [kindTouched, setKindTouched] = useState(false);
@@ -59,6 +60,7 @@ export function AddBusinessSheet({ open, onClose }: { open: boolean; onClose: ()
 
   function reset() {
     setName("");
+    setManagerName("");
     setEmail("");
     setKind("real");
     setKindTouched(false);
@@ -82,13 +84,16 @@ export function AddBusinessSheet({ open, onClose }: { open: boolean; onClose: ()
 
   async function save() {
     const trimmedName = clampText(name.trim(), 120);
+    const trimmedManager = clampText(managerName.trim(), 120);
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedName) return toastError("יש להזין שם עסק.");
-    if (!EMAIL_RE.test(trimmedEmail)) return toastError("יש להזין אימייל תקין למנהל/ת העסק.");
+    if (!trimmedManager) return toastError("יש להזין שם איש קשר.");
+    if (!EMAIL_RE.test(trimmedEmail)) return toastError("יש להזין אימייל תקין לאיש הקשר.");
 
     setSaving(true);
     const { data, error } = await supabase.rpc("admin_create_business", {
       p_name: trimmedName,
+      p_manager_name: trimmedManager,
       p_manager_email: trimmedEmail,
       p_kind: kind,
     });
@@ -113,8 +118,8 @@ export function AddBusinessSheet({ open, onClose }: { open: boolean; onClose: ()
         <SheetHeader>
           <SheetTitle>הוספת עסק חדש</SheetTitle>
           <SheetDescription>
-            העסק ומנהל/ת החשבון הראשי/ה (עם כל ההרשאות) ייווצרו יחד. ההרשאות ייכנסו לתוקף
-            בהתחברות הראשונה של מנהל/ת החשבון, אם עדיין אין לו/ה חשבון.
+            העסק הוא המטרייה שמכילה את הפרויקטים, המותג ואנשי הקשר. יחד איתו נוצר איש הקשר
+            הראשי (עם כל ההרשאות). ההרשאות ייכנסו לתוקף בהתחברות הראשונה שלו/ה, אם עדיין אין חשבון.
           </SheetDescription>
         </SheetHeader>
 
@@ -129,11 +134,30 @@ export function AddBusinessSheet({ open, onClose }: { open: boolean; onClose: ()
                 setName(e.target.value);
                 setExistingOrgId(null);
               }}
-              placeholder="שם העסק של הלקוח"
+              placeholder="לדוגמה: לי מלכה קוסמטיקס"
             />
+            <p className="text-xs text-muted-foreground">
+              שם העסק (המטרייה). הפרויקטים, המותג ואנשי הקשר יושבים תחתיו.
+            </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="ab-email">אימייל מנהל/ת העסק</Label>
+            <Label htmlFor="ab-manager">שם איש הקשר</Label>
+            <Input
+              id="ab-manager"
+              value={managerName}
+              maxLength={120}
+              onChange={(e) => {
+                setManagerName(e.target.value);
+                setExistingOrgId(null);
+              }}
+              placeholder="שם האדם, לדוגמה: לי מלכה"
+            />
+            <p className="text-xs text-muted-foreground">
+              האדם עצמו, לא שם העסק. זה השם שיוצג כאיש הקשר האחראי ובמיילים.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ab-email">אימייל איש הקשר</Label>
             <Input
               id="ab-email"
               dir="ltr"

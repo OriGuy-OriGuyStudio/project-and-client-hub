@@ -146,6 +146,53 @@ export default function BusinessDetail() {
 
       <SectionNav />
 
+      {/* Projects (org-wide) - the primary content, shown first and independent
+          of the founder (visible even before a manager logs in). The "responsible
+          contact" column is a live reassign select scoped to the org's members. */}
+      <Card id="bd-projects" data-section className="scroll-mt-20 space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+          <FolderKanban className="size-5 text-muted-foreground" /> הפרויקטים של העסק
+        </h2>
+        {projectsLoading ? (
+          <Skeleton className="h-20 w-full rounded-xl" />
+        ) : !orgProjects?.length ? (
+          <EmptyState icon={FolderKanban} title="אין עדיין פרויקטים" />
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/60 text-muted-foreground">
+                  <th className="px-3 py-2 text-start font-medium">פרויקט</th>
+                  <th className="px-3 py-2 text-start font-medium">סטטוס</th>
+                  <th className="px-3 py-2 text-start font-medium">איש קשר אחראי</th>
+                  <th className="px-3 py-2 text-start font-medium">עודכן</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {orgProjects.map((p) => (
+                  <tr key={p.id} className="text-foreground">
+                    <td className="px-3 py-2.5">
+                      <Link to={`/projects/${p.id}`} className="font-medium hover:text-primary hover:underline">
+                        {p.title}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Badge variant={projectStatusVariant[p.status]}>{projectStatusHe[p.status]}</Badge>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <ProjectContactCell project={p} members={members ?? []} orgId={orgId!} />
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {new Date(p.updated_at).toLocaleDateString("he-IL")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       {founder ? (
         <>
           {/* Contact (the founding member's own profile - email/phone) */}
@@ -305,52 +352,6 @@ export default function BusinessDetail() {
           description="המנהל/ת שהוזמן/ה עדיין לא התחבר/ה בפעם הראשונה, כך שאין עדיין צוות, מותג או מידע אישי להצגה."
         />
       )}
-
-      {/* Projects (org-wide; the "responsible contact" column is a live
-          reassign select scoped to the org's members - see ProjectContactCell). */}
-      <Card id="bd-projects" data-section className="scroll-mt-20 space-y-3 p-5">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-          <FolderKanban className="size-5 text-muted-foreground" /> הפרויקטים של העסק
-        </h2>
-        {projectsLoading ? (
-          <Skeleton className="h-20 w-full rounded-xl" />
-        ) : !orgProjects?.length ? (
-          <EmptyState icon={FolderKanban} title="אין עדיין פרויקטים" />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground">
-                  <th className="px-3 py-2 text-start font-medium">פרויקט</th>
-                  <th className="px-3 py-2 text-start font-medium">סטטוס</th>
-                  <th className="px-3 py-2 text-start font-medium">איש קשר אחראי</th>
-                  <th className="px-3 py-2 text-start font-medium">עודכן</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {orgProjects.map((p) => (
-                  <tr key={p.id} className="text-foreground">
-                    <td className="px-3 py-2.5">
-                      <Link to={`/projects/${p.id}`} className="font-medium hover:text-primary hover:underline">
-                        {p.title}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Badge variant={projectStatusVariant[p.status]}>{projectStatusHe[p.status]}</Badge>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <ProjectContactCell project={p} members={members ?? []} orgId={orgId!} />
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {new Date(p.updated_at).toLocaleDateString("he-IL")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
     </div>
   );
 }
