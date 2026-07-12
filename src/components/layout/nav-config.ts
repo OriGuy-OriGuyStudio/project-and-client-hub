@@ -32,36 +32,59 @@ export interface NavItem {
   badgeTypes?: string[];
   /** data-tour hook for the onboarding tour. */
   tourId?: string;
+  /** Sidebar group heading this item sits under (used by the admin nav, which
+   *  has grown long enough to warrant categories). A run of items sharing the
+   *  same section renders under one heading, in array order. */
+  section?: string;
 }
 
 export const adminNav: NavItem[] = [
-  { to: "/admin", label: "לוח בקרה", icon: LayoutDashboard, end: true },
-  { to: "/admin/tasks", label: "המשימות שלי", icon: ListChecks },
-  { to: "/admin/discovery", label: "שיחות אפיון", icon: ClipboardList },
-  { to: "/admin/businesses", label: "עסקים", icon: Building2 },
-  { to: "/admin/clients", label: "לקוחות", icon: Users },
+  // ── ראשי ──
+  { to: "/admin", label: "לוח בקרה", icon: LayoutDashboard, end: true, section: "ראשי" },
+  { to: "/admin/tasks", label: "המשימות שלי", icon: ListChecks, section: "ראשי" },
+
+  // ── לקוחות ופרויקטים ──
+  { to: "/admin/businesses", label: "עסקים", icon: Building2, section: "לקוחות ופרויקטים" },
+  { to: "/admin/clients", label: "לקוחות", icon: Users, section: "לקוחות ופרויקטים" },
   {
     to: "/admin/projects",
     label: "פרויקטים",
     icon: FolderKanban,
     badgeTypes: ["file", "message", "approval", "checklist"],
+    section: "לקוחות ופרויקטים",
   },
-  { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"] },
-  { to: "/admin/service-calls", label: "קריאות שירות", icon: LifeBuoy, badgeTypes: ["service_call"] },
-  { to: "/admin/maintenance", label: "חבילות תחזוקה", icon: HeartHandshake },
-  { to: "/admin/plans", label: "עריכת חבילות", icon: PackageOpen },
-  { to: "/admin/partners", label: "שותפים", icon: Handshake },
-  { to: "/admin/referrals", label: "הפניות", icon: Handshake, badgeTypes: ["referral"] },
+  { to: "/admin/discovery", label: "שיחות אפיון", icon: ClipboardList, section: "לקוחות ופרויקטים" },
+
+  // ── לידים ושותפים ──
+  { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"], section: "לידים ושותפים" },
+  { to: "/admin/partners", label: "שותפים", icon: Handshake, section: "לידים ושותפים" },
+  { to: "/admin/referrals", label: "הפניות", icon: Handshake, badgeTypes: ["referral"], section: "לידים ושותפים" },
+
+  // ── שירות וחבילות ──
+  {
+    to: "/admin/service-calls",
+    label: "קריאות שירות",
+    icon: LifeBuoy,
+    badgeTypes: ["service_call"],
+    section: "שירות וחבילות",
+  },
+  { to: "/admin/maintenance", label: "חבילות תחזוקה", icon: HeartHandshake, section: "שירות וחבילות" },
+  { to: "/admin/plans", label: "עריכת חבילות", icon: PackageOpen, section: "שירות וחבילות" },
+
+  // ── תקשורת ──
   {
     to: "/admin/feedback",
     label: "הערות לקוחות",
     icon: MessageSquareHeart,
     badgeTypes: ["feedback"],
+    section: "תקשורת",
   },
-  { to: "/admin/announcements", label: "הכרזות", icon: Megaphone },
-  { to: "/admin/analytics", label: "אנליטיקות", icon: BarChart3 },
-  { to: "/admin/time", label: "מעקב זמן", icon: Timer },
-  { to: "/admin/settings", label: "הגדרות", icon: Settings },
+  { to: "/admin/announcements", label: "הכרזות", icon: Megaphone, section: "תקשורת" },
+
+  // ── מדדים ומערכת ──
+  { to: "/admin/analytics", label: "אנליטיקות", icon: BarChart3, section: "מדדים ומערכת" },
+  { to: "/admin/time", label: "מעקב זמן", icon: Timer, section: "מדדים ומערכת" },
+  { to: "/admin/settings", label: "הגדרות", icon: Settings, section: "מדדים ומערכת" },
 ];
 
 export const partnerNav: NavItem[] = [

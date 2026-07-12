@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, Fragment } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { adminNav, clientNav, partnerNav } from "./nav-config";
@@ -33,32 +33,48 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onNavigate}
-            data-tour={item.tourId}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-card hover:text-foreground"
-              )
-            }
-          >
-            <item.icon className="size-5" />
-            <span className="flex-1">{item.label}</span>
-            {badgeFor(item.badgeTypes) > 0 && (
-              <span className="flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold text-destructive-foreground">
-                {badgeFor(item.badgeTypes)}
-              </span>
-            )}
-          </NavLink>
-        ))}
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+        {items.map((item, i) => {
+          // Render a small group heading whenever the section changes (admin
+          // nav only; client/partner items have no section, so no headings).
+          const showHeading = !!item.section && item.section !== items[i - 1]?.section;
+          return (
+            <Fragment key={item.to}>
+              {showHeading && (
+                <p
+                  className={cn(
+                    "px-3 pb-1 pt-4 text-[11px] font-semibold tracking-wide text-muted-foreground/50",
+                    i === 0 && "pt-0"
+                  )}
+                >
+                  {item.section}
+                </p>
+              )}
+              <NavLink
+                to={item.to}
+                end={item.end}
+                onClick={onNavigate}
+                data-tour={item.tourId}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  )
+                }
+              >
+                <item.icon className="size-5" />
+                <span className="flex-1">{item.label}</span>
+                {badgeFor(item.badgeTypes) > 0 && (
+                  <span className="flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold text-destructive-foreground">
+                    {badgeFor(item.badgeTypes)}
+                  </span>
+                )}
+              </NavLink>
+            </Fragment>
+          );
+        })}
       </nav>
 
       <div className="px-6 py-4">
