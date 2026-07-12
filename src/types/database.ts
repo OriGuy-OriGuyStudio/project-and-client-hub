@@ -1207,7 +1207,7 @@ export interface Database {
         Args: { p_name: string; p_manager_email: string; p_kind?: string };
         Returns: AdminCreateBusinessResult;
       };
-      org_brand: { Args: { p_org: string }; Returns: ClientBrand };
+      org_brand: { Args: { p_org: string }; Returns: ClientBrand | null };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
