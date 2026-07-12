@@ -516,6 +516,7 @@ export type AdminClientNote = {
   gender: "male" | "female" | "other" | null;
   role_in_company: string | null;
   updated_at: string;
+  org_id: string | null;
 }
 
 export type ClientCallLog = {

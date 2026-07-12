@@ -17,7 +17,13 @@ import {
   normalizeSocialLinks,
 } from "@/components/brand/social";
 import { OrgMembersSection } from "@/components/admin/OrgMembersSection";
-import { useOrgFounder, useOrgProjects, useAdminOrgMembers } from "@/hooks/useOrg";
+import {
+  useOrgFounder,
+  useOrgProjects,
+  useAdminOrgMembers,
+  useOrgNotes,
+  useOrgCallLogs,
+} from "@/hooks/useOrg";
 import { useClientDetail } from "@/hooks/useClientDetail";
 import { supabase } from "@/lib/supabase";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
@@ -56,17 +62,20 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
 
 /**
  * Admin: a single business's ("organization") detail page - members, projects,
- * brand identity, and (for now) the founding member's CRM note.
+ * brand identity, and org-wide CRM (private notes per person + call log).
  *
  * Brand identity is resolved by ORGANIZATION (Task 8: `useClientDetail` reads
  * `client_brand` via the org's single primary row, not this member's own
  * client_id), so it's the same brand regardless of which member is queried.
  *
+ * CRM (Task 11) is org-scoped too: `useOrgNotes`/`useOrgCallLogs` read
+ * `admin_client_notes`/`client_call_logs` by `org_id`, covering every member of
+ * the business, not just its founder.
+ *
  * KNOWN LIMITATION (see docs/superpowers/specs/2026-07-12-org-centric-admin-design.md):
- * the CRM note is still keyed on one member (the org's founder - the earliest
- * to join) rather than the org itself, so this page reads/edits it via that
- * member's client_id until a later task migrates `admin_client_notes` to be
- * org-scoped.
+ * brand is still keyed on one member (the org's founder - the earliest to
+ * join) rather than the org itself, so this page reads/edits it via that
+ * member's client_id.
  */
 export default function BusinessDetail() {
   const { orgId } = useParams();
@@ -74,8 +83,10 @@ export default function BusinessDetail() {
   const { data: founder, isLoading: founderLoading } = useOrgFounder(orgId);
   const { data: members } = useAdminOrgMembers(orgId);
   const { data: orgProjects, isLoading: projectsLoading } = useOrgProjects(orgId);
-  // Brand resolves via the org (see file header); the CRM note is still
-  // founder-keyed - see the KNOWN LIMITATION note above.
+  const { data: orgNotes, isLoading: notesLoading } = useOrgNotes(orgId);
+  const { data: orgCalls, isLoading: callsLoading } = useOrgCallLogs(orgId);
+  // Brand resolves via the org (see file header); it's still founder-keyed -
+  // see the KNOWN LIMITATION note above.
   const { data: founderDetail, isLoading: founderDetailLoading } = useClientDetail(founder?.user_id);
 
   // project.client_id -> the member's display name, for the "responsible
@@ -103,7 +114,6 @@ export default function BusinessDetail() {
 
   const brand = founderDetail?.brand ?? null;
   const colors = founderDetail?.colors ?? [];
-  const note = founderDetail?.note ?? null;
   const profile = founderDetail?.profile ?? null;
 
   const hasBrand =
@@ -143,31 +153,71 @@ export default function BusinessDetail() {
 
       {founder ? (
         <>
-          {/* Contact + CRM (founder-keyed - known limitation, see file header) */}
+          {/* Contact (the founding member's own profile - email/phone) */}
           <Card id="bd-details" data-section className="scroll-mt-20 space-y-3 p-5">
-            <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
+            <h2 className="font-heading text-lg font-semibold text-foreground">פרטי קשר</h2>
             {founderDetailLoading ? (
               <Skeleton className="h-16 w-full rounded-xl" />
             ) : (
-              <>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  <Field label="אימייל" value={profile?.email || "-"} mono copyable />
-                  <Field label="טלפון" value={profile?.phone || "-"} mono copyable />
-                  <Field label="מין" value={note?.gender ? genderHe[note.gender] : "-"} />
-                  <Field label="תפקיד בחברה" value={note?.role_in_company || "-"} />
-                </dl>
-                {note?.content && (
-                  <div>
-                    <p className="text-sm font-medium text-foreground">מידע אישי</p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{note.content}</p>
-                  </div>
-                )}
-              </>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <Field label="אימייל" value={profile?.email || "-"} mono copyable />
+                <Field label="טלפון" value={profile?.phone || "-"} mono copyable />
+              </dl>
             )}
           </Card>
 
           {/* Team + access (members, caps, presets, pending, invite requests) */}
           <OrgMembersSection clientId={founder.user_id} />
+
+          {/* CRM (org-scoped, Task 11): private notes per person + call log,
+              covering every member of the business, not just the founder. */}
+          <Card id="bd-crm" data-section className="scroll-mt-20 space-y-4 p-5">
+            <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+              <Users className="size-5 text-muted-foreground" /> מידע CRM לפי איש קשר
+            </h2>
+            {notesLoading ? (
+              <Skeleton className="h-16 w-full rounded-xl" />
+            ) : !orgNotes?.length ? (
+              <p className="text-sm text-muted-foreground">אין עדיין מידע CRM לאף איש קשר בעסק.</p>
+            ) : (
+              <div className="space-y-3">
+                {orgNotes.map((n) => (
+                  <div key={n.id} className="rounded-xl border border-border bg-background/30 p-4">
+                    <p className="font-heading text-sm font-bold text-foreground">
+                      {n.full_name || n.email || "-"}
+                    </p>
+                    <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <Field label="מין" value={n.gender ? genderHe[n.gender] : "-"} />
+                      <Field label="תפקיד בחברה" value={n.role_in_company || "-"} />
+                    </dl>
+                    {n.content && (
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{n.content}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card id="bd-calls" data-section className="scroll-mt-20 space-y-3 p-5">
+            <h2 className="font-heading text-lg font-semibold text-foreground">סיכומי שיחות</h2>
+            {callsLoading ? (
+              <Skeleton className="h-16 w-full rounded-xl" />
+            ) : !orgCalls?.length ? (
+              <p className="text-sm text-muted-foreground">אין עדיין סיכומי שיחות. אפשר להוסיף דרך עריכת הלקוח.</p>
+            ) : (
+              <ul className="space-y-2">
+                {orgCalls.map((c) => (
+                  <li key={c.id} className="rounded-lg border border-border bg-background/30 px-3 py-2">
+                    <p className="whitespace-pre-wrap text-sm text-foreground">{c.summary}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {new Date(c.created_at).toLocaleString("he-IL")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
 
           {/* Brand identity (org-resolved - see file header) */}
           <Card id="bd-brand" data-section className="scroll-mt-20 space-y-4 p-5">

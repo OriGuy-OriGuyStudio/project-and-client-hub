@@ -45,6 +45,7 @@ import { isInternalClient } from "@/lib/internal";
 import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { useClientCrm } from "@/hooks/useClientCrm";
 import { resolveOrgPrimaryClientId } from "@/hooks/useClientBrand";
+import { resolveClientOrgId } from "@/hooks/useOrg";
 import { useAuth } from "@/hooks/useAuth";
 import type { ClientCallLog } from "@/types/database";
 
@@ -395,6 +396,7 @@ function EditClientDialog({
   async function save() {
     if (!target) return;
     setSaving(true);
+    let noteOrgId: string | null = null;
     try {
       if (target.kind === "pending") {
         const email = form.email.trim().toLowerCase();
@@ -434,12 +436,17 @@ function EditClientDialog({
         );
         if (bErr) throw bErr;
 
-        // Admin-private CRM info.
+        // Admin-private CRM info. org_id is this member's OWN org (not the
+        // brand's primary-row target above) - the note is per person, one row
+        // per client_id, so it's stamped with whichever org this person
+        // belongs to (Task 11: CRM reads by org_id on Business Detail).
+        noteOrgId = await resolveClientOrgId(target.id!);
         const { error: nErr } = await supabase
           .from("admin_client_notes")
           .upsert(
             {
               client_id: target.id!,
+              org_id: noteOrgId,
               gender: form.gender || null,
               role_in_company: clampText(form.role_in_company.trim(), 120) || null,
               content: clampText(form.personal_info.trim(), 4000) || null,
@@ -469,6 +476,7 @@ function EditClientDialog({
       qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["client-crm", target.id] });
+      if (noteOrgId) qc.invalidateQueries({ queryKey: ["org-notes", noteOrgId] });
       onClose();
     } catch {
       toastError("העדכון נכשל.");
@@ -715,13 +723,17 @@ function CallLogSection({ clientId, calls }: { clientId: string; calls: ClientCa
     const summary = clampText(text.trim(), 2000);
     if (!summary) return;
     setAdding(true);
+    // Stamp org_id (Task 10/11: client_call_logs.org_id, read org-scoped on
+    // Business Detail) so this call log shows up there, not just here.
+    const orgId = await resolveClientOrgId(clientId);
     const { error } = await supabase
       .from("client_call_logs")
-      .insert({ client_id: clientId, summary, created_by: user?.id ?? null });
+      .insert({ client_id: clientId, org_id: orgId, summary, created_by: user?.id ?? null });
     setAdding(false);
     if (error) return toastError("הוספת הסיכום נכשלה.");
     setText("");
     qc.invalidateQueries({ queryKey: ["client-crm", clientId] });
+    if (orgId) qc.invalidateQueries({ queryKey: ["org-call-logs", orgId] });
   }
 
   return (
