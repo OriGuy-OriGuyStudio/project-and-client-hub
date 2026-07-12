@@ -14,6 +14,7 @@ import {
   Mail,
   MessageCircle,
   Palette,
+  Pencil,
   Phone,
   ScrollText,
   Link2,
@@ -30,6 +31,7 @@ import { ProjectCard } from "@/components/project/ProjectCard";
 import { ColorSwatch } from "@/components/brand/ColorSwatch";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
+import { EditClientSheet, type ClientItem } from "@/components/admin/EditClientSheet";
 import {
   iconForPlatform,
   labelForPlatform,
@@ -182,6 +184,7 @@ export default function ClientDetail() {
   const qc = useQueryClient();
   const { data, isLoading } = useClientDetail(id);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [busyRedemption, setBusyRedemption] = useState<string | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<{ id: string; name?: string } | null>(null);
   // Landing-link creation form (which project / tier / site type the link is for).
@@ -247,6 +250,19 @@ export default function ClientDetail() {
 
   const { profile, brand, colors, note, calls, projects, referralCount, credits, enrolled, curious, grants, redemptions, agreements, landingInvites, invite } = data;
 
+  // Feeds the shared edit sheet (also used by the Clients list) so editing
+  // from this card behaves identically: profile name/phone, the org's
+  // business name, and admin-private CRM (gender/role/personal info/calls).
+  const editTarget: ClientItem = {
+    kind: "active",
+    id: profile.id,
+    full_name: profile.full_name,
+    email: profile.email,
+    business_name: brand?.business_name ?? null,
+    phone: profile.phone ?? null,
+    enrolled,
+  };
+
   const inviteUrl = (token: string) => `${window.location.origin}/l/${token}`;
   const projectTitle = (pid: string | null) => projects.find((p) => p.id === pid)?.title ?? null;
 
@@ -304,7 +320,7 @@ export default function ClientDetail() {
       <PageHeader
         title={
           <span className="inline-flex flex-wrap items-center gap-2">
-            {brand?.business_name || profile.full_name || "לקוח"}
+            {profile.full_name || "לקוח"}
             {curious && (
               <Badge variant="success" title="גילה את ה-Easter Egg והרוויח 5 מטבעות">
                 🔭 סקרן
@@ -312,7 +328,7 @@ export default function ClientDetail() {
             )}
           </span>
         }
-        subtitle={profile.full_name || undefined}
+        subtitle={brand?.business_name || undefined}
         actions={
           <div className="flex items-center gap-1">
             <Button variant="secondary" size="sm" onClick={() => setGiftOpen(true)}>
@@ -369,6 +385,8 @@ export default function ClientDetail() {
         invalidateKeys={[["client-detail", id]]}
       />
 
+      <EditClientSheet target={editOpen ? editTarget : null} onClose={() => setEditOpen(false)} />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={FolderKanban} label="פרויקטים" value={projects.length} />
         <Stat icon={Handshake} label="הפניות" value={referralCount} />
@@ -390,7 +408,12 @@ export default function ClientDetail() {
 
       {/* Contact + CRM */}
       <Card id="cd-details" data-section className="scroll-mt-20 space-y-3 p-5">
-        <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-heading text-lg font-semibold text-foreground">פרטים ומידע אישי</h2>
+          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="size-4" /> עריכת פרטים
+          </Button>
+        </div>
         <dl className="grid gap-3 sm:grid-cols-2">
           <Field label="אימייל" value={profile.email} mono copyable />
           <Field label="טלפון" value={phone || "-"} mono copyable />
