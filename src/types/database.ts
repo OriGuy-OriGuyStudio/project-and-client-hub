@@ -422,6 +422,8 @@ export type ProjectService = {
   activated_at: string | null;
   welcome_seen_at: string | null;
   notify_email: string | null;
+  cf_zone_id: string | null;
+  cf_zone_checked_at: string | null;
   updated_at: string;
 }
 
@@ -446,6 +448,11 @@ export type SiteMetric = {
   inp_ms: number | null;
   uptime_pct: number | null;
   threats_blocked: number | null;
+  turnstile_solved: number | null;
+  turnstile_blocked: number | null;
+  requests: number | null;
+  cached_requests: number | null;
+  bytes: number | null;
   meta: Json | null;
   created_at: string;
   updated_at: string;
