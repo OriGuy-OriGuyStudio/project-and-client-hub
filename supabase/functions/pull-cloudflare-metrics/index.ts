@@ -9,20 +9,10 @@
 //
 // Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT
 // (same pattern as poll-site-metrics) — checked BEFORE the cloudflare_api_token
-// lookup below. Without this gate the function would be publicly triggerable
-// once Ori adds the CF token (CF quota burn, unwanted DB writes, leaks active
-// project ids), so this is a hard requirement, not best-effort.
-// Secret: webhook_secrets['cloudflare_api_token'] (a CF API token with
-// Zone:Read + Analytics:Read on the zones in question). Ori adds this at QA
-// time; until then the function returns a clean "no cloudflare_api_token" error.
+// lookup below.
+// Secret: webhook_secrets['cloudflare_api_token'].
 //
-// Body (optional): { "project_id": "<uuid>" } to limit the pull to one
-// package; empty body processes every active project_service row.
-//
-// Each package is processed inside its own try/catch (mirrors
-// poll-site-metrics's per-source best-effort pattern) so a bad zone / CF error
-// for ONE package (e.g. a non-JSON 403 for a zone the token can't access)
-// can't abort the whole run and silently starve every remaining package.
+// Body (optional): { "project_id": "<uuid>" } to limit the pull to one package.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -30,7 +20,7 @@ const CF = "https://api.cloudflare.com/client/v4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-webhook-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (b: unknown, s = 200) =>
@@ -119,8 +109,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // pull the last 3 days of daily zone analytics (today is usually partial,
-      // but re-pulling recent days keeps them fresh as the day progresses)
+      // pull the last 3 days of daily zone analytics (today is usually partial)
       const since = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
       const until = new Date().toISOString().slice(0, 10);
       const gql = {
@@ -136,14 +125,10 @@ Deno.serve(async (req) => {
       if (gj?.errors?.length) throw new Error(String(gj.errors[0]?.message ?? "cloudflare graphql error"));
       const groups = gj?.data?.viewer?.zones?.[0]?.httpRequests1dGroups ?? [];
 
-      // atomic coalesce-upsert per day: `upsert_site_metrics` only overwrites
-      // columns whose new value is non-null, so a concurrent writer (e.g.
-      // poll-site-metrics / ingest-site-metrics) touching the same
-      // project/day row can't be clobbered back to null by this pull.
       let daysWritten = 0;
       for (const g of groups) {
         const metricDate = g?.dimensions?.date;
-        if (!metricDate) continue; // guard a partial/malformed group
+        if (!metricDate) continue;
         const { error: upsertErr } = await admin.rpc("upsert_site_metrics", {
           p_project: p.project_id,
           p_date: metricDate,
@@ -157,11 +142,7 @@ Deno.serve(async (req) => {
         daysWritten++;
       }
 
-      // Turnstile: probe the account/zone Turnstile analytics dataset; if the
-      // query errors or returns nothing (e.g. unavailable on the current CF
-      // plan), leave turnstile_solved / turnstile_blocked null and the client
-      // dashboard shows "בקרוב". Not wired yet — the exact dataset/field names
-      // need confirming against a real zone during Ori QA before we upsert them.
+      // Turnstile stays null until wired per-sitekey (see progress ledger).
       results[p.project_id] = `${daysWritten} days`;
     } catch (e) {
       results[p.project_id] = String(e instanceof Error ? e.message : e);
