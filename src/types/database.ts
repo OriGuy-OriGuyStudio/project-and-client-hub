@@ -424,6 +424,7 @@ export type ProjectService = {
   notify_email: string | null;
   cf_zone_id: string | null;
   cf_zone_checked_at: string | null;
+  cf_turnstile_sitekey: string | null;
   updated_at: string;
 }
 
