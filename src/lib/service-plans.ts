@@ -50,9 +50,9 @@ export function baseFeatures(tier: ServiceTier, siteType: ServiceSiteType): stri
     wp
       ? `רישיונות עיצוב כלולים: Elementor Pro + Crocoblock (שווי מעל ₪${WP_LICENSE_VALUE.toLocaleString("he-IL")} בשנה)`
       : "SSL, גיבויי קוד ומסד נתונים, ו-CDN גלובלי מהיר",
-    "רשת ביטחון: גרסה שמורה מוצגת גם אם השרת נופל לרגע",
+    "גיבויים אוטומטיים יומיים, עם רשת ביטחון: גרסה שמורה מוצגת גם אם השרת נופל לרגע",
     "הגנה אוטומטית מפני בוטים זדוניים, ברקע",
-    "דו״ח פעילות וביצועים חודשי",
+    "לוח ביצועים וזמינות (Uptime) בזמן אמת, ודו״ח פעילות חודשי",
   ];
 
   // Pro: active, targeted protection + performance (site-type aware).
@@ -64,7 +64,7 @@ export function baseFeatures(tier: ServiceTier, siteType: ServiceSiteType): stri
     "הגנת ספאם על הטפסים, בלי תיבות אימות מעצבנות",
     ...(wp ? ["הגנה על עמוד ניהול האתר מפני ניסיונות פריצה"] : []),
     ...(wp ? ["תמונות מומרות ומואצות אוטומטית בהעלאה"] : []),
-    "מעקב ביצועים ומהירות בזמן אמת",
+    "לוח ניטור אבטחה ותעבורה בזמן אמת: חסימות בוטים, איומים שנחסמו ותנועת האתר",
   ];
 
   // Ultra: dedicated resources, redundancy, priority, strategy.

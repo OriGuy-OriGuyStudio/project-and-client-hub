@@ -709,7 +709,7 @@ export function ServiceBoard({
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
           <Sparkles className="size-5 text-primary" /> הערך שקיבלת מאיתנו
         </h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className={cn("grid grid-cols-2 gap-4", showSecurity ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
           <div className="text-center">
             <p className="font-heading text-2xl font-black text-primary">{summary?.updates_total ?? 0}</p>
             <p className="text-[11px] text-muted-foreground">{wp ? "עדכונים" : "פריסות"}</p>
@@ -718,10 +718,12 @@ export function ServiceBoard({
             <p className="font-heading text-2xl font-black text-primary">{summary?.backups_total ?? 0}</p>
             <p className="text-[11px] text-muted-foreground">גיבויים</p>
           </div>
-          <div className="text-center">
-            <p className="font-heading text-2xl font-black text-primary">{summary?.threats_total ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">איומים נחסמו</p>
-          </div>
+          {showSecurity && (
+            <div className="text-center">
+              <p className="font-heading text-2xl font-black text-primary">{summary?.threats_total ?? 0}</p>
+              <p className="text-[11px] text-muted-foreground">איומים נחסמו</p>
+            </div>
+          )}
           <div className="text-center">
             <p className="font-heading text-2xl font-black text-primary">{hoursLabel(summary?.hours_total ?? 0)}</p>
             <p className="text-[11px] text-muted-foreground">שעות עבודה</p>
