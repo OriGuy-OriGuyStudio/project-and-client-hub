@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Building2, FolderKanban, Globe, Palette, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionNav } from "@/components/layout/SectionNav";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { ColorSwatch } from "@/components/brand/ColorSwatch";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import {
@@ -23,12 +24,16 @@ import {
   useAdminOrgMembers,
   useOrgNotes,
   useOrgCallLogs,
+  orgMemberLabel,
 } from "@/hooks/useOrg";
 import { useClientDetail } from "@/hooks/useClientDetail";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
+import { toast, toastError } from "@/hooks/use-toast";
+import { logActivity } from "@/lib/activity";
 import { projectStatusHe, projectStatusVariant } from "@/lib/status";
 import { Field, genderHe } from "@/pages/admin/ClientDetail";
-import type { Organization } from "@/types/database";
+import type { Organization, OrgMemberRow, Project } from "@/types/database";
 
 /** The organization row itself (name/kind), for the page header. Admin RLS
  * (`organizations_admin_all`) permits reading any org directly. */
@@ -88,16 +93,6 @@ export default function BusinessDetail() {
   // Brand resolves via the org (see file header); it's still founder-keyed -
   // see the KNOWN LIMITATION note above.
   const { data: founderDetail, isLoading: founderDetailLoading } = useClientDetail(founder?.user_id);
-
-  // project.client_id -> the member's display name, for the "responsible
-  // contact" column (read-only for now; the reassign picker is a later task).
-  const memberNameByUserId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const m of members ?? []) {
-      if (m.user_id) map.set(m.user_id, m.full_name);
-    }
-    return map;
-  }, [members]);
 
   if (orgLoading || founderLoading) {
     return (
@@ -311,7 +306,8 @@ export default function BusinessDetail() {
         />
       )}
 
-      {/* Projects (org-wide, read-only for now - the reassign picker is a later task) */}
+      {/* Projects (org-wide; the "responsible contact" column is a live
+          reassign select scoped to the org's members - see ProjectContactCell). */}
       <Card id="bd-projects" data-section className="scroll-mt-20 space-y-3 p-5">
         <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
           <FolderKanban className="size-5 text-muted-foreground" /> הפרויקטים של העסק
@@ -342,8 +338,8 @@ export default function BusinessDetail() {
                     <td className="px-3 py-2.5">
                       <Badge variant={projectStatusVariant[p.status]}>{projectStatusHe[p.status]}</Badge>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {memberNameByUserId.get(p.client_id) ?? "-"}
+                    <td className="px-3 py-2.5">
+                      <ProjectContactCell project={p} members={members ?? []} orgId={orgId!} />
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">
                       {new Date(p.updated_at).toLocaleDateString("he-IL")}
@@ -356,5 +352,69 @@ export default function BusinessDetail() {
         )}
       </Card>
     </div>
+  );
+}
+
+/**
+ * The "responsible contact" cell in the org's projects table - a compact
+ * reassign select scoped to the org's own members (Task 13). Writes
+ * `projects.client_id` directly; the Task-12 trigger guarantees the new value
+ * is a member of `p.org_id`, so any rejection here is a genuine surprise
+ * (surfaced as a toast) rather than something the UI needs to pre-validate.
+ */
+function ProjectContactCell({
+  project,
+  members,
+  orgId,
+}: {
+  project: Project;
+  members: OrgMemberRow[];
+  orgId: string;
+}) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+
+  const options = members
+    .filter((m): m is typeof m & { user_id: string } => !!m.user_id)
+    .map((m) => ({ value: m.user_id, label: orgMemberLabel(m) }));
+
+  async function reassign(newClientId: string) {
+    if (newClientId === project.client_id) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("projects")
+      .update({ client_id: newClientId })
+      .eq("id", project.id);
+    setSaving(false);
+
+    if (error) return toastError("שיוך איש הקשר האחראי נכשל. נסה שוב.");
+
+    const newLabel = options.find((o) => o.value === newClientId)?.label ?? newClientId;
+    await logActivity({
+      projectId: project.id,
+      actorId: user?.id ?? null,
+      actionType: "project_updated",
+      description: `איש הקשר האחראי עודכן ל${newLabel}`,
+    });
+    toast({ title: "איש הקשר האחראי עודכן", variant: "success" });
+    qc.invalidateQueries({ queryKey: ["org-projects", orgId] });
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    qc.invalidateQueries({ queryKey: ["project", project.id] });
+  }
+
+  if (options.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  return (
+    <SelectMenu
+      variant="compact"
+      ariaLabel="איש קשר אחראי"
+      value={project.client_id}
+      onChange={reassign}
+      disabled={saving}
+      options={options}
+    />
   );
 }

@@ -37,6 +37,14 @@ export function useClientOrgId(clientId: string | null | undefined) {
   });
 }
 
+/** Display label for an org-member picker option: "name · email" - or just the
+ * email when there's no distinct name (the RPCs fall back to the email as
+ * `full_name` when the profile has none set). Shared by every "responsible
+ * contact" picker (project create/edit, Business Detail reassign). */
+export function orgMemberLabel(m: Pick<OrgMemberRow, "full_name" | "email">): string {
+  return m.full_name && m.full_name !== m.email ? `${m.full_name} · ${m.email}` : m.email;
+}
+
 /** Admin: a specific org's members + pending invites (for the client card). */
 export function useAdminOrgMembers(orgId: string | null | undefined) {
   return useQuery({

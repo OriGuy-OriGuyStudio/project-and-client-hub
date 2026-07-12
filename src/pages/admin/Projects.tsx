@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderKanban, Plus } from "lucide-react";
@@ -26,11 +26,13 @@ import { clampText } from "@/lib/sanitize";
 import { logActivity } from "@/lib/activity";
 import { useProjects } from "@/hooks/useProjects";
 import { useClients } from "@/hooks/useClients";
+import { useBusinesses } from "@/hooks/useBusinesses";
+import { useAdminOrgMembers, orgMemberLabel } from "@/hooks/useOrg";
 import { groupProjects } from "@/lib/projectGroups";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { projectStatusHe } from "@/lib/status";
-import type { ProjectStatus } from "@/types/database";
+import type { BusinessRow, ProjectStatus } from "@/types/database";
 
 export default function Projects() {
   const { data: projects, isLoading } = useProjects();
@@ -66,14 +68,21 @@ export default function Projects() {
 
 const STATUSES: ProjectStatus[] = ["active", "on_hold", "completed", "cancelled"];
 
+/** Sort order for the business picker: real clients first, then the amber
+ * "demo" testers, then the studio's own internal org - same grouping as the
+ * Businesses list page, flattened into one select. */
+const KIND_ORDER: Record<BusinessRow["kind"], number> = { real: 0, demo: 1, studio: 2 };
+const KIND_SUFFIX: Record<BusinessRow["kind"], string> = { real: "", demo: " (דמה)", studio: " (סטודיו)" };
+
 function CreateProjectDialog() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: clients } = useClients();
+  const { data: businesses } = useBusinesses();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
+    org_id: "",
     client_id: "",
     title: "",
     description: "",
@@ -85,10 +94,30 @@ function CreateProjectDialog() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  const activeClients = clients?.active ?? [];
+  const businessOptions = [...(businesses ?? [])]
+    .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.name.localeCompare(b.name, "he"))
+    .map((b) => ({ value: b.id, label: `${b.name}${KIND_SUFFIX[b.kind]}` }));
+
+  // The chosen business's members - the only valid "responsible contact"
+  // candidates (the Task-12 trigger rejects any client_id outside org_id).
+  const { data: orgMembers, isLoading: membersLoading } = useAdminOrgMembers(form.org_id || null);
+  const memberOptions = (orgMembers ?? [])
+    .filter((m): m is typeof m & { user_id: string } => !!m.user_id)
+    .map((m) => ({ value: m.user_id, label: orgMemberLabel(m) }));
+
+  // Default the contact once the business's members load: prefer a manager,
+  // else the founding member (the members RPC sorts real members oldest-first).
+  useEffect(() => {
+    if (!form.org_id) return;
+    if (form.client_id && memberOptions.some((m) => m.value === form.client_id)) return;
+    const preferred = (orgMembers ?? []).find((m) => m.user_id && m.is_manager) ?? (orgMembers ?? []).find((m) => m.user_id);
+    update("client_id", preferred?.user_id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.org_id, orgMembers]);
 
   async function save() {
-    if (!form.client_id) return toastError("בחר לקוח לפרויקט.");
+    if (!form.org_id) return toastError("בחר עסק לפרויקט.");
+    if (!form.client_id) return toastError("בחר איש קשר אחראי מטעם העסק.");
     const title = clampText(form.title.trim(), 200);
     if (!title) return toastError("תן שם לפרויקט.");
 
@@ -96,6 +125,7 @@ function CreateProjectDialog() {
     const { data, error } = await supabase
       .from("projects")
       .insert({
+        org_id: form.org_id,
         client_id: form.client_id,
         title,
         description: clampText(form.description.trim(), 2000) || null,
@@ -131,33 +161,55 @@ function CreateProjectDialog() {
         <DialogHeader>
           <DialogTitle>פרויקט חדש</DialogTitle>
           <DialogDescription>
-            שייך את הפרויקט ללקוח קיים. אם הלקוח עדיין לא מופיע, ודא שהוא התחבר
-            פעם אחת.
+            שייך את הפרויקט לעסק קיים ובחר מי מטעמו יהיה איש הקשר האחראי. אם
+            העסק עדיין לא מופיע, ודא שהמנהל/ת שלו התחבר/ה פעם אחת.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="p-client">לקוח</Label>
-            {activeClients.length === 0 ? (
+            <Label htmlFor="p-business">עסק</Label>
+            {businessOptions.length === 0 ? (
               <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-                אין עדיין לקוחות פעילים. הוסף לקוח ותן לו להתחבר פעם אחת.
+                אין עדיין עסקים. הוסף עסק ותן למנהל/ת שלו להתחבר פעם אחת.
               </p>
             ) : (
               <SelectMenu
-                id="p-client"
+                id="p-business"
                 variant="field"
-                ariaLabel="לקוח"
-                placeholder="בחר לקוח…"
-                value={form.client_id}
-                onChange={(v) => update("client_id", v)}
-                options={activeClients.map((c) => ({
-                  value: c.id,
-                  label: c.full_name ? `${c.full_name} · ${c.email}` : c.email,
-                }))}
+                ariaLabel="עסק"
+                placeholder="בחר עסק…"
+                value={form.org_id}
+                onChange={(v) => update("org_id", v)}
+                options={businessOptions}
               />
             )}
           </div>
+
+          {form.org_id && (
+            <div className="space-y-1.5">
+              <Label htmlFor="p-client">איש קשר אחראי</Label>
+              {membersLoading ? (
+                <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  טוען חברי צוות…
+                </p>
+              ) : memberOptions.length === 0 ? (
+                <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                  אין עדיין איש קשר עם גישה לעסק הזה.
+                </p>
+              ) : (
+                <SelectMenu
+                  id="p-client"
+                  variant="field"
+                  ariaLabel="איש קשר אחראי"
+                  placeholder="בחר איש קשר…"
+                  value={form.client_id}
+                  onChange={(v) => update("client_id", v)}
+                  options={memberOptions}
+                />
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="p-title">שם הפרויקט</Label>
@@ -209,7 +261,7 @@ function CreateProjectDialog() {
         </div>
 
         <DialogFooter>
-          <Button onClick={save} disabled={saving || activeClients.length === 0}>
+          <Button onClick={save} disabled={saving || businessOptions.length === 0}>
             {saving ? "יוצר…" : "יצירה"}
           </Button>
           <Button variant="ghost" onClick={() => setOpen(false)}>
