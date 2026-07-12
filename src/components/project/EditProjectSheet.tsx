@@ -447,7 +447,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
                   </p>
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <Label htmlFor="ep-svc-turnstile">מפתח Turnstile (חסימות בוטים)</Label>
+                  <Label htmlFor="ep-svc-turnstile">מפתח Turnstile (בדיקות אנטי-בוט)</Label>
                   <Input
                     id="ep-svc-turnstile"
                     dir="ltr"

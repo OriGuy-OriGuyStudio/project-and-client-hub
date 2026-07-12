@@ -136,8 +136,8 @@ export default function ClientReport() {
   const showSec = service.tier === "pro" || service.tier === "ultra";
   const turnstile = latest?.turnstile_blocked ?? null;
   const turnstileExplain = turnstile != null && turnstile > 0
-    ? `חסמנו ${turnstile} נסיונות של בוטים אוטומטיים לפני שהגיעו לאתר.`
-    : "לא זוהו נסיונות בוטים חדשים בחודש האחרון, ההגנה פעילה ברקע.";
+    ? `Turnstile ביצע ${turnstile} בדיקות אנטי-בוט על הטפסים שלך, וסינן פניות אוטומטיות בזמן אמת.`
+    : "לא נדרשו בדיקות אנטי-בוט חדשות החודש, ההגנה פעילה ברקע.";
   const turnstileBenefit = "הטפסים והנתונים שלך מוגנים מספאם ומבוטים, בלי שתצטרך לגעת בכלום.";
 
   const requests = latest?.requests ?? null;
@@ -269,7 +269,7 @@ export default function ClientReport() {
           />
           {showSec && turnstile != null && (
             <Block
-              icon={Bot} kicker="חסימת בוטים (Turnstile)" value={String(turnstile)}
+              icon={Bot} kicker="בדיקות אנטי-בוט (Turnstile)" value={String(turnstile)}
               explain={turnstileExplain}
               benefit={turnstileBenefit}
             />
