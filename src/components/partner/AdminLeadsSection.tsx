@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Inbox, Settings2, Wallet } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { SortableTh, type SortDir } from "@/components/ui/sortable-th";
 import {
   Dialog,
   DialogContent,
@@ -42,9 +42,43 @@ function ils(n: number | null | undefined) {
   return n == null ? "-" : `₪${n.toLocaleString("he-IL")}`;
 }
 
+type LeadSortKey = "name" | "partner" | "commission" | "status" | "created";
+
 export function AdminLeadsSection() {
   const { data: leads, isLoading } = useAllPartnerLeads();
   const [active, setActive] = useState<AdminLead | null>(null);
+  const [sort, setSort] = useState<{ key: LeadSortKey; dir: SortDir }>({
+    key: "created",
+    dir: "desc",
+  });
+
+  function toggleSort(key: LeadSortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
+
+  const sorted = useMemo(() => {
+    const arr = [...(leads ?? [])];
+    const d = sort.dir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      switch (sort.key) {
+        case "name":
+          return a.lead_name.localeCompare(b.lead_name, "he") * d;
+        case "partner":
+          return a.partner_name.localeCompare(b.partner_name, "he") * d;
+        case "commission":
+          return ((a.commission_amount ?? 0) - (b.commission_amount ?? 0)) * d;
+        case "status":
+          return a.status.localeCompare(b.status) * d;
+        case "created":
+          return (
+            (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * d
+          );
+        default:
+          return 0;
+      }
+    });
+    return arr;
+  }, [leads, sort]);
 
   return (
     <section className="space-y-3">
@@ -58,7 +92,7 @@ export function AdminLeadsSection() {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-2xl" />
+            <Skeleton key={i} className="h-12 rounded-xl" />
           ))}
         </div>
       ) : !leads?.length ? (
@@ -68,31 +102,50 @@ export function AdminLeadsSection() {
           description="לידים שהשותפים יגישו יופיעו כאן לטיפול."
         />
       ) : (
-        <div className="space-y-2">
-          {leads.map((l) => (
-            <Card key={l.id} className="flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">
-                  {l.lead_name}
-                  <span className="text-muted-foreground"> · {l.partner_name}</span>
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {l.project_type ? projectTypeHe[l.project_type] : "-"}
-                  {l.lead_phone ? ` · ${l.lead_phone}` : ""}
-                  {l.commission_amount ? ` · עמלה ${ils(l.commission_amount)}` : ""}
-                  {l.payment_confirmed_at ? " · שולם" : ""}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Badge variant={leadStatusVariant[l.status]}>
-                  {leadStatusHe[l.status]}
-                </Badge>
-                <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => setActive(l)}>
-                  <Settings2 className="size-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60">
+                <SortableTh label="ליד" active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")} />
+                <SortableTh label="שותף" active={sort.key === "partner"} dir={sort.dir} onClick={() => toggleSort("partner")} />
+                <th className="px-3 py-2 text-start font-medium text-muted-foreground">סוג</th>
+                <th className="px-3 py-2 text-start font-medium text-muted-foreground">טלפון</th>
+                <SortableTh label="עמלה" active={sort.key === "commission"} dir={sort.dir} onClick={() => toggleSort("commission")} />
+                <SortableTh label="סטטוס" active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")} />
+                <SortableTh label="תאריך" active={sort.key === "created"} dir={sort.dir} onClick={() => toggleSort("created")} />
+                <th className="px-3 py-2 text-start font-medium text-muted-foreground">פעולות</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {sorted.map((l) => (
+                <tr key={l.id} className="text-foreground">
+                  <td className="px-3 py-2.5 font-medium">{l.lead_name}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{l.partner_name}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">
+                    {l.project_type ? projectTypeHe[l.project_type] : "-"}
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground" dir="ltr">
+                    {l.lead_phone || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                    {ils(l.commission_amount)}
+                    {l.payment_confirmed_at ? " ✓" : ""}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Badge variant={leadStatusVariant[l.status]}>{leadStatusHe[l.status]}</Badge>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                    {new Date(l.created_at).toLocaleDateString("he-IL")}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => setActive(l)}>
+                      <Settings2 className="size-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

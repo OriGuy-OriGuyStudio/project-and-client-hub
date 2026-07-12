@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Inbox, Settings2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortableTh, type SortDir } from "@/components/ui/sortable-th";
 import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
-import { StatusPipeline } from "@/components/partner/StatusPipeline";
 import { ManageReferralDialog } from "@/pages/admin/Referrals";
 import { useAdminReferrals, type AdminReferral } from "@/hooks/useAdminReferrals";
+import { useNotifications } from "@/hooks/useNotifications";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 
 /** One place for every incoming lead: partner-submitted leads and client referrals. */
@@ -26,10 +26,48 @@ export default function Leads() {
   );
 }
 
+type RefSortKey = "referred" | "referrer" | "deal" | "status" | "created";
+
 function ClientReferralsSection() {
   const { data, isLoading } = useAdminReferrals();
+  const { items: notifs, unreadEntityIds, markRead } = useNotifications();
   const [active, setActive] = useState<AdminReferral | null>(null);
+  const [sort, setSort] = useState<{ key: RefSortKey; dir: SortDir }>({
+    key: "created",
+    dir: "desc",
+  });
   const refs = data?.referrals ?? [];
+
+  function openReferral(r: AdminReferral) {
+    setActive(r);
+    notifs.filter((n) => !n.is_read && n.entity_id === r.id).forEach((n) => markRead(n.id));
+  }
+
+  function toggleSort(key: RefSortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
+
+  const sorted = useMemo(() => {
+    const arr = [...refs];
+    const d = sort.dir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      switch (sort.key) {
+        case "referred":
+          return a.referred_name.localeCompare(b.referred_name, "he") * d;
+        case "referrer":
+          return a.referrer_name.localeCompare(b.referrer_name, "he") * d;
+        case "deal":
+          return ((a.deal_value ?? 0) - (b.deal_value ?? 0)) * d;
+        case "status":
+          return a.status.localeCompare(b.status) * d;
+        case "created":
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * d;
+        default:
+          return 0;
+      }
+    });
+    return arr;
+  }, [refs, sort]);
 
   return (
     <section className="space-y-3">
@@ -41,36 +79,58 @@ function ClientReferralsSection() {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-2xl" />
+            <Skeleton key={i} className="h-12 rounded-xl" />
           ))}
         </div>
       ) : !refs.length ? (
         <EmptyState icon={Inbox} title="אין עדיין הפניות מלקוחות" />
       ) : (
-        <div className="space-y-2">
-          {refs.map((r) => (
-            <Card key={r.id} className="space-y-3 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">
-                    {r.referred_name}
-                    <span className="text-muted-foreground"> · {r.referrer_name}</span>
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleDateString("he-IL")}
-                    {r.deal_value ? ` · עסקה ₪${r.deal_value.toLocaleString("he-IL")}` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant={referralStatusVariant[r.status]}>{referralStatusHe[r.status]}</Badge>
-                  <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => setActive(r)}>
-                    <Settings2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-              <StatusPipeline status={r.status} />
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60">
+                <SortableTh label="מופנה" active={sort.key === "referred"} dir={sort.dir} onClick={() => toggleSort("referred")} />
+                <SortableTh label="מפנה" active={sort.key === "referrer"} dir={sort.dir} onClick={() => toggleSort("referrer")} />
+                <SortableTh label="ערך עסקה" active={sort.key === "deal"} dir={sort.dir} onClick={() => toggleSort("deal")} />
+                <SortableTh label="סטטוס" active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")} />
+                <SortableTh label="תאריך" active={sort.key === "created"} dir={sort.dir} onClick={() => toggleSort("created")} />
+                <th className="px-3 py-2 text-start font-medium text-muted-foreground">פעולות</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {sorted.map((r) => {
+                const isNew = unreadEntityIds.has(r.id);
+                return (
+                  <tr key={r.id} className="text-foreground">
+                    <td className="px-3 py-2.5 font-medium">
+                      {isNew && (
+                        <span className="me-1.5 inline-block size-2 rounded-full bg-destructive align-middle" />
+                      )}
+                      {r.referred_name}
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.referrer_name}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      {r.deal_value ? `₪${r.deal_value.toLocaleString("he-IL")}` : "-"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="flex items-center gap-1.5">
+                        {isNew && <Badge variant="default">חדש</Badge>}
+                        <Badge variant={referralStatusVariant[r.status]}>{referralStatusHe[r.status]}</Badge>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString("he-IL")}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => openReferral(r)}>
+                        <Settings2 className="size-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

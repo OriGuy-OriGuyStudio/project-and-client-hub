@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
+  ChevronDown,
   GripVertical,
   Library,
   ListChecks,
@@ -23,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { sendTestEmail } from "@/lib/invite";
@@ -73,23 +76,49 @@ export default function Settings() {
 
 /* ----------------------------- Studio details ----------------------------- */
 
-function SectionHeader({
+/** A settings section rendered as a collapsible Card: the header (icon + title
+ *  + hint, plus an optional action) toggles the body. Collapsed by default so
+ *  the long settings page is short and easy to scan. */
+function CollapsibleCard({
   icon: Icon,
   title,
   hint,
+  action,
+  defaultOpen = false,
+  children,
 }: {
   icon: typeof Building2;
   title: string;
   hint?: string;
+  action?: ReactNode;
+  defaultOpen?: boolean;
+  children: ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2">
-        <Icon className="size-5 text-brand-cyan-base" />
-        <h2 className="font-heading text-lg font-semibold text-foreground">{title}</h2>
-      </div>
-      {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-2">
+          <CollapsibleTrigger className="flex flex-1 items-start gap-2 text-start">
+            <ChevronDown
+              className={cn(
+                "mt-1 size-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180"
+              )}
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <Icon className="size-5 text-brand-cyan-base" />
+                <h2 className="font-heading text-lg font-semibold text-foreground">{title}</h2>
+              </div>
+              {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+            </div>
+          </CollapsibleTrigger>
+          {action && <div className="shrink-0">{action}</div>}
+        </div>
+        <CollapsibleContent className="pt-4">{children}</CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -138,8 +167,7 @@ function StudioDetailsSection() {
   if (isLoading) return <Skeleton className="h-56 w-full rounded-2xl" />;
 
   return (
-    <Card className="p-5">
-      <SectionHeader icon={Building2} title="פרטי הסטודיו" hint="מידע כללי על העסק." />
+    <CollapsibleCard icon={Building2} title="פרטי הסטודיו" hint="מידע כללי על העסק." defaultOpen>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="s-name">שם הסטודיו</Label>
@@ -200,7 +228,7 @@ function StudioDetailsSection() {
           {saving ? "שומר…" : "שמירה"}
         </Button>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -233,18 +261,16 @@ function StageTemplatesSection() {
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-start justify-between gap-2">
-        <SectionHeader
-          icon={ListChecks}
-          title="תבניות שלבים"
-          hint='התבניות שמופיעות בכפתור "טמפלט" בציר ההתקדמות של כל פרויקט.'
-        />
+    <CollapsibleCard
+      icon={ListChecks}
+      title="תבניות שלבים"
+      hint='התבניות שמופיעות בכפתור "טמפלט" בציר ההתקדמות של כל פרויקט.'
+      action={
         <Button size="sm" variant="secondary" onClick={addTemplate}>
           <Plus className="size-4" /> תבנית
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <Skeleton className="h-40 w-full rounded-2xl" />
       ) : !templates?.length ? (
@@ -256,7 +282,7 @@ function StageTemplatesSection() {
           ))}
         </div>
       )}
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -467,18 +493,16 @@ function PartnerResourcesSection() {
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-start justify-between gap-2">
-        <SectionHeader
-          icon={Library}
-          title="חומרי שותפים"
-          hint="מצגות, קישורים וטקסטים שהשותפים רואים בפורטל שלהם."
-        />
+    <CollapsibleCard
+      icon={Library}
+      title="חומרי שותפים"
+      hint="מצגות, קישורים וטקסטים שהשותפים רואים בפורטל שלהם."
+      action={
         <Button size="sm" variant="secondary" onClick={addResource}>
           <Plus className="size-4" /> חומר
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <Skeleton className="h-32 w-full rounded-2xl" />
       ) : !resources?.length ? (
@@ -490,7 +514,7 @@ function PartnerResourcesSection() {
           ))}
         </div>
       )}
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -739,12 +763,11 @@ function WelcomeEmailSection() {
   if (isLoading) return <Skeleton className="h-56 w-full rounded-2xl" />;
 
   return (
-    <Card className="p-5">
-      <SectionHeader
-        icon={MailPlus}
-        title="מייל ברוכים הבאים (Orion)"
-        hint="נשלח אוטומטית ללקוח/שותף חדש עם קישור כניסה. כפתור 'כניסה ל-Orion' מתווסף אוטומטית."
-      />
+    <CollapsibleCard
+      icon={MailPlus}
+      title="מייל ברוכים הבאים (Orion)"
+      hint="נשלח אוטומטית ללקוח/שותף חדש עם קישור כניסה. כפתור 'כניסה ל-Orion' מתווסף אוטומטית."
+    >
       <div className="space-y-4">
         <p className="text-sm font-semibold text-foreground">מייל ללקוח</p>
         <div className="space-y-1.5">
@@ -829,7 +852,7 @@ function WelcomeEmailSection() {
           {saving ? "שומר…" : "שמירה"}
         </Button>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -869,12 +892,11 @@ function WarrantyEmailSection() {
   if (isLoading) return <Skeleton className="h-56 w-full rounded-2xl" />;
 
   return (
-    <Card className="p-5">
-      <SectionHeader
-        icon={MailWarning}
-        title="תבנית מייל אחריות"
-        hint="הטקסט שיישלח ללקוח כשתקופת האחריות מתקרבת לסיום."
-      />
+    <CollapsibleCard
+      icon={MailWarning}
+      title="תבנית מייל אחריות"
+      hint="הטקסט שיישלח ללקוח כשתקופת האחריות מתקרבת לסיום."
+    >
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="w-subj">נושא המייל</Label>
@@ -907,6 +929,6 @@ function WarrantyEmailSection() {
           {saving ? "שומר…" : "שמירה"}
         </Button>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }

@@ -2,9 +2,6 @@ import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Building2,
   Clock,
   Eye,
@@ -43,11 +40,11 @@ import { isDemoEmail } from "@/lib/demo";
 import { isInternalClient } from "@/lib/internal";
 import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { EditClientSheet, type ClientItem } from "@/components/admin/EditClientSheet";
+import { SortableTh, type SortDir } from "@/components/ui/sortable-th";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type SortKey = "name" | "activity";
-type SortDir = "asc" | "desc";
 type Sort = { key: SortKey; dir: SortDir };
 
 /** Unified "last activity" instant for sorting: last real login for active
@@ -66,39 +63,6 @@ function sortClients(rows: ClientItem[], sort: Sort): ClientItem[] {
     }
     return sign * activityValue(a).localeCompare(activityValue(b));
   });
-}
-
-function SortableTh({
-  label,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: SortDir;
-  onClick: () => void;
-}) {
-  return (
-    <th className="px-3 py-2 text-start font-medium">
-      <button
-        type="button"
-        onClick={onClick}
-        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-      >
-        {label}
-        {active ? (
-          dir === "asc" ? (
-            <ArrowUp className="size-3" />
-          ) : (
-            <ArrowDown className="size-3" />
-          )
-        ) : (
-          <ArrowUpDown className="size-3 opacity-40" />
-        )}
-      </button>
-    </th>
-  );
 }
 
 function ClientTableRow({
