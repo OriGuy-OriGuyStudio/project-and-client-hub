@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail, Rocket, CheckCircle2, Cloud } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail, Rocket, CheckCircle2, Cloud, Eye } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -312,6 +312,11 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           </Button>
           <PerformanceSheet projectId={row.project_id} projectTitle={row.project_title} />
           <InsightsSheet projectId={row.project_id} projectTitle={row.project_title} />
+          <Button asChild size="sm" variant="ghost">
+            <Link to={`/admin/maintenance/${row.project_id}/view`}>
+              <Eye className="size-3.5" /> צפה כלקוח
+            </Link>
+          </Button>
           {isDemoEmail(row.client_email) && (
             <Button size="sm" variant="secondary" onClick={copyPreview} disabled={copying}>
               <Copy className="size-3.5" /> העתק קישור תצוגה

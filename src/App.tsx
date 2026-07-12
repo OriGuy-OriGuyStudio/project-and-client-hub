@@ -48,6 +48,7 @@ const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const TimeReports = lazy(() => import("@/pages/admin/TimeReports"));
 const ServiceCalls = lazy(() => import("@/pages/admin/ServiceCalls"));
 const Maintenance = lazy(() => import("@/pages/admin/Maintenance"));
+const ServiceMirror = lazy(() => import("@/pages/admin/ServiceMirror"));
 const PlansEditor = lazy(() => import("@/pages/admin/PlansEditor"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
@@ -136,6 +137,7 @@ function App() {
                   <Route path="/admin/time" element={<TimeReports />} />
                   <Route path="/admin/service-calls" element={<ServiceCalls />} />
                   <Route path="/admin/maintenance" element={<Maintenance />} />
+                  <Route path="/admin/maintenance/:projectId/view" element={<ServiceMirror />} />
                   <Route path="/admin/plans" element={<PlansEditor />} />
                 </Route>
               </Route>
