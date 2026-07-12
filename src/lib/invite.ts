@@ -129,7 +129,7 @@ export async function summarizeDiscovery(payload: {
  * parses the body, so our own Hebrew error text is lost. The raw `Response` lives
  * on `error.context` — read it to surface the real reason to the user.
  */
-async function fnErrorMessage(error: unknown): Promise<string> {
+export async function fnErrorMessage(error: unknown): Promise<string> {
   const ctx = (error as { context?: Response })?.context;
   if (ctx && typeof ctx.json === "function") {
     try {

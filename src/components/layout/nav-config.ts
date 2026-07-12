@@ -20,6 +20,7 @@ import {
   LifeBuoy,
   HeartHandshake,
   PackageOpen,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,6 +55,7 @@ export const adminNav: NavItem[] = [
     section: "לקוחות ופרויקטים",
   },
   { to: "/admin/discovery", label: "שיחות אפיון", icon: ClipboardList, section: "לקוחות ופרויקטים" },
+  { to: "/admin/tools", label: "ארגז כלים", icon: Wrench, section: "לקוחות ופרויקטים" },
 
   // ── לידים ושותפים ──
   { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"], section: "לידים ושותפים" },
