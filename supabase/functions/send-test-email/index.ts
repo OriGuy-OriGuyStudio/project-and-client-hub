@@ -60,7 +60,7 @@ function buildWelcomeHtml(bodyText: string, loginUrl: string, c: Contact) {
     .split("\n")
     .map((line) => (line.trim() ? `<p style="margin:0 0 10px">${line}</p>` : "<br>"))
     .join("");
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
@@ -91,7 +91,7 @@ function buildWarrantyHtml(bodyText: string, project: string, endHe: string, c: 
     .split("\n")
     .map((line) => (line.trim() ? `<p style="margin:0 0 10px">${line}</p>` : "<br>"))
     .join("");
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
   const rawPhone = (settings?.contact_phone || "0547520899").replace(/\D/g, "");
   const intlPhone = rawPhone.replace(/^0/, "972");
   const contact: Contact = {
-    studioName: settings?.studio_name || "סטודיו אורי גיא",
+    studioName: settings?.studio_name || "Ori Guy Studio",
     email: settings?.contact_email || FROM_EMAIL,
     phoneText: settings?.contact_phone || "054-752-0899",
     phoneTel: "+" + intlPhone,
