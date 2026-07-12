@@ -532,7 +532,7 @@ export function ServiceBoard({
           {showSecurity && (
             <Metric
               icon={Bot}
-              label="חסימות בוטים"
+              label="בדיקות אנטי-בוט"
               value={latest?.turnstile_blocked != null ? String(latest.turnstile_blocked) : "בקרוב"}
               sub="הגנת Cloudflare Turnstile"
               tone="cyan"
@@ -671,10 +671,10 @@ export function ServiceBoard({
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">חסימות בוטים (Turnstile)</p>
+                <p className="text-sm font-semibold text-foreground">בדיקות אנטי-בוט (Turnstile)</p>
                 <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
               </div>
-              <PerfChart metrics={metrics} field="turnstile_blocked" color={GREEN} name="חסימות בוטים" />
+              <PerfChart metrics={metrics} field="turnstile_blocked" color={GREEN} name="בדיקות אנטי-בוט" />
             </div>
             <div className="rounded-2xl border border-border bg-card p-4">
               <div className="mb-2 flex items-center justify-between">
