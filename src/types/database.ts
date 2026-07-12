@@ -814,6 +814,7 @@ export type DiscoverySession = {
 export type PersonaContent = {
   name: string;
   archetype: string;
+  gender: "male" | "female";
   summary: string;
   age: string;
   location: string;
@@ -822,7 +823,12 @@ export type PersonaContent = {
   goals: string[];
   pains: string[];
   motivations: string[];
+  /** How the persona reaches/uses the product (device, channel, frequency). */
+  context: string;
   how_we_help: string;
+  /** Senior-UX design + copy recommendations tailored to this persona. Admin-only:
+   *  guides how to design and write FOR this persona; not shown on the client card. */
+  design_notes: string;
   avatar_url: string | null;
 };
 
