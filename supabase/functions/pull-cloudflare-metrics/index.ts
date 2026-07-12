@@ -93,14 +93,21 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // resolve + cache the CF zone id for this domain if we don't have it yet
+      // resolve + cache the CF zone id for this domain if we don't have it yet.
+      // Walk up the domain (full hostname -> apex) so a subdomain like
+      // insights.origuystudio.com resolves to the origuystudio.com zone; CF
+      // zones are the registrable apex, and a subdomain belongs to it.
       let zone = p.cf_zone_id as string | null;
       if (!zone) {
-        const zr = await fetch(`${CF}/zones?name=${encodeURIComponent(domain)}&status=active`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const zj = await zr.json();
-        zone = zj?.result?.[0]?.id ?? null;
+        const parts = domain.split(".");
+        for (let i = 0; i <= parts.length - 2 && !zone; i++) {
+          const candidate = parts.slice(i).join(".");
+          const zr = await fetch(`${CF}/zones?name=${encodeURIComponent(candidate)}&status=active`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const zj = await zr.json();
+          zone = zj?.result?.[0]?.id ?? null;
+        }
         const { error: zoneErr } = await admin
           .from("project_service")
           .update({ cf_zone_id: zone, cf_zone_checked_at: new Date().toISOString() })
