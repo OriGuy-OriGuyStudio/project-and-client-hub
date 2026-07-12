@@ -72,7 +72,7 @@ export const partnerNav: NavItem[] = [
 
 export const clientNav: NavItem[] = [
   { to: "/", label: "לוח בקרה", icon: LayoutDashboard, end: true },
-  { to: "/service", label: "השירות שלך", icon: ShieldCheck },
+  { to: "/service", label: "השירות שלך", icon: ShieldCheck, tourId: "service" },
   { to: "/partner", label: "תוכנית שותפים", icon: Gift, tourId: "partner" },
   { to: "/profile", label: "פרופיל", icon: UserCircle, tourId: "profile" },
 ];
