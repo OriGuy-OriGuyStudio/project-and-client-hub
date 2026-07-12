@@ -12,7 +12,7 @@ set notify_email = a.email
 from (
   select distinct on (project_id) project_id, email
   from public.service_agreements
-  where email is not null and project_id is not null
+  where email is not null and project_id is not null and status = 'submitted'
   order by project_id, created_at desc
 ) a
 where a.project_id = ps.project_id

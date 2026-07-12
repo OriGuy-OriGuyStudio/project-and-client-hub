@@ -91,9 +91,9 @@ export function EditProjectSheet({ project }: { project: Project }) {
     setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
   }, [serviceMoney]);
   // The package doesn't have its own notification email yet (e.g. a package
-  // just opened before any prior agreement was linked) — prefill it from the
-  // client's latest signed agreement for this project, same source the admin
-  // used to open the package in the first place.
+  // just opened before any prior agreement was linked), so prefill it from the
+  // client's latest submitted agreement for this project, the same source the
+  // admin used to open the package in the first place.
   useEffect(() => {
     if (service?.notify_email) return;
     let cancelled = false;
