@@ -14,7 +14,10 @@ export interface ClientsData {
   pending: AllowedEmail[];
 }
 
-/** Admin view of clients: active profiles + pending whitelist entries. */
+/** Admin view of clients: active profiles + pending whitelist entries. Each
+ * profile's "business_name" is its ORGANIZATION's brand (the single
+ * `is_org_primary` client_brand row), not a row keyed on that profile's own
+ * client_id - so every member of a business shows the same business name. */
 export function useClients() {
   return useQuery({
     queryKey: ["clients"],
@@ -36,20 +39,39 @@ export function useClients() {
       if (aErr) throw aErr;
 
       const profileList = profiles ?? [];
-      let brandByClient = new Map<string, string | null>();
+      let businessNameByClient = new Map<string, string | null>();
       const enrolled = new Set<string>();
       if (profileList.length) {
         const ids = profileList.map((p) => p.id);
-        const [{ data: brands }, { data: enrollments }] = await Promise.all([
-          supabase.from("client_brand").select("client_id, business_name").in("client_id", ids),
+        const [{ data: memberships }, { data: enrollments }] = await Promise.all([
+          supabase.from("organization_members").select("user_id, org_id").in("user_id", ids),
           supabase.from("partner_enrollments").select("client_id").in("client_id", ids),
         ]);
-        brandByClient = new Map((brands ?? []).map((b) => [b.client_id, b.business_name]));
         (enrollments ?? []).forEach((e) => enrolled.add(e.client_id));
+
+        const orgByUser = new Map((memberships ?? []).map((m) => [m.user_id, m.org_id]));
+        const orgIds = [...new Set(orgByUser.values())];
+        const brandByOrg = new Map<string, string | null>();
+        if (orgIds.length) {
+          const { data: brands } = await supabase
+            .from("client_brand")
+            .select("org_id, business_name")
+            .eq("is_org_primary", true)
+            .in("org_id", orgIds);
+          for (const b of brands ?? []) {
+            if (b.org_id) brandByOrg.set(b.org_id, b.business_name);
+          }
+        }
+        businessNameByClient = new Map(
+          profileList.map((p) => {
+            const orgId = orgByUser.get(p.id);
+            return [p.id, orgId ? brandByOrg.get(orgId) ?? null : null];
+          })
+        );
       }
       const active: ActiveClient[] = profileList.map((p) => ({
         ...p,
-        business_name: brandByClient.get(p.id) ?? null,
+        business_name: businessNameByClient.get(p.id) ?? null,
         enrolled: enrolled.has(p.id),
       }));
 

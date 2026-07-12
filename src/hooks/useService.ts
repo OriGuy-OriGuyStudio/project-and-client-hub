@@ -175,6 +175,13 @@ export async function refreshSiteMetrics(projectId?: string) {
   return supabase.functions.invoke("poll-site-metrics", { body: projectId ? { project_id: projectId } : {} });
 }
 
+/** Admin: pull Cloudflare zone analytics on demand (requests/cached/bytes/
+ *  threats/visitors). Same daily job as `cf_pull_daily` (pg_cron), triggered
+ *  manually. */
+export async function pullCloudflare(projectId?: string) {
+  return supabase.functions.invoke("pull-cloudflare-metrics", { body: projectId ? { project_id: projectId } : {} });
+}
+
 /** Admin: mark the package as fully set up + live. Stamps activated_at and
  *  fires the client's welcome email (server-side trigger). Idempotent. */
 export async function activateService(projectId: string) {

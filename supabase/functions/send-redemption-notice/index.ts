@@ -40,7 +40,7 @@ function buildHtml(opts: { lines: string[]; loginUrl: string; studioName: string
   const paragraphs = opts.lines
     .map((line) => (line.trim() ? `<p style="margin:0 0 10px">${escapeHtml(line)}</p>` : "<br>"))
     .join("");
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await admin
     .from("studio_settings").select("studio_name, portal_url").maybeSingle();
-  const studioName = settings?.studio_name || "סטודיו אורי גיא";
+  const studioName = settings?.studio_name || "Ori Guy Studio";
   const portal = (settings?.portal_url || DEFAULT_PORTAL).replace(/\/+$/, "");
   const loginUrl = prof.role === "partner" ? `${portal}/partner-portal/login` : `${portal}/login`;
 

@@ -211,6 +211,8 @@ export type ClientBrand = {
   logo_fit: LogoFit;
   /** The organization (multi-tenancy) this client's brand/account belongs to. */
   org_id: string | null;
+  /** True for the org's single canonical brand row (the founding member's). */
+  is_org_primary: boolean;
   updated_at: string;
 }
 
@@ -229,6 +231,9 @@ export type Project = {
   description: string | null;
   client_id: string;
   parent_project_id: string | null;
+  /** The organization (multi-tenancy) this project belongs to. Null for
+   * projects created before the org migration backfilled them. */
+  org_id: string | null;
   retainer_billed: boolean;
   status: ProjectStatus;
   figma_url: string | null;
@@ -416,6 +421,9 @@ export type ProjectService = {
   preview_token: string | null;
   activated_at: string | null;
   welcome_seen_at: string | null;
+  notify_email: string | null;
+  cf_zone_id: string | null;
+  cf_zone_checked_at: string | null;
   updated_at: string;
 }
 
@@ -440,6 +448,11 @@ export type SiteMetric = {
   inp_ms: number | null;
   uptime_pct: number | null;
   threats_blocked: number | null;
+  turnstile_solved: number | null;
+  turnstile_blocked: number | null;
+  requests: number | null;
+  cached_requests: number | null;
+  bytes: number | null;
   meta: Json | null;
   created_at: string;
   updated_at: string;
@@ -511,6 +524,7 @@ export type AdminClientNote = {
   gender: "male" | "female" | "other" | null;
   role_in_company: string | null;
   updated_at: string;
+  org_id: string | null;
 }
 
 export type ClientCallLog = {
@@ -519,6 +533,7 @@ export type ClientCallLog = {
   summary: string;
   created_at: string;
   created_by: string | null;
+  org_id: string | null;
 }
 
 export type Notification = {
@@ -860,7 +875,28 @@ export type AnnouncementDismissal = {
 };
 
 // ---- Phase 2: organizations multi-tenancy + member management (Phase 2B) ----
-export type Organization = { id: string; name: string; created_at: string };
+export type Organization = {
+  id: string;
+  name: string;
+  created_at: string;
+  kind: "real" | "demo" | "studio";
+};
+
+/** Return row of admin_businesses(): one aggregated row per org (admin list). */
+export type BusinessRow = {
+  id: string;
+  name: string;
+  kind: "real" | "demo" | "studio";
+  members: number;
+  projects: number;
+  last_activity: string | null;
+};
+
+/** jsonb result of admin_create_business(): guarded "add business" flow. */
+export type AdminCreateBusinessResult = {
+  status: "created" | "email_exists";
+  org_id: string;
+};
 
 export type OrganizationMember = {
   id: string;
@@ -1176,6 +1212,12 @@ export interface Database {
         Args: { p_project: string; p_type: string; p_title: string; p_body: string | null; p_link: string; p_entity_id?: string | null };
         Returns: undefined;
       };
+      admin_businesses: { Args: Record<string, never>; Returns: BusinessRow[] };
+      admin_create_business: {
+        Args: { p_name: string; p_manager_name: string; p_manager_email: string; p_kind?: string };
+        Returns: AdminCreateBusinessResult;
+      };
+      org_brand: { Args: { p_org: string }; Returns: ClientBrand | null };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

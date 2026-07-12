@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { fetchBrandForClient } from "@/hooks/useClientBrand";
 import type {
   AdminClientNote,
   BrandColor,
@@ -39,7 +40,10 @@ export interface ClientDetailData {
   } | null;
 }
 
-/** Everything the admin needs to see about one client on their detail page. */
+/** Everything the admin needs to see about one client on their detail page.
+ * Brand/palette are resolved via this client's ORGANIZATION (its business's
+ * single primary client_brand row), not this client_id's own row - so the
+ * page shows the same brand no matter which org member is being viewed. */
 export function useClientDetail(clientId: string | undefined) {
   return useQuery({
     enabled: !!clientId,
@@ -48,8 +52,7 @@ export function useClientDetail(clientId: string | undefined) {
       const id = clientId!;
       const [
         { data: profile },
-        { data: brand },
-        { data: colors },
+        brandBundle,
         { data: note },
         { data: calls },
         { data: projects },
@@ -63,8 +66,7 @@ export function useClientDetail(clientId: string | undefined) {
         { data: landingInvites },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", id).maybeSingle(),
-        supabase.from("client_brand").select("*").eq("client_id", id).maybeSingle(),
-        supabase.from("brand_colors").select("*").eq("client_id", id).order("sort_order"),
+        fetchBrandForClient(id),
         supabase.from("admin_client_notes").select("*").eq("client_id", id).maybeSingle(),
         supabase.from("client_call_logs").select("*").eq("client_id", id).order("created_at", { ascending: false }),
         supabase.from("projects").select("*").eq("client_id", id).order("updated_at", { ascending: false }),
@@ -103,8 +105,8 @@ export function useClientDetail(clientId: string | undefined) {
 
       return {
         profile: profile ?? null,
-        brand: brand ?? null,
-        colors: colors ?? [],
+        brand: brandBundle.brand,
+        colors: brandBundle.colors,
         note: note ?? null,
         calls: calls ?? [],
         projects: projects ?? [],

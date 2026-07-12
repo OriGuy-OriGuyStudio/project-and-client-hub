@@ -78,7 +78,10 @@ Deno.serve(async (req: Request) => {
   const { data: proj } = await admin.from("projects").select("client_id, title").eq("id", projectId).maybeSingle();
   if (!proj?.client_id) return json({ ok: false, error: "no client for project" });
   const { data: prof } = await admin.from("profiles").select("email, full_name, gender").eq("id", proj.client_id).maybeSingle();
-  const to = String(prof?.email ?? "").trim();
+  // The package may have its own notification email (set on the landing form
+  // / admin edit), which takes priority over the account owner's login email.
+  const { data: ps } = await admin.from("project_service").select("notify_email").eq("project_id", projectId).maybeSingle();
+  const to = String(ps?.notify_email || prof?.email || "").trim();
   if (!to) return json({ ok: false, error: "client has no email" });
 
   const female = prof?.gender === "female";
@@ -115,7 +118,7 @@ Deno.serve(async (req: Request) => {
       <div dir="rtl" style="padding:26px;text-align:right;color:#e8e8ea;font-size:15px;line-height:1.75">
         <p style="margin:0 0 14px">היי ${escapeHtml(firstName)}, שמח שהצטרפת. מהיום אני דואג לאתר שלך מאחורי הקלעים, ${g("ואתה מתפנה", "ואת מתפנה")} להתעסק בעסק.</p>
         <p style="margin:0 0 6px;color:#9a9aa4;font-size:13px">מה ${g("קיבלת", "קיבלת")} מהרגע הזה:</p>
-        <table role="presentation" style="width:100%;border-collapse:collapse">${benefitsHtml}</table>
+        <table role="presentation" style="width:100%;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif">${benefitsHtml}</table>
         <div style="text-align:center;margin-top:22px">
           <a href="${PORTAL}/service" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:800;font-size:15px;padding:13px 30px;border-radius:999px">לדשבורד השירות שלך</a>
         </div>

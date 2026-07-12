@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Users,
+  Building2,
   Settings,
   BarChart3,
   Gift,
@@ -37,6 +38,7 @@ export const adminNav: NavItem[] = [
   { to: "/admin", label: "לוח בקרה", icon: LayoutDashboard, end: true },
   { to: "/admin/tasks", label: "המשימות שלי", icon: ListChecks },
   { to: "/admin/discovery", label: "שיחות אפיון", icon: ClipboardList },
+  { to: "/admin/businesses", label: "עסקים", icon: Building2 },
   { to: "/admin/clients", label: "לקוחות", icon: Users },
   {
     to: "/admin/projects",

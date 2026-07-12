@@ -24,10 +24,10 @@ function b64utf8(s: string) { let bin = ""; const b = encoder.encode(s); for (le
 const b64urlAscii = (s: string) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 function stat(n: string | number, label: string) {
-  return `<td style="text-align:center;padding:8px 6px"><div style="font-size:24px;font-weight:800;color:#B4D670">${escapeHtml(String(n))}</div><div style="font-size:12px;color:#a7a7ad">${escapeHtml(label)}</div></td>`;
+  return `<td style="text-align:center;padding:8px 6px;font-family:Arial,Helvetica,sans-serif"><div style="font-size:24px;font-weight:800;color:#B4D670">${escapeHtml(String(n))}</div><div style="font-size:12px;color:#a7a7ad">${escapeHtml(label)}</div></td>`;
 }
 function buildHtml(o: { business: string; month: string; hi: string; stats: string; reportUrl: string; studioName: string }) {
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:600px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
@@ -38,7 +38,7 @@ function buildHtml(o: { business: string; month: string; hi: string; stats: stri
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;color:#fff">הדוח החודשי שלך, ${escapeHtml(o.business)}</p>
         <p style="margin:0 0 14px;color:#a7a7ad">סיכום ${escapeHtml(o.month)}</p>
         <p style="margin:0 0 14px">${escapeHtml(o.hi)}</p>
-        <table style="width:100%;border-collapse:collapse;background:#0f0e15;border:1px solid #2a2a33;border-radius:14px;margin:8px 0 18px"><tr>${o.stats}</tr></table>
+        <table style="width:100%;border-collapse:collapse;background:#0f0e15;border:1px solid #2a2a33;border-radius:14px;margin:8px 0 18px;font-family:Arial,Helvetica,sans-serif"><tr>${o.stats}</tr></table>
         <div style="text-align:center;margin:8px 0">
           <a href="${o.reportUrl}" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:700;font-size:15px;padding:13px 30px;border-radius:999px">צפייה בדוח המלא</a>
         </div>
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
   if (!projectId) return json({ ok: false, error: "missing project_id" }, 400);
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: ps } = await admin.from("project_service").select("preview_token").eq("project_id", projectId).maybeSingle();
+  const { data: ps } = await admin.from("project_service").select("preview_token, notify_email").eq("project_id", projectId).maybeSingle();
   if (!ps) return json({ ok: false, error: "no package" }, 404);
   let token = ps.preview_token as string | null;
   if (!token) {
@@ -95,7 +95,10 @@ Deno.serve(async (req) => {
   const { data: proj } = await admin.from("projects").select("client_id, title").eq("id", projectId).maybeSingle();
   const { data: cb } = await admin.from("client_brand").select("business_name").eq("client_id", proj?.client_id).maybeSingle();
   const { data: prof } = await admin.from("profiles").select("email, full_name").eq("id", proj?.client_id).maybeSingle();
-  if (!prof?.email) return json({ ok: false, error: "לא נמצאה כתובת מייל ללקוח." }, 404);
+  // The package may have its own notification email (set on the landing form
+  // / admin edit), which takes priority over the account owner's login email.
+  const to = String(ps.notify_email || prof?.email || "").trim();
+  if (!to) return json({ ok: false, error: "לא נמצאה כתובת מייל ללקוח." }, 404);
 
   const { data: latest } = await admin.from("site_metrics").select("pagespeed, uptime_pct").eq("project_id", projectId).order("metric_date", { ascending: false }).limit(1).maybeSingle();
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
@@ -107,11 +110,11 @@ Deno.serve(async (req) => {
   if (apiKeys.some((v) => !v)) return json({ ok: false, error: "Gmail credentials not configured" }, 503);
 
   const { data: settings } = await admin.from("studio_settings").select("studio_name, portal_url").maybeSingle();
-  const studioName = settings?.studio_name || "סטודיו אורי גיא";
+  const studioName = settings?.studio_name || "Ori Guy Studio";
   const portal = (settings?.portal_url || DEFAULT_PORTAL).replace(/\/+$/, "");
   const business = cb?.business_name || proj?.title || "האתר שלך";
   const month = new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
-  const firstName = (prof.full_name || "").trim().split(/\s+/)[0] || "";
+  const firstName = (prof?.full_name || "").trim().split(/\s+/)[0] || "";
   const hi = firstName ? `היי ${firstName}, ריכזתי לך במה טיפלנו החודש כדי שהאתר שלך יישאר מהיר, זמין ומאובטח.` : "ריכזתי לך במה טיפלנו החודש כדי שהאתר יישאר מהיר, זמין ומאובטח.";
   const stats = [
     latest?.pagespeed != null ? stat(`${latest.pagespeed}`, "מהירות") : "",
@@ -123,9 +126,9 @@ Deno.serve(async (req) => {
 
   try {
     const access = await getAccessToken(apiKeys[0]!, apiKeys[1]!, apiKeys[2]!);
-    const res = await sendGmail(access, prof.email, `הדוח החודשי שלך, ${business}`, buildHtml({ business, month, hi, stats, reportUrl, studioName }));
+    const res = await sendGmail(access, to, `הדוח החודשי שלך, ${business}`, buildHtml({ business, month, hi, stats, reportUrl, studioName }));
     if (!res.ok) { const detail = await res.text(); return json({ ok: false, error: `gmail ${res.status}`, detail }, 502); }
-    return json({ ok: true, link: reportUrl, to: prof.email });
+    return json({ ok: true, link: reportUrl, to });
   } catch (e) {
     console.error("send-report error", String(e));
     return json({ ok: false, error: String(e) }, 500);

@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
   // Keep the subject short (one RFC2047 encoded-word, like send-invite) so Hebrew
   // never renders as "???". The lead's name is in the body.
   const subject = "ליד חדש משותף";
-  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10">
+  const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:540px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:20px 26px;border-bottom:1px solid #2a2a33;text-align:right">

@@ -21,7 +21,7 @@ import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/hooks/useAuth";
-import { useClients } from "@/hooks/useClients";
+import { useAdminOrgMembers, orgMemberLabel } from "@/hooks/useOrg";
 import { useProjects } from "@/hooks/useProjects";
 import { useProjectBilling, saveProjectValue } from "@/hooks/useTimeData";
 import { useProjectService, useProjectServiceMoney } from "@/hooks/useService";
@@ -39,9 +39,13 @@ const STATUSES: ProjectStatus[] = ["active", "on_hold", "completed", "cancelled"
 export function EditProjectSheet({ project }: { project: Project }) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { data: clients } = useClients();
   const { data: allProjects = [] } = useProjects();
-  const activeClients = clients?.active ?? [];
+  // The org's members are the only valid "responsible contact" candidates -
+  // the Task-12 trigger rejects any client_id outside the project's org_id.
+  const { data: orgMembers, isLoading: membersLoading } = useAdminOrgMembers(project.org_id);
+  const memberOptions = (orgMembers ?? [])
+    .filter((m): m is typeof m & { user_id: string } => !!m.user_id)
+    .map((m) => ({ value: m.user_id, label: orgMemberLabel(m) }));
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({
@@ -75,19 +79,50 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const [svcUrl, setSvcUrl] = useState("");
   const [svcBillingDay, setSvcBillingDay] = useState("1");
   const [svcHourly, setSvcHourly] = useState("");
+  const [svcNotifyEmail, setSvcNotifyEmail] = useState("");
   useEffect(() => {
     setSvcTier(service && service.active ? service.tier : "none");
     setSvcSiteType(service?.site_type ?? "wordpress");
     setSvcUrl(service?.site_url ?? "");
     setSvcBillingDay(String(service?.billing_day ?? 1));
+    setSvcNotifyEmail(service?.notify_email ?? "");
   }, [service]);
   useEffect(() => {
     setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
   }, [serviceMoney]);
+  // The package doesn't have its own notification email yet (e.g. a package
+  // just opened before any prior agreement was linked), so prefill it from the
+  // client's latest submitted agreement for this project, the same source the
+  // admin used to open the package in the first place.
+  useEffect(() => {
+    if (service?.notify_email) return;
+    let cancelled = false;
+    supabase
+      .from("service_agreements")
+      .select("email")
+      .eq("project_id", project.id)
+      .eq("status", "submitted")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.email) {
+          setSvcNotifyEmail((cur) => cur || data.email!.trim());
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, service?.notify_email]);
 
   async function save() {
     const title = clampText(draft.title.trim(), 200);
     if (!title) return toastError("תן שם לפרויקט.");
+
+    const notifyEmail = svcNotifyEmail.trim();
+    if (!draft.parent_project_id && notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+      return toastError("כתובת המייל להתראות ולדוחות אינה תקינה.");
+    }
 
     setSaving(true);
     const { error } = await supabase
@@ -129,6 +164,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
           site_url: svcUrl.trim() || null,
           billing_day: billingDay,
           active: svcTier !== "none",
+          notify_email: notifyEmail || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" },
@@ -174,21 +210,33 @@ export function EditProjectSheet({ project }: { project: Project }) {
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="ep-client">לקוח משויך</Label>
-            <SelectMenu
-              id="ep-client"
-              variant="field"
-              ariaLabel="לקוח"
-              placeholder="בחר לקוח…"
-              value={draft.client_id}
-              onChange={(v) => update("client_id", v)}
-              options={activeClients.map((c) => ({
-                value: c.id,
-                label: c.full_name ? `${c.full_name} · ${c.email}` : c.email,
-              }))}
-            />
+            <Label htmlFor="ep-client">איש קשר אחראי</Label>
+            {!project.org_id ? (
+              <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                לפרויקט הזה אין עדיין עסק משויך, כך שאי אפשר לבחור איש קשר אחראי מרשימת חברי צוות.
+              </p>
+            ) : membersLoading ? (
+              <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                טוען חברי צוות…
+              </p>
+            ) : memberOptions.length === 0 ? (
+              <p className="rounded-xl border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+                אין עדיין איש קשר עם גישה לעסק הזה.
+              </p>
+            ) : (
+              <SelectMenu
+                id="ep-client"
+                variant="field"
+                ariaLabel="איש קשר אחראי"
+                placeholder="בחר איש קשר…"
+                value={draft.client_id}
+                onChange={(v) => update("client_id", v)}
+                options={memberOptions}
+              />
+            )}
             <p className="text-xs text-muted-foreground">
-              שינוי הלקוח מעביר את הפרויקט לחשבון אחר, והלקוח הקודם יפסיק לראות אותו.
+              איש הקשר האחראי הוא מי שרואה את הפרויקט מטעם העסק. הרשימה מוגבלת
+              לחברי הצוות של העסק, כדי לשמור על ההרשאות תקינות.
             </p>
           </div>
 
@@ -204,7 +252,12 @@ export function EditProjectSheet({ project }: { project: Project }) {
               options={[
                 { value: "", label: "ללא , פרויקט עצמאי" },
                 ...allProjects
-                  .filter((p) => p.id !== project.id && p.client_id === draft.client_id)
+                  .filter((p) =>
+                    p.id !== project.id &&
+                    (project.org_id
+                      ? p.org_id === project.org_id
+                      : p.client_id === project.client_id),
+                  )
                   .map((p) => ({ value: p.id, label: p.title })),
               ]}
             />
@@ -374,6 +427,20 @@ export function EditProjectSheet({ project }: { project: Project }) {
                   />
                   <p className="text-xs text-muted-foreground">
                     משמש לחישוב שווי החבילה שמוצג ללקוח (שעות × תעריף) ולחריגת שעות.
+                  </p>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="ep-svc-notify-email">מייל להתראות והדוחות</Label>
+                  <Input
+                    id="ep-svc-notify-email"
+                    type="email"
+                    dir="ltr"
+                    placeholder="client@example.com"
+                    value={svcNotifyEmail}
+                    onChange={(e) => setSvcNotifyEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    המייל שאליו יישלחו הדוחות ואישור החבילה. אם ריק, יישלח למייל של הלקוח.
                   </p>
                 </div>
               </div>

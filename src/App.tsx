@@ -34,6 +34,8 @@ const Discovery = lazy(() => import("@/pages/admin/Discovery"));
 const DiscoverySessionPage = lazy(() => import("@/pages/admin/DiscoverySession"));
 const Clients = lazy(() => import("@/pages/admin/Clients"));
 const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
+const Businesses = lazy(() => import("@/pages/admin/Businesses"));
+const BusinessDetail = lazy(() => import("@/pages/admin/BusinessDetail"));
 const Projects = lazy(() => import("@/pages/admin/Projects"));
 const Partners = lazy(() => import("@/pages/admin/Partners"));
 const PartnerDetail = lazy(() => import("@/pages/admin/PartnerDetail"));
@@ -46,6 +48,7 @@ const Analytics = lazy(() => import("@/pages/admin/Analytics"));
 const TimeReports = lazy(() => import("@/pages/admin/TimeReports"));
 const ServiceCalls = lazy(() => import("@/pages/admin/ServiceCalls"));
 const Maintenance = lazy(() => import("@/pages/admin/Maintenance"));
+const ServiceMirror = lazy(() => import("@/pages/admin/ServiceMirror"));
 const PlansEditor = lazy(() => import("@/pages/admin/PlansEditor"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
@@ -120,6 +123,8 @@ function App() {
                   <Route path="/admin/discovery/:id" element={<DiscoverySessionPage />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
+                  <Route path="/admin/businesses" element={<Businesses />} />
+                  <Route path="/admin/businesses/:orgId" element={<BusinessDetail />} />
                   <Route path="/admin/projects" element={<Projects />} />
                   <Route path="/admin/partners" element={<Partners />} />
                   <Route path="/admin/partners/:id" element={<PartnerDetail />} />
@@ -132,6 +137,7 @@ function App() {
                   <Route path="/admin/time" element={<TimeReports />} />
                   <Route path="/admin/service-calls" element={<ServiceCalls />} />
                   <Route path="/admin/maintenance" element={<Maintenance />} />
+                  <Route path="/admin/maintenance/:projectId/view" element={<ServiceMirror />} />
                   <Route path="/admin/plans" element={<PlansEditor />} />
                 </Route>
               </Route>

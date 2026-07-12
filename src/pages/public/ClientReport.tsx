@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Zap, ShieldCheck, TrendingUp, RefreshCw, HeartHandshake, Sparkles, Gauge,
   Lock, DatabaseBackup, Check, ClipboardList, ArrowUp, ArrowDown, Search, Rocket, StickyNote, Wrench,
+  Bot, Globe,
 } from "lucide-react";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -129,6 +130,22 @@ export default function ClientReport() {
     ? "המידע שלך ושל הלקוחות שלך מוגן, בלי שתצטרך לחשוב על זה."
     : "ההגנות רצות ברקע כל הזמן, כך שהאתר מוגן גם כשאין תקיפות.";
 
+  // Turnstile bot-blocks + traffic are only tracked/shown from the pro tier up
+  // (matches the tier gate on the client "השירות שלך" dashboard). Each Block
+  // below renders only when we actually have a number to show, never a fake 0.
+  const showSec = service.tier === "pro" || service.tier === "ultra";
+  const turnstile = latest?.turnstile_blocked ?? null;
+  const turnstileExplain = turnstile != null && turnstile > 0
+    ? `חסמנו ${turnstile} נסיונות של בוטים אוטומטיים לפני שהגיעו לאתר.`
+    : "לא זוהו נסיונות בוטים חדשים בחודש האחרון, ההגנה פעילה ברקע.";
+  const turnstileBenefit = "הטפסים והנתונים שלך מוגנים מספאם ומבוטים, בלי שתצטרך לגעת בכלום.";
+
+  const requests = latest?.requests ?? null;
+  const requestsExplain = requests != null
+    ? `Cloudflare האיץ והגיש ${requests.toLocaleString("he-IL")} בקשות לאתר שלך, ישירות מהקצה הקרוב למבקר.`
+    : "";
+  const requestsBenefit = "האתר נטען מהר לכל מבקר בכל מקום, בלי להעמיס על השרת שלך.";
+
   const updBackExplain =
     updates > 0 && backups > 0 ? `ביצענו ${updates} עדכונים ו-${backups} גיבויים החודש.` :
     updates > 0 ? `ביצענו ${updates} עדכונים החודש, והגיבויים רצים אוטומטית ברקע.` :
@@ -250,6 +267,20 @@ export default function ClientReport() {
             explain={threatsExplain}
             benefit={threatsBenefit}
           />
+          {showSec && turnstile != null && (
+            <Block
+              icon={Bot} kicker="חסימת בוטים (Turnstile)" value={String(turnstile)}
+              explain={turnstileExplain}
+              benefit={turnstileBenefit}
+            />
+          )}
+          {showSec && requests != null && (
+            <Block
+              icon={Globe} tone="cyan" kicker="תעבורה" value={requests.toLocaleString("he-IL")}
+              explain={requestsExplain}
+              benefit={requestsBenefit}
+            />
+          )}
           <Block
             icon={RefreshCw} tone="cyan" kicker="עדכונים וגיבויים" value={`${updates} · ${backups}`}
             explain={updBackExplain}
