@@ -80,12 +80,14 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const [svcBillingDay, setSvcBillingDay] = useState("1");
   const [svcHourly, setSvcHourly] = useState("");
   const [svcNotifyEmail, setSvcNotifyEmail] = useState("");
+  const [svcTurnstileSitekey, setSvcTurnstileSitekey] = useState("");
   useEffect(() => {
     setSvcTier(service && service.active ? service.tier : "none");
     setSvcSiteType(service?.site_type ?? "wordpress");
     setSvcUrl(service?.site_url ?? "");
     setSvcBillingDay(String(service?.billing_day ?? 1));
     setSvcNotifyEmail(service?.notify_email ?? "");
+    setSvcTurnstileSitekey(service?.cf_turnstile_sitekey ?? "");
   }, [service]);
   useEffect(() => {
     setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
@@ -165,6 +167,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
           billing_day: billingDay,
           active: svcTier !== "none",
           notify_email: notifyEmail || null,
+          cf_turnstile_sitekey: svcTurnstileSitekey.trim() || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" },
@@ -441,6 +444,19 @@ export function EditProjectSheet({ project }: { project: Project }) {
                   />
                   <p className="text-xs text-muted-foreground">
                     המייל שאליו יישלחו הדוחות ואישור החבילה. אם ריק, יישלח למייל של הלקוח.
+                  </p>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="ep-svc-turnstile">מפתח Turnstile (חסימות בוטים)</Label>
+                  <Input
+                    id="ep-svc-turnstile"
+                    dir="ltr"
+                    placeholder="0x4AAAAAA..."
+                    value={svcTurnstileSitekey}
+                    onChange={(e) => setSvcTurnstileSitekey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    ה-sitekey של ווידג׳ט ה-Turnstile באתר. אם מוגדר, גרף חסימות הבוטים יתמלא מהנתונים שלו.
                   </p>
                 </div>
               </div>

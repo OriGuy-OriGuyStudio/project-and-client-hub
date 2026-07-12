@@ -68,10 +68,21 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as { project_id?: string };
 
-  let q = admin.from("project_service").select("project_id, site_url, cf_zone_id, active").eq("active", true);
+  let q = admin
+    .from("project_service")
+    .select("project_id, site_url, cf_zone_id, cf_turnstile_sitekey, active")
+    .eq("active", true);
   if (body.project_id) q = q.eq("project_id", body.project_id);
   const { data: pkgs, error: pkgErr } = await q;
   if (pkgErr) return json({ ok: false, error: pkgErr.message }, 500);
+
+  // Resolve the CF account id once, for account-scoped Turnstile analytics.
+  // Turnstile stays null if this fails (e.g. token lacks account read).
+  let accountId: string | null = null;
+  try {
+    const ar = await fetch(`${CF}/accounts`, { headers: { Authorization: `Bearer ${token}` } });
+    accountId = (await ar.json())?.result?.[0]?.id ?? null;
+  } catch { /* leave null */ }
 
   const results: Record<string, string> = {};
 
@@ -142,8 +153,39 @@ Deno.serve(async (req) => {
         daysWritten++;
       }
 
-      // Turnstile stays null until wired per-sitekey (see progress ledger).
-      results[p.project_id] = `${daysWritten} days`;
+      // Turnstile: per-widget (siteKey), account-scoped. If this package has a
+      // sitekey set, pull that widget's daily anti-bot check count into
+      // turnstile_blocked (the API exposes only a total count, no solved/blocked
+      // split). Only overwrites turnstile_blocked (coalesce), never other fields.
+      const sitekey = (p as { cf_turnstile_sitekey?: string | null }).cf_turnstile_sitekey;
+      let turnstileDays = 0;
+      if (sitekey && accountId) {
+        const tq = {
+          query: `query($a:String!,$sk:String!,$since:Date!,$until:Date!){viewer{accounts(filter:{accountTag:$a}){turnstileAdaptiveGroups(limit:10,filter:{date_geq:$since,date_leq:$until,siteKey:$sk},orderBy:[date_ASC]){count dimensions{date}}}}}`,
+          variables: { a: accountId, sk: sitekey, since, until },
+        };
+        const tr = await fetch(`${CF}/graphql`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(tq),
+        });
+        const tj = await tr.json();
+        if (tj?.errors?.length) throw new Error(String(tj.errors[0]?.message ?? "cloudflare turnstile error"));
+        const tGroups = tj?.data?.viewer?.accounts?.[0]?.turnstileAdaptiveGroups ?? [];
+        for (const g of tGroups) {
+          const d = g?.dimensions?.date;
+          if (!d) continue;
+          const { error: tErr } = await admin.rpc("upsert_site_metrics", {
+            p_project: p.project_id,
+            p_date: d,
+            p_turnstile_blocked: g.count ?? null,
+          });
+          if (tErr) throw new Error(`turnstile upsert: ${tErr.message}`);
+          turnstileDays++;
+        }
+      }
+
+      results[p.project_id] = `${daysWritten} zone days, ${turnstileDays} turnstile days`;
     } catch (e) {
       results[p.project_id] = String(e instanceof Error ? e.message : e);
       continue;
