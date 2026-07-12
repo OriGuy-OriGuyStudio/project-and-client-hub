@@ -25,7 +25,10 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { clampText } from "@/lib/sanitize";
 import { useClients } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
+import { useBusinesses } from "@/hooks/useBusinesses";
+import { useAdminOrgMembers } from "@/hooks/useOrg";
 import { DISCOVERY_TEMPLATES, templateByKey } from "@/lib/discovery";
+import { cn } from "@/lib/utils";
 import type { DiscoverySession } from "@/types/database";
 
 export default function Discovery() {
@@ -42,12 +45,18 @@ export default function Discovery() {
   });
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
+  const { data: businesses } = useBusinesses();
 
   const clientName = useMemo(() => {
     const m = new Map<string, string>();
     (clients?.active ?? []).forEach((c) => m.set(c.id, c.full_name || c.email));
     return m;
   }, [clients]);
+  const orgName = useMemo(() => {
+    const m = new Map<string, string>();
+    (businesses ?? []).forEach((b) => m.set(b.id, b.name));
+    return m;
+  }, [businesses]);
   const projectName = useMemo(() => {
     const m = new Map<string, string>();
     (projects ?? []).forEach((p) => m.set(p.id, p.business_name || p.title));
@@ -86,9 +95,11 @@ export default function Discovery() {
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {templateByKey(s.template_key).label}
-                  {s.client_id && clientName.get(s.client_id)
-                    ? ` · ${clientName.get(s.client_id)}`
-                    : ""}
+                  {s.org_id && orgName.get(s.org_id)
+                    ? ` · ${orgName.get(s.org_id)}`
+                    : s.client_id && clientName.get(s.client_id)
+                      ? ` · ${clientName.get(s.client_id)}`
+                      : ""}
                   {s.project_id && projectName.get(s.project_id)
                     ? ` · ${projectName.get(s.project_id)}`
                     : ""}
@@ -109,18 +120,26 @@ export default function Discovery() {
 function NewSessionDialog() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { data: clients } = useClients();
   const { data: projects } = useProjects();
+  const { data: businesses } = useBusinesses();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "",
     template_key: "landing",
-    client_id: "",
+    org_id: "",
+    attendee_ids: [] as string[],
     project_id: "",
   });
+  const { data: orgMembers } = useAdminOrgMembers(form.org_id || null);
 
-  const activeClients = clients?.active ?? [];
+  const toggleAttendee = (uid: string) =>
+    setForm((f) => ({
+      ...f,
+      attendee_ids: f.attendee_ids.includes(uid)
+        ? f.attendee_ids.filter((x) => x !== uid)
+        : [...f.attendee_ids, uid],
+    }));
 
   async function save() {
     const title = clampText(form.title.trim(), 160);
@@ -131,8 +150,9 @@ function NewSessionDialog() {
       .insert({
         title,
         template_key: form.template_key,
-        client_id: form.client_id || null,
-        project_id: form.project_id || null,
+        org_id: form.org_id || null,
+        attendee_ids: form.org_id ? form.attendee_ids : [],
+        project_id: form.org_id ? form.project_id || null : null,
       })
       .select("id")
       .single();
@@ -155,7 +175,7 @@ function NewSessionDialog() {
         <DialogHeader>
           <DialogTitle>שיחת אפיון חדשה</DialogTitle>
           <DialogDescription>
-            בחר תבנית שאלון. אפשר לשייך ללקוח ולפרויקט (לא חובה).
+            בחר תבנית שאלון. אפשר לשייך לעסק, לנוכחים ולפרויקט (לא חובה).
           </DialogDescription>
         </DialogHeader>
 
@@ -183,22 +203,59 @@ function NewSessionDialog() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="d-org">עסק</Label>
+            <SelectMenu
+              id="d-org"
+              variant="field"
+              ariaLabel="עסק"
+              placeholder="ללא"
+              value={form.org_id}
+              onChange={(v) =>
+                setForm((f) => ({ ...f, org_id: v, attendee_ids: [], project_id: "" }))
+              }
+              options={[
+                { value: "", label: "ללא עסק (ליד)" },
+                ...(businesses ?? []).map((b) => ({ value: b.id, label: b.name })),
+              ]}
+            />
+          </div>
+
+          {form.org_id && (
             <div className="space-y-1.5">
-              <Label htmlFor="d-client">לקוח</Label>
-              <SelectMenu
-                id="d-client"
-                variant="field"
-                ariaLabel="לקוח"
-                placeholder="ללא"
-                value={form.client_id}
-                onChange={(v) => setForm((f) => ({ ...f, client_id: v }))}
-                options={[
-                  { value: "", label: "ללא לקוח" },
-                  ...activeClients.map((c) => ({ value: c.id, label: c.full_name || c.email })),
-                ]}
-              />
+              <Label>מי היה בשיחה</Label>
+              {orgMembers && orgMembers.filter((m) => m.user_id).length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {orgMembers
+                    .filter((m) => m.user_id)
+                    .map((m) => {
+                      const on = form.attendee_ids.includes(m.user_id!);
+                      return (
+                        <button
+                          key={m.user_id}
+                          type="button"
+                          onClick={() => toggleAttendee(m.user_id!)}
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                            on
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {m.full_name}
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  לעסק הזה עדיין אין אנשי קשר להצגה.
+                </p>
+              )}
             </div>
+          )}
+
+          {form.org_id && (
             <div className="space-y-1.5">
               <Label htmlFor="d-project">פרויקט</Label>
               <SelectMenu
@@ -210,22 +267,13 @@ function NewSessionDialog() {
                 onChange={(v) => setForm((f) => ({ ...f, project_id: v }))}
                 options={[
                   { value: "", label: "ללא פרויקט" },
-                  // Business + project title so identical titles are distinguishable.
                   ...(projects ?? [])
-                    .map((p) => {
-                      const biz = p.business_name?.trim();
-                      const title = p.title?.trim();
-                      const label =
-                        biz && title && biz !== title
-                          ? `${biz} · ${title}`
-                          : biz || title || "פרויקט ללא שם";
-                      return { value: p.id, label };
-                    })
-                    .sort((a, b) => a.label.localeCompare(b.label, "he")),
+                    .filter((p) => p.org_id === form.org_id)
+                    .map((p) => ({ value: p.id, label: p.title })),
                 ]}
               />
             </div>
-          </div>
+          )}
         </div>
 
         <DialogFooter>

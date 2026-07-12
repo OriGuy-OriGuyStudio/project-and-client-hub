@@ -35,8 +35,9 @@ import {
 } from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
-import { useClients } from "@/hooks/useClients";
 import { useProjects } from "@/hooks/useProjects";
+import { useBusinesses } from "@/hooks/useBusinesses";
+import { useAdminOrgMembers } from "@/hooks/useOrg";
 import { summarizeDiscovery } from "@/lib/invite";
 import { clampText } from "@/lib/sanitize";
 import { cn } from "@/lib/utils";
@@ -56,8 +57,8 @@ export default function DiscoverySessionPage() {
   const [notesSaving, setNotesSaving] = useState(false);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedNotes = useRef<string>("");
-  const { data: clients } = useClients();
   const { data: projects } = useProjects();
+  const { data: businesses } = useBusinesses();
   const [draft, setDraft] = useState({
     answers: {} as Record<string, DiscoveryAnswer>,
     client_summary: "",
@@ -65,8 +66,11 @@ export default function DiscoverySessionPage() {
     admin_notes: "",
     status: "draft" as "draft" | "done",
     client_id: "",
+    org_id: "",
+    attendee_ids: [] as string[],
     project_id: "",
   });
+  const { data: orgMembers } = useAdminOrgMembers(draft.org_id || null);
 
   const { data: session, isLoading, isError } = useQuery({
     queryKey: ["discovery-session", id],
@@ -90,6 +94,8 @@ export default function DiscoverySessionPage() {
       admin_notes: session.admin_notes ?? "",
       status: session.status,
       client_id: session.client_id ?? "",
+      org_id: session.org_id ?? "",
+      attendee_ids: session.attendee_ids ?? [],
       project_id: session.project_id ?? "",
     });
     lastSavedNotes.current = session.admin_notes ?? "";
@@ -147,6 +153,14 @@ export default function DiscoverySessionPage() {
     setAnswer(qid, { value: cur ? `${cur}, ${chip}` : chip });
   }
 
+  const toggleAttendee = (uid: string) =>
+    setDraft((d) => ({
+      ...d,
+      attendee_ids: d.attendee_ids.includes(uid)
+        ? d.attendee_ids.filter((x) => x !== uid)
+        : [...d.attendee_ids, uid],
+    }));
+
   function buildItems() {
     const out: { question: string; answer: string; show: boolean }[] = [];
     for (const sec of template.sections) {
@@ -188,7 +202,9 @@ export default function DiscoverySessionPage() {
         admin_notes: clampText(draft.admin_notes.trim(), 8000) || null,
         status: draft.status,
         client_id: draft.client_id || null,
-        project_id: draft.project_id || null,
+        org_id: draft.org_id || null,
+        attendee_ids: draft.org_id ? draft.attendee_ids : [],
+        project_id: draft.org_id ? draft.project_id || null : null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", session!.id);
@@ -273,26 +289,60 @@ export default function DiscoverySessionPage() {
         </div>
       </Card>
 
-      {/* Client / project assignment */}
+      {/* Business → attendees → project assignment (org-centric) */}
       <Card className="space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="d-org">שיוך לעסק</Label>
+          <SelectMenu
+            id="d-org"
+            variant="field"
+            ariaLabel="עסק"
+            value={draft.org_id}
+            onChange={(v) =>
+              setDraft((d) => ({ ...d, org_id: v, attendee_ids: [], project_id: "" }))
+            }
+            options={[
+              { value: "", label: "ללא עסק (ליד)" },
+              ...(businesses ?? []).map((b) => ({ value: b.id, label: b.name })),
+            ]}
+          />
+        </div>
+
+        {draft.org_id && (
           <div className="space-y-1.5">
-            <Label htmlFor="d-client">שיוך ללקוח</Label>
-            <SelectMenu
-              id="d-client"
-              variant="field"
-              ariaLabel="לקוח"
-              value={draft.client_id}
-              onChange={(v) => setDraft((d) => ({ ...d, client_id: v }))}
-              options={[
-                { value: "", label: "ללא לקוח" },
-                ...(clients?.active ?? []).map((c) => ({
-                  value: c.id,
-                  label: c.full_name || c.email,
-                })),
-              ]}
-            />
+            <Label>מי היה בשיחה</Label>
+            {orgMembers && orgMembers.filter((m) => m.user_id).length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {orgMembers
+                  .filter((m) => m.user_id)
+                  .map((m) => {
+                    const on = draft.attendee_ids.includes(m.user_id!);
+                    return (
+                      <button
+                        key={m.user_id}
+                        type="button"
+                        onClick={() => toggleAttendee(m.user_id!)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                          on
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {m.full_name}
+                      </button>
+                    );
+                  })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                לעסק הזה עדיין אין אנשי קשר להצגה.
+              </p>
+            )}
           </div>
+        )}
+
+        {draft.org_id && (
           <div className="space-y-1.5">
             <Label htmlFor="d-project">שיוך לפרויקט</Label>
             <SelectMenu
@@ -303,30 +353,20 @@ export default function DiscoverySessionPage() {
               onChange={(v) => setDraft((d) => ({ ...d, project_id: v }))}
               options={[
                 { value: "", label: "ללא פרויקט" },
-                // Show BOTH the business and the project title so identical
-                // titles (e.g. several "Studio Ori Guy" projects) are told
-                // apart; sorted so projects of the same business sit together.
                 ...(projects ?? [])
-                  .map((p) => {
-                    const biz = p.business_name?.trim();
-                    const title = p.title?.trim();
-                    const label =
-                      biz && title && biz !== title
-                        ? `${biz} · ${title}`
-                        : biz || title || "פרויקט ללא שם";
-                    return { value: p.id, label };
-                  })
-                  .sort((a, b) => a.label.localeCompare(b.label, "he")),
+                  .filter((p) => p.org_id === draft.org_id)
+                  .map((p) => ({ value: p.id, label: p.title })),
               ]}
             />
           </div>
-        </div>
+        )}
+
         <p className="text-xs text-muted-foreground/80">
-          {draft.client_id
+          {draft.org_id
             ? draft.status === "done"
-              ? "השיחה משויכת ללקוח ומסומנת 'הושלם', אז היא מופיעה אצלו בפורטל (תחת 'סיכומי שיחות אפיון')."
-              : "השיחה משויכת ללקוח, אבל תופיע אצלו בפורטל רק כשתסמן את הסטטוס 'הושלם'."
-            : "אחרי שתשייך לקוח ותסמן 'הושלם', הסיכום יופיע אצלו בפורטל. אל תשכח לשמור."}
+              ? "השיחה משויכת לעסק ומסומנת 'הושלם', אז הסיכום מופיע בפורטל אצל כל חברי העסק (תחת 'סיכומי שיחות אפיון')."
+              : "השיחה משויכת לעסק, אבל הסיכום יופיע בפורטל אצל חברי העסק רק כשתסמן את הסטטוס 'הושלם'."
+            : "שיחה ללא עסק (ליד). אפשר לשייך עסק בהמשך, ואז הסיכום יופיע בפורטל אצל חבריו. אל תשכח לשמור."}
         </p>
       </Card>
 
