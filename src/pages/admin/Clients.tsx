@@ -84,8 +84,8 @@ function sortClients(rows: ClientItem[], sort: Sort): ClientItem[] {
   const sign = sort.dir === "asc" ? 1 : -1;
   return [...rows].sort((a, b) => {
     if (sort.key === "name") {
-      const an = a.business_name || a.full_name || a.email;
-      const bn = b.business_name || b.full_name || b.email;
+      const an = a.full_name || a.email || a.business_name || "";
+      const bn = b.full_name || b.email || b.business_name || "";
       return sign * an.localeCompare(bn, "he");
     }
     return sign * activityValue(a).localeCompare(activityValue(b));
@@ -165,8 +165,11 @@ function ClientTableRow({
       <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
         <Icon className="size-3.5" />
       </span>
-      <span className="truncate font-medium">
-        {item.business_name || item.full_name || "ללא שם"}
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate font-medium">{item.full_name || item.email || "ללא שם"}</span>
+        {item.business_name && (
+          <span className="truncate text-xs text-muted-foreground">{item.business_name}</span>
+        )}
       </span>
     </span>
   );
