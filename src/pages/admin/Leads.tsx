@@ -9,6 +9,7 @@ import { SortableTh, type SortDir } from "@/components/ui/sortable-th";
 import { AdminLeadsSection } from "@/components/partner/AdminLeadsSection";
 import { ManageReferralDialog } from "@/pages/admin/Referrals";
 import { useAdminReferrals, type AdminReferral } from "@/hooks/useAdminReferrals";
+import { useNotifications } from "@/hooks/useNotifications";
 import { referralStatusHe, referralStatusVariant } from "@/lib/status";
 
 /** One place for every incoming lead: partner-submitted leads and client referrals. */
@@ -29,12 +30,18 @@ type RefSortKey = "referred" | "referrer" | "deal" | "status" | "created";
 
 function ClientReferralsSection() {
   const { data, isLoading } = useAdminReferrals();
+  const { items: notifs, unreadEntityIds, markRead } = useNotifications();
   const [active, setActive] = useState<AdminReferral | null>(null);
   const [sort, setSort] = useState<{ key: RefSortKey; dir: SortDir }>({
     key: "created",
     dir: "desc",
   });
   const refs = data?.referrals ?? [];
+
+  function openReferral(r: AdminReferral) {
+    setActive(r);
+    notifs.filter((n) => !n.is_read && n.entity_id === r.id).forEach((n) => markRead(n.id));
+  }
 
   function toggleSort(key: RefSortKey) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -91,26 +98,37 @@ function ClientReferralsSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {sorted.map((r) => (
-                <tr key={r.id} className="text-foreground">
-                  <td className="px-3 py-2.5 font-medium">{r.referred_name}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{r.referrer_name}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
-                    {r.deal_value ? `₪${r.deal_value.toLocaleString("he-IL")}` : "-"}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Badge variant={referralStatusVariant[r.status]}>{referralStatusHe[r.status]}</Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
-                    {new Date(r.created_at).toLocaleDateString("he-IL")}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => setActive(r)}>
-                      <Settings2 className="size-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((r) => {
+                const isNew = unreadEntityIds.has(r.id);
+                return (
+                  <tr key={r.id} className="text-foreground">
+                    <td className="px-3 py-2.5 font-medium">
+                      {isNew && (
+                        <span className="me-1.5 inline-block size-2 rounded-full bg-destructive align-middle" />
+                      )}
+                      {r.referred_name}
+                    </td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.referrer_name}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      {r.deal_value ? `₪${r.deal_value.toLocaleString("he-IL")}` : "-"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="flex items-center gap-1.5">
+                        {isNew && <Badge variant="default">חדש</Badge>}
+                        <Badge variant={referralStatusVariant[r.status]}>{referralStatusHe[r.status]}</Badge>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString("he-IL")}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => openReferral(r)}>
+                        <Settings2 className="size-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

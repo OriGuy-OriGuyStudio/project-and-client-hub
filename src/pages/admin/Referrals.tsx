@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Handshake, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RewardsStore } from "@/components/admin/RewardsStore";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
 import { SelectMenu } from "@/components/ui/select-menu";
 import {
   Dialog,
@@ -23,8 +19,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminReferrals, type AdminReferral } from "@/hooks/useAdminReferrals";
-import { useNotifications } from "@/hooks/useNotifications";
-import { referralStatusHe, referralStatusVariant } from "@/lib/status";
+import { referralStatusHe } from "@/lib/status";
 import type { ReferralStatus } from "@/types/database";
 
 const STATUSES: ReferralStatus[] = [
@@ -39,22 +34,12 @@ const STATUSES: ReferralStatus[] = [
 
 export default function Referrals() {
   const { data, isLoading } = useAdminReferrals();
-  const { items: notifs, unreadEntityIds, markRead } = useNotifications();
-  const [active, setActive] = useState<AdminReferral | null>(null);
-
-  function openReferral(r: AdminReferral) {
-    setActive(r);
-    // Clear the "new" mark for this referral.
-    notifs
-      .filter((n) => !n.is_read && n.entity_id === r.id)
-      .forEach((n) => markRead(n.id));
-  }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="ניהול הפניות"
-        subtitle="הפניות מהלקוחות, עדכון סטטוס, וחנות הפרסים."
+        title="חנות הפרסים"
+        subtitle="ניהול הפרסים שהלקוחות מממשים בקרדיטים. את ההפניות עצמן מנהלים בעמוד 'כל הלידים'."
       />
 
       {isLoading ? (
@@ -63,58 +48,13 @@ export default function Referrals() {
             <Skeleton key={i} className="h-16 rounded-2xl" />
           ))}
         </div>
-      ) : !data?.referrals.length ? (
-        <EmptyState icon={Handshake} title="אין עדיין הפניות" />
       ) : (
-        <div className="space-y-2">
-          {data.referrals.map((r) => {
-            const isNew = unreadEntityIds.has(r.id);
-            return (
-              <Card
-                key={r.id}
-                className={
-                  "flex items-center justify-between gap-3 p-4" +
-                  (isNew ? " border-primary/50 ring-1 ring-primary/30" : "")
-                }
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">
-                    {isNew && (
-                      <span className="me-2 inline-block size-2 rounded-full bg-destructive align-middle" />
-                    )}
-                    {r.referred_name}
-                    <span className="text-muted-foreground"> · מאת {r.referrer_name}</span>
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {r.referred_contact}
-                    {r.deal_value ? ` · עסקה ₪${r.deal_value.toLocaleString("he-IL")}` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {isNew && <Badge variant="default">חדש</Badge>}
-                  <Badge variant={referralStatusVariant[r.status]}>
-                    {referralStatusHe[r.status]}
-                  </Badge>
-                  <Button variant="ghost" size="icon" aria-label="ניהול" onClick={() => openReferral(r)}>
-                    <Settings2 className="size-4" />
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Rewards store management */}
-      {!isLoading && (
         <RewardsStore
           rewards={data?.rewards ?? []}
           ilsPerCoin={data?.ilsPerCoin ?? 1}
           giftValuePct={data?.giftValuePct ?? 75}
         />
       )}
-
-      <ManageReferralDialog referral={active} onClose={() => setActive(null)} />
     </div>
   );
 }

@@ -58,7 +58,7 @@ export const adminNav: NavItem[] = [
   // ── לידים ושותפים ──
   { to: "/admin/leads", label: "כל הלידים", icon: Inbox, badgeTypes: ["referral"], section: "לידים ושותפים" },
   { to: "/admin/partners", label: "שותפים", icon: Handshake, section: "לידים ושותפים" },
-  { to: "/admin/referrals", label: "הפניות", icon: Handshake, badgeTypes: ["referral"], section: "לידים ושותפים" },
+  { to: "/admin/referrals", label: "חנות הפרסים", icon: Gift, section: "לידים ושותפים" },
 
   // ── שירות וחבילות ──
   {
