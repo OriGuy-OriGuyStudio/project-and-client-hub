@@ -69,4 +69,10 @@ begin
 end;
 $function$;
 
+-- Only the service-role edge functions (ingest-site-metrics, poll-site-metrics,
+-- pull-cloudflare-metrics) write metrics. This DB's default ACL grants EXECUTE
+-- directly to anon/authenticated, and this is a definer function that bypasses
+-- RLS, so revoke it from client roles to prevent metric injection for any project.
+revoke execute on function public.upsert_site_metrics from public, anon, authenticated;
+
 notify pgrst, 'reload schema';

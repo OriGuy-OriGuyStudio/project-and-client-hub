@@ -39,7 +39,10 @@ begin
 end;
 $function$;
 
-revoke execute on function public.log_nightly_backups() from public;
+-- This DB's default ACL grants EXECUTE directly to anon/authenticated (not only
+-- via PUBLIC), and this function has no internal is_admin() guard, so revoke from
+-- the actual roles too — only the cron (postgres/service_role) should invoke it.
+revoke execute on function public.log_nightly_backups() from public, anon, authenticated;
 
 select cron.schedule(
   'nightly_backups',
