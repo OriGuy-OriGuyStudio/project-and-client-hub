@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail, Rocket, CheckCircle2 } from "lucide-react";
+import { HeartHandshake, RefreshCw, ExternalLink, LifeBuoy, Gauge, ShieldCheck, Clock, Link2, Copy, Sparkles, LineChart, Mail, Rocket, CheckCircle2, Cloud } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,8 +12,10 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { isDemoEmail } from "@/lib/demo";
+import { useAuth } from "@/hooks/useAuth";
+import { gendered } from "@/lib/gender";
 import { TIER_META } from "@/lib/service-plans";
-import { useMaintenanceOverview, refreshSiteMetrics, activateService, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
+import { useMaintenanceOverview, refreshSiteMetrics, pullCloudflare, activateService, siteInsights, sendReport, useSiteMetrics, type MaintenanceOverviewRow, type SiteInsights } from "@/hooks/useService";
 import { PerfChart } from "@/components/service/PerfChart";
 import { OnboardingChecklist } from "@/components/service/OnboardingChecklist";
 
@@ -180,9 +182,11 @@ function daysSince(date: string | null): number | null {
 
 function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
   const qc = useQueryClient();
+  const { profile } = useAuth();
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [cfRefreshing, setCfRefreshing] = useState(false);
   const [activating, setActivating] = useState(false);
   const meta = TIER_META[row.tier];
   const includedHours = meta.hours;
@@ -222,6 +226,16 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
     setRefreshing(false);
     if (error) return toastError("רענון הנתונים נכשל.");
     toast({ title: `הנתונים של ${row.project_title} רועננו ✓`, variant: "success" });
+    qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
+  }
+
+  async function refreshCloudflare() {
+    setCfRefreshing(true);
+    const { error } = await pullCloudflare(row.project_id);
+    setCfRefreshing(false);
+    if (error) return toastError("רענון הנתונים מ-Cloudflare נכשל.");
+    toast({ title: `הנתונים של ${row.project_title} עודכנו מ-Cloudflare ✓`, variant: "success" });
+    qc.invalidateQueries({ queryKey: ["site-metrics", row.project_id] });
     qc.invalidateQueries({ queryKey: ["maintenance-overview"] });
   }
 
@@ -288,6 +302,10 @@ function PackageCard({ row }: { row: MaintenanceOverviewRow }) {
           )}
           <Button size="sm" variant="ghost" onClick={refreshOne} disabled={refreshing}>
             <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} /> רענן
+          </Button>
+          <Button size="sm" variant="ghost" onClick={refreshCloudflare} disabled={cfRefreshing}>
+            <Cloud className={cn("size-3.5", cfRefreshing && "animate-spin")} />
+            {cfRefreshing ? gendered(profile?.gender, "מרענן…", "מרעננת…") : "רענן נתונים מ-Cloudflare"}
           </Button>
           <Button size="sm" onClick={sendClientReport} disabled={sending}>
             <Mail className="size-3.5" /> שלח דוח ללקוח
