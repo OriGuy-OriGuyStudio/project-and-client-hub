@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Eye, Handshake, Mail, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
+import { SortableTh, type SortDir } from "@/components/ui/sortable-th";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,200 @@ function toTarget(p: ActivePartner | AllowedEmail, kind: "active" | "pending"): 
     commission_rate_max: p.commission_rate_max,
     commission_notes: p.commission_notes,
   };
+}
+
+type PartnerSortKey = "name" | "rate" | "activity";
+
+/** Real partners (active + pending) as one sortable table. Demo accounts stay
+ *  in their own dashed section below (they carry extra QA controls). */
+function PartnersTable({
+  active,
+  pending,
+  lastSeen,
+  onEdit,
+  onDelete,
+}: {
+  active: ActivePartner[];
+  pending: AllowedEmail[];
+  lastSeen?: Map<string, string>;
+  onEdit: (t: PartnerTarget) => void;
+  onDelete: (t: PartnerTarget) => void;
+}) {
+  const [sort, setSort] = useState<{ key: PartnerSortKey; dir: SortDir }>({
+    key: "name",
+    dir: "asc",
+  });
+
+  function toggleSort(key: PartnerSortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
+
+  const rows = useMemo(() => {
+    const list = [
+      ...active.map((p) => ({ kind: "active" as const, p })),
+      ...pending.map((p) => ({ kind: "pending" as const, p })),
+    ];
+    const d = sort.dir === "asc" ? 1 : -1;
+    const nameOf = (r: (typeof list)[number]) => r.p.full_name || r.p.email || "";
+    const rateOf = (r: (typeof list)[number]) => r.p.commission_rate ?? 0;
+    const actOf = (r: (typeof list)[number]) =>
+      r.kind === "active"
+        ? lastSeen?.get((r.p as ActivePartner).id) ?? ""
+        : (r.p as AllowedEmail).invite_sent_at ?? "";
+    list.sort((a, b) => {
+      switch (sort.key) {
+        case "name":
+          return nameOf(a).localeCompare(nameOf(b), "he") * d;
+        case "rate":
+          return (rateOf(a) - rateOf(b)) * d;
+        case "activity":
+          return actOf(a).localeCompare(actOf(b)) * d;
+        default:
+          return 0;
+      }
+    });
+    return list;
+  }, [active, pending, lastSeen, sort]);
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border/60">
+            <SortableTh label="שותף" active={sort.key === "name"} dir={sort.dir} onClick={() => toggleSort("name")} />
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">אימייל</th>
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">לינק הפניה</th>
+            <SortableTh label="עמלה" active={sort.key === "rate"} dir={sort.dir} onClick={() => toggleSort("rate")} />
+            <SortableTh label="פעילות" active={sort.key === "activity"} dir={sort.dir} onClick={() => toggleSort("activity")} />
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">פעולות</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {rows.map((r) => (
+            <PartnerTableRow
+              key={r.kind === "active" ? (r.p as ActivePartner).id : r.p.email}
+              kind={r.kind}
+              p={r.p}
+              lastSeen={lastSeen}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PartnerTableRow({
+  kind,
+  p,
+  lastSeen,
+  onEdit,
+  onDelete,
+}: {
+  kind: "active" | "pending";
+  p: ActivePartner | AllowedEmail;
+  lastSeen?: Map<string, string>;
+  onEdit: (t: PartnerTarget) => void;
+  onDelete: (t: PartnerTarget) => void;
+}) {
+  const qc = useQueryClient();
+  const [resending, setResending] = useState(false);
+  const target = toTarget(p, kind);
+  const isActive = kind === "active";
+  const ap = p as ActivePartner;
+  const pe = p as AllowedEmail;
+
+  async function resend() {
+    setResending(true);
+    const r = await sendInvite(p.email);
+    setResending(false);
+    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
+    else toastError("שליחת ההזמנה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["partners"] });
+  }
+
+  return (
+    <tr className="text-foreground">
+      <td className="px-3 py-2.5">
+        {isActive ? (
+          <Link
+            to={`/admin/partners/${ap.id}`}
+            className="flex items-center gap-2 font-medium hover:text-primary hover:underline"
+          >
+            <Handshake className="size-4 shrink-0 text-primary" />
+            {p.full_name || "ללא שם"}
+          </Link>
+        ) : (
+          <span className="flex items-center gap-2 font-medium">
+            <Clock className="size-4 shrink-0 text-muted-foreground" />
+            {p.full_name || "ללא שם"}
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <span className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+          <span className="truncate" dir="ltr">
+            {p.email}
+          </span>
+          <CopyButton content={p.email} variant="ghost" size="icon" className="size-5 shrink-0 hover:text-foreground" toastMessage="האימייל הועתק" title="העתקת אימייל" />
+        </span>
+      </td>
+      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+        {isActive && ap.referral_code ? (
+          <span className="flex items-center gap-1 font-mono-code">
+            ref/{ap.referral_code}
+            <CopyButton content={referralUrl(ap.referral_code)} variant="ghost" size="icon" className="size-5 shrink-0 hover:text-foreground" toastMessage="לינק ההפניה הועתק" title="העתקת לינק הפניה" />
+          </span>
+        ) : (
+          "-"
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <Badge variant={isActive ? "success" : "warning"}>
+          {rateLabel(p.commission_rate, p.commission_rate_min, p.commission_rate_max)}
+        </Badge>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-[11px] text-muted-foreground">
+        {isActive
+          ? lastSeen?.get(ap.id)
+            ? `פעילות: ${new Date(lastSeen.get(ap.id)!).toLocaleDateString("he-IL")}`
+            : "טרם נכנס"
+          : pe.invite_sent_at
+            ? `ממתין · הזמנה ${new Date(pe.invite_sent_at).toLocaleDateString("he-IL")}`
+            : "ממתין · טרם נשלחה הזמנה"}
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-1">
+          {isActive ? (
+            <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
+              <Link to={`/admin/partners/${ap.id}`}>
+                <Eye className="size-4" />
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={pe.invite_sent_at ? "שלח הזמנה שוב" : "שלח הזמנה"}
+              title={pe.invite_sent_at ? "שלח הזמנה שוב" : "שלח הזמנה"}
+              disabled={resending}
+              onClick={resend}
+            >
+              <Mail className="size-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => onEdit(target)}>
+            <Pencil className="size-4" />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="מחיקה" className="text-destructive" onClick={() => onDelete(target)}>
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 export default function Partners() {
@@ -163,29 +358,14 @@ export default function Partners() {
         />
       ) : (
         <div className="space-y-6">
-          {realActive.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                פעילים ({realActive.length})
-              </h2>
-              {realActive.map(renderActivePartner)}
-            </section>
-          )}
-
-          {realPending.length > 0 && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">
-                ממתינים לכניסה ראשונה ({realPending.length})
-              </h2>
-              {realPending.map((p) => (
-                <PendingPartnerRow
-                  key={p.email}
-                  p={p}
-                  onEdit={() => setEditTarget(toTarget(p, "pending"))}
-                  onDelete={() => setDeleteTarget(toTarget(p, "pending"))}
-                />
-              ))}
-            </section>
+          {(realActive.length > 0 || realPending.length > 0) && (
+            <PartnersTable
+              active={realActive}
+              pending={realPending}
+              lastSeen={lastSeen}
+              onEdit={setEditTarget}
+              onDelete={setDeleteTarget}
+            />
           )}
 
           {hasDemo && (
