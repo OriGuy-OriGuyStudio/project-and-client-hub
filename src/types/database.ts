@@ -792,6 +792,10 @@ export type DiscoveryAnswer = { value: string; show: boolean };
 export type DiscoverySession = {
   id: string;
   client_id: string | null;
+  /** The business (org) the call was with. Null = a lead with no org yet. */
+  org_id: string | null;
+  /** Which people attended the call (record only; does not gate access). */
+  attendee_ids: string[];
   project_id: string | null;
   title: string;
   template_key: string;
