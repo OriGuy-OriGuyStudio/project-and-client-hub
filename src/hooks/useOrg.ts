@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { MemberInviteRequest, OrgMemberRow } from "@/types/database";
+import type { MemberInviteRequest, OrgMemberRow, Project } from "@/types/database";
 import type { CapValues } from "@/components/org/capabilityFields";
 
 /** The organization a client's brand/account belongs to (admin reads via
@@ -30,6 +30,66 @@ export function useAdminOrgMembers(orgId: string | null | undefined) {
       const { data, error } = await supabase.rpc("admin_org_members", { p_org: orgId! });
       if (error) throw error;
       return (data ?? []) as OrgMemberRow[];
+    },
+  });
+}
+
+export interface OrgFounder {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+}
+
+/** The org's founding member (earliest to join, ties broken by user_id) - the
+ * user Business Detail keys brand/CRM on for now. See the KNOWN LIMITATION
+ * note in docs/superpowers/specs/2026-07-12-org-centric-admin-design.md:
+ * brand+CRM stay per-member until Phase 2/3 repoints them to the org. */
+export function useOrgFounder(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["org-founder", orgId],
+    enabled: !!orgId,
+    queryFn: async (): Promise<OrgFounder | null> => {
+      const { data: member, error: memberError } = await supabase
+        .from("organization_members")
+        .select("user_id")
+        .eq("org_id", orgId!)
+        .order("created_at", { ascending: true })
+        .order("user_id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (memberError) throw memberError;
+      if (!member) return null;
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", member.user_id)
+        .maybeSingle();
+      if (profileError) throw profileError;
+
+      return {
+        user_id: member.user_id,
+        full_name: profile?.full_name ?? null,
+        email: profile?.email ?? "",
+      };
+    },
+  });
+}
+
+/** Admin: an org's projects (across all its members' client_ids), for the
+ * Business Detail projects table. */
+export function useOrgProjects(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["org-projects", orgId],
+    enabled: !!orgId,
+    queryFn: async (): Promise<Project[]> => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("org_id", orgId!)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 }

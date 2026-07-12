@@ -229,6 +229,9 @@ export type Project = {
   description: string | null;
   client_id: string;
   parent_project_id: string | null;
+  /** The organization (multi-tenancy) this project belongs to. Null for
+   * projects created before the org migration backfilled them. */
+  org_id: string | null;
   retainer_billed: boolean;
   status: ProjectStatus;
   figma_url: string | null;

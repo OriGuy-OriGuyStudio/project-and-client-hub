@@ -51,7 +51,9 @@ import { sendInvite, sendRedemptionNotice } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { toast, toastError } from "@/hooks/use-toast";
 
-const genderHe: Record<string, string> = { male: "זכר", female: "נקבה", other: "אחר" };
+// Exported so BusinessDetail (org-centric admin) can reuse the same
+// contact/CRM row rendering while it stays keyed on the founding member.
+export const genderHe: Record<string, string> = { male: "זכר", female: "נקבה", other: "אחר" };
 
 function waLink(phone: string) {
   const digits = phone.replace(/\D/g, "").replace(/^0/, "972");
@@ -789,7 +791,8 @@ function InviteStatus({
   );
 }
 
-function Field({
+// Exported for the same reason as genderHe above (reused by BusinessDetail).
+export function Field({
   label,
   value,
   mono,
