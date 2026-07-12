@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Wrench, Plus, Trash2 } from "lucide-react";
+import { Wrench, Plus, Trash2, ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useMaintenanceLog } from "@/hooks/useService";
@@ -35,6 +37,7 @@ export function MaintenanceLogEditor({ projectId }: { projectId: string }) {
   const [count, setCount] = useState("1");
   const [when, setWhen] = useState(toLocalInput(new Date().toISOString()));
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["maintenance-log", projectId] });
@@ -65,12 +68,21 @@ export function MaintenanceLogEditor({ projectId }: { projectId: string }) {
   }
 
   return (
-    <Card className="p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-        <Wrench className="size-5 text-primary" /> יומן תחזוקה (אדמין)
-      </h2>
-
-      <div className="grid gap-2 sm:grid-cols-[140px_1fr_70px_auto]">
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="p-5">
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-start">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <Wrench className="size-5 text-primary" /> יומן תחזוקה (אדמין)
+          </h2>
+          <ChevronDown
+            className={cn(
+              "size-5 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <div className="grid gap-2 sm:grid-cols-[140px_1fr_70px_auto]">
         <SelectMenu
           variant="field"
           ariaLabel="סוג"
@@ -117,9 +129,11 @@ export function MaintenanceLogEditor({ projectId }: { projectId: string }) {
           ))}
         </div>
       )}
-      <p className="mt-3 text-xs text-muted-foreground">
-        מה שמתועד כאן מופיע ללקוח בעמוד ״השירות שלך״ (עדכונים, גיבויים, קריאות שירות). האוטומציה תמלא כאן חלק אוטומטית בהמשך.
-      </p>
-    </Card>
+          <p className="mt-3 text-xs text-muted-foreground">
+            מה שמתועד כאן מופיע ללקוח בעמוד ״השירות שלך״ (עדכונים, גיבויים, קריאות שירות). האוטומציה תמלא כאן חלק אוטומטית בהמשך.
+          </p>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

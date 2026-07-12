@@ -50,6 +50,8 @@ const ServiceCalls = lazy(() => import("@/pages/admin/ServiceCalls"));
 const Maintenance = lazy(() => import("@/pages/admin/Maintenance"));
 const ServiceMirror = lazy(() => import("@/pages/admin/ServiceMirror"));
 const PlansEditor = lazy(() => import("@/pages/admin/PlansEditor"));
+const Tools = lazy(() => import("@/pages/admin/Tools"));
+const PersonaTool = lazy(() => import("@/pages/admin/PersonaTool"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
@@ -121,6 +123,8 @@ function App() {
                   <Route path="/admin/tasks" element={<TaskBoard />} />
                   <Route path="/admin/discovery" element={<Discovery />} />
                   <Route path="/admin/discovery/:id" element={<DiscoverySessionPage />} />
+                  <Route path="/admin/tools" element={<Tools />} />
+                  <Route path="/admin/tools/persona" element={<PersonaTool />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/businesses" element={<Businesses />} />
