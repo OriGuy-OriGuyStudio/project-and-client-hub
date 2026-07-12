@@ -877,6 +877,12 @@ export type BusinessRow = {
   last_activity: string | null;
 };
 
+/** jsonb result of admin_create_business(): guarded "add business" flow. */
+export type AdminCreateBusinessResult = {
+  status: "created" | "email_exists";
+  org_id: string;
+};
+
 export type OrganizationMember = {
   id: string;
   org_id: string;
@@ -1192,6 +1198,10 @@ export interface Database {
         Returns: undefined;
       };
       admin_businesses: { Args: Record<string, never>; Returns: BusinessRow[] };
+      admin_create_business: {
+        Args: { p_name: string; p_manager_email: string; p_kind?: string };
+        Returns: AdminCreateBusinessResult;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

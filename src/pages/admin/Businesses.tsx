@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUp, ArrowDown, ArrowUpDown, Building2, FolderKanban, Users } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Building2, FolderKanban, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useBusinesses } from "@/hooks/useBusinesses";
+import { AddBusinessSheet } from "@/components/admin/AddBusinessSheet";
 import type { BusinessRow } from "@/types/database";
 
 type SortKey = "name" | "members" | "projects" | "last_activity";
@@ -127,6 +129,7 @@ function BusinessTable({
 export default function Businesses() {
   const { data, isLoading, isError } = useBusinesses();
   const [sort, setSort] = useState<Sort>({ key: "name", dir: "asc" });
+  const [addOpen, setAddOpen] = useState(false);
 
   function toggleSort(key: SortKey) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -141,7 +144,14 @@ export default function Businesses() {
       <PageHeader
         title="לקוחות"
         subtitle="כל העסקים במערכת, לפי חברי הצוות, הפרויקטים והפעילות האחרונה שלהם."
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" /> הוסף עסק
+          </Button>
+        }
       />
+
+      <AddBusinessSheet open={addOpen} onClose={() => setAddOpen(false)} />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -155,7 +165,12 @@ export default function Businesses() {
         <EmptyState
           icon={Building2}
           title="אין עדיין עסקים"
-          description="ברגע שתוסיף לקוח ראשון, העסק שלו יופיע כאן."
+          description="הוסף עסק ראשון, וברגע שהמנהל/ת שלו יתחבר/תתחבר הוא יופיע כאן."
+          action={
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="size-4" /> הוסף עסק
+            </Button>
+          }
         />
       ) : (
         <div className="space-y-6">
