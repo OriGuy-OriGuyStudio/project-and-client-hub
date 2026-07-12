@@ -1,7 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Building2,
   Clock,
   Eye,
@@ -15,7 +18,6 @@ import {
   Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { sendInvite } from "@/lib/invite";
@@ -68,10 +70,257 @@ type ClientItem = {
   lastSeen?: string | null; // last real login (active clients)
 };
 
+type SortKey = "name" | "activity";
+type SortDir = "asc" | "desc";
+type Sort = { key: SortKey; dir: SortDir };
+
+/** Unified "last activity" instant for sorting: last real login for active
+ * clients, last invite-sent for pending ones. Nullable, sorts last. */
+function activityValue(item: ClientItem): string {
+  return (item.kind === "active" ? item.lastSeen : item.inviteSentAt) ?? "";
+}
+
+function sortClients(rows: ClientItem[], sort: Sort): ClientItem[] {
+  const sign = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    if (sort.key === "name") {
+      const an = a.business_name || a.full_name || a.email;
+      const bn = b.business_name || b.full_name || b.email;
+      return sign * an.localeCompare(bn, "he");
+    }
+    return sign * activityValue(a).localeCompare(activityValue(b));
+  });
+}
+
+function SortableTh({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  return (
+    <th className="px-3 py-2 text-start font-medium">
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+      >
+        {label}
+        {active ? (
+          dir === "asc" ? (
+            <ArrowUp className="size-3" />
+          ) : (
+            <ArrowDown className="size-3" />
+          )
+        ) : (
+          <ArrowUpDown className="size-3 opacity-40" />
+        )}
+      </button>
+    </th>
+  );
+}
+
+function ClientTableRow({
+  item,
+  onEdit,
+  onDelete,
+}: {
+  item: ClientItem;
+  onEdit: (i: ClientItem) => void;
+  onDelete: (i: ClientItem) => void;
+}) {
+  const qc = useQueryClient();
+  const [resending, setResending] = useState(false);
+
+  const Icon = item.kind === "active" ? Building2 : Clock;
+  const iconClass =
+    item.kind === "active" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground";
+  const badge =
+    item.kind === "active" ? (
+      item.enrolled ? (
+        <Badge variant="cyan">שותף</Badge>
+      ) : (
+        <Badge variant="success">פעיל</Badge>
+      )
+    ) : (
+      <Badge variant="warning">ממתין</Badge>
+    );
+
+  async function resendInvite() {
+    setResending(true);
+    const r = await sendInvite(item.email);
+    setResending(false);
+    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
+    else toastError("שליחת ההזמנה נכשלה.");
+    qc.invalidateQueries({ queryKey: ["clients"] });
+  }
+
+  const nameContent = (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
+        <Icon className="size-3.5" />
+      </span>
+      <span className="truncate font-medium">
+        {item.business_name || item.full_name || "ללא שם"}
+      </span>
+    </span>
+  );
+
+  return (
+    <tr className="text-foreground">
+      <td className="px-3 py-2.5">
+        {item.kind === "active" && item.id ? (
+          <Link
+            to={`/admin/clients/${item.id}`}
+            className="flex min-w-0 items-center gap-2 hover:text-primary hover:underline"
+          >
+            {nameContent}
+          </Link>
+        ) : (
+          nameContent
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <span className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
+          <span className="truncate" dir="ltr">
+            {item.email}
+          </span>
+          <CopyButton
+            content={item.email}
+            variant="ghost"
+            size="icon"
+            className="size-5 shrink-0 hover:text-foreground"
+            toastMessage="האימייל הועתק"
+            title="העתקת אימייל"
+          />
+        </span>
+      </td>
+      <td className="px-3 py-2.5">{badge}</td>
+      <td className="px-3 py-2.5 text-xs text-muted-foreground">
+        {item.kind === "active" ? (
+          item.lastSeen ? (
+            new Date(item.lastSeen).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })
+          ) : (
+            "טרם נכנס"
+          )
+        ) : item.inviteSentAt ? (
+          <span className="text-brand-green-base">
+            ✓ נשלחה · {new Date(item.inviteSentAt).toLocaleDateString("he-IL")}
+          </span>
+        ) : (
+          "טרם נשלחה הזמנה"
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-1">
+          {item.kind === "pending" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
+              title={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
+              disabled={resending}
+              onClick={resendInvite}
+            >
+              <Mail className="size-4" />
+            </Button>
+          )}
+          {item.kind === "active" && item.id && (
+            <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
+              <Link to={`/admin/clients/${item.id}`}>
+                <Eye className="size-4" />
+              </Link>
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => onEdit(item)}>
+            <Pencil className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="מחיקה"
+            className="text-destructive"
+            onClick={() => onDelete(item)}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ClientsTable({
+  rows,
+  sort,
+  onSort,
+  onEdit,
+  onDelete,
+  renderExtraRow,
+}: {
+  rows: ClientItem[];
+  sort: Sort;
+  onSort: (key: SortKey) => void;
+  onEdit: (i: ClientItem) => void;
+  onDelete: (i: ClientItem) => void;
+  /** Optional full-width row rendered under a given item (e.g. demo-account QA controls). */
+  renderExtraRow?: (i: ClientItem) => ReactNode;
+}) {
+  const sorted = useMemo(() => sortClients(rows, sort), [rows, sort]);
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border/60">
+            <SortableTh label="לקוח" active={sort.key === "name"} dir={sort.dir} onClick={() => onSort("name")} />
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">אימייל</th>
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">סטטוס</th>
+            <SortableTh
+              label="פעילות אחרונה"
+              active={sort.key === "activity"}
+              dir={sort.dir}
+              onClick={() => onSort("activity")}
+            />
+            <th className="px-3 py-2 text-start font-medium text-muted-foreground">פעולות</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {sorted.map((item) => {
+            const extra = renderExtraRow?.(item);
+            return (
+              <Fragment key={item.id ?? item.email}>
+                <ClientTableRow item={item} onEdit={onEdit} onDelete={onDelete} />
+                {extra && (
+                  <tr className="bg-background/30">
+                    <td colSpan={5} className="px-3 pb-3 pt-0">
+                      {extra}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function Clients() {
   const { data, isLoading, isError } = useClients();
   const [editTarget, setEditTarget] = useState<ClientItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClientItem | null>(null);
+  const [sort, setSort] = useState<Sort>({ key: "name", dir: "asc" });
+
+  function toggleSort(key: SortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
 
   // Authoritative last-login per user (from auth.users), for the "כניסה אחרונה" line.
   const { data: activity } = useQuery({
@@ -97,47 +346,33 @@ export default function Clients() {
   const demoPending = pendingList.filter((c) => isDemoEmail(c.email));
   const hasDemo = demoActive.length + demoPending.length > 0;
 
-  const renderActive = (c: (typeof activeList)[number]) => (
-    <ClientRow
-      key={c.id}
-      item={{
-        kind: "active",
-        id: c.id,
-        email: c.email,
-        full_name: c.full_name,
-        business_name: c.business_name,
-        phone: c.phone,
-        enrolled: c.enrolled,
-        inviteSentAt: null,
-        lastSeen: activity?.get(c.id) ?? null,
-      }}
-      icon={Building2}
-      iconClass="bg-primary/15 text-primary"
-      badge={c.enrolled ? <Badge variant="cyan">שותף</Badge> : <Badge variant="success">פעיל</Badge>}
-      onEdit={setEditTarget}
-      onDelete={setDeleteTarget}
-    />
-  );
-  const renderPending = (c: (typeof pendingList)[number]) => (
-    <ClientRow
-      key={c.email}
-      item={{
-        kind: "pending",
-        id: null,
-        email: c.email,
-        full_name: c.full_name,
-        business_name: c.business_name,
-        phone: null,
-        enrolled: false,
-        inviteSentAt: c.invite_sent_at,
-      }}
-      icon={Clock}
-      iconClass="bg-muted text-muted-foreground"
-      badge={<Badge variant="warning">ממתין</Badge>}
-      onEdit={setEditTarget}
-      onDelete={setDeleteTarget}
-    />
-  );
+  const toActiveItem = (c: (typeof activeList)[number]): ClientItem => ({
+    kind: "active",
+    id: c.id,
+    email: c.email,
+    full_name: c.full_name,
+    business_name: c.business_name,
+    phone: c.phone,
+    enrolled: c.enrolled,
+    inviteSentAt: null,
+    lastSeen: activity?.get(c.id) ?? null,
+  });
+  const toPendingItem = (c: (typeof pendingList)[number]): ClientItem => ({
+    kind: "pending",
+    id: null,
+    email: c.email,
+    full_name: c.full_name,
+    business_name: c.business_name,
+    phone: null,
+    enrolled: false,
+    inviteSentAt: c.invite_sent_at,
+  });
+
+  const realActiveRows = realActive.map(toActiveItem);
+  const realPendingRows = realPending.map(toPendingItem);
+  const internalActiveRows = internalActive.map(toActiveItem);
+  const demoActiveRows = demoActive.map(toActiveItem);
+  const demoPendingRows = demoPending.map(toPendingItem);
 
   return (
     <div>
@@ -150,7 +385,7 @@ export default function Clients() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-2xl" />
+            <Skeleton key={i} className="h-12 rounded-xl" />
           ))}
         </div>
       ) : isError ? (
@@ -164,30 +399,48 @@ export default function Clients() {
         />
       ) : (
         <div className="space-y-6">
-          {realActive.length > 0 && (
+          {realActiveRows.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground">
-                פעילים ({realActive.length})
+                פעילים ({realActiveRows.length})
               </h2>
-              {realActive.map(renderActive)}
+              <ClientsTable
+                rows={realActiveRows}
+                sort={sort}
+                onSort={toggleSort}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
+              />
             </section>
           )}
 
-          {realPending.length > 0 && (
+          {realPendingRows.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground">
-                ממתינים לכניסה ראשונה ({realPending.length})
+                ממתינים לכניסה ראשונה ({realPendingRows.length})
               </h2>
-              {realPending.map(renderPending)}
+              <ClientsTable
+                rows={realPendingRows}
+                sort={sort}
+                onSort={toggleSort}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
+              />
             </section>
           )}
 
-          {internalActive.length > 0 && (
+          {internalActiveRows.length > 0 && (
             <section className="space-y-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-3">
               <h2 className="text-sm font-medium text-primary">
                 סטודיו (פנימי) , לזמן על Orion / Chat / אדמיניסטרציה, לא נספר כלקוח
               </h2>
-              {internalActive.map(renderActive)}
+              <ClientsTable
+                rows={internalActiveRows}
+                sort={sort}
+                onSort={toggleSort}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
+              />
             </section>
           )}
 
@@ -196,22 +449,36 @@ export default function Clients() {
               <h2 className="text-sm font-medium text-amber-500">
                 טסטים (דמה) , לא נספרים כלקוחות אמיתיים
               </h2>
-              {demoActive.map((c) => (
-                <div key={c.id} className="space-y-1">
-                  {renderActive(c)}
-                  <DemoAccountControls
-                    demoId={c.id}
-                    role="client"
-                    sources={realActive.map((r) => ({
-                      id: r.id,
-                      label: r.full_name || r.business_name || r.email,
-                    }))}
-                  />
-                </div>
-              ))}
-              {demoPending.length > 0 && (
+              {demoActiveRows.length > 0 && (
+                <ClientsTable
+                  rows={demoActiveRows}
+                  sort={sort}
+                  onSort={toggleSort}
+                  onEdit={setEditTarget}
+                  onDelete={setDeleteTarget}
+                  renderExtraRow={(item) =>
+                    item.id ? (
+                      <DemoAccountControls
+                        demoId={item.id}
+                        role="client"
+                        sources={realActive.map((r) => ({
+                          id: r.id,
+                          label: r.full_name || r.business_name || r.email,
+                        }))}
+                      />
+                    ) : null
+                  }
+                />
+              )}
+              {demoPendingRows.length > 0 && (
                 <>
-                  {demoPending.map(renderPending)}
+                  <ClientsTable
+                    rows={demoPendingRows}
+                    sort={sort}
+                    onSort={toggleSort}
+                    onEdit={setEditTarget}
+                    onDelete={setDeleteTarget}
+                  />
                   <p className="ps-1 text-xs text-muted-foreground">
                     התחבר פעם אחת עם חשבון הדמה כדי להפעיל את טעינת הנתונים.
                   </p>
@@ -231,112 +498,6 @@ export default function Clients() {
         onClose={() => setDeleteTarget(null)}
       />
     </div>
-  );
-}
-
-function ClientRow({
-  item,
-  icon: Icon,
-  iconClass,
-  badge,
-  onEdit,
-  onDelete,
-}: {
-  item: ClientItem;
-  icon: typeof Building2;
-  iconClass: string;
-  badge: ReactNode;
-  onEdit: (i: ClientItem) => void;
-  onDelete: (i: ClientItem) => void;
-}) {
-  const qc = useQueryClient();
-  const [resending, setResending] = useState(false);
-
-  async function resendInvite() {
-    setResending(true);
-    const r = await sendInvite(item.email);
-    setResending(false);
-    if (r.ok) toast({ title: "ההזמנה נשלחה שוב ✓", variant: "success" });
-    else toastError("שליחת ההזמנה נכשלה.");
-    qc.invalidateQueries({ queryKey: ["clients"] });
-  }
-
-  return (
-    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
-          <Icon className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate font-medium text-foreground">
-            {item.business_name || item.full_name || "ללא שם"}
-          </p>
-          <p className="flex items-center gap-1 font-mono-code text-xs text-muted-foreground">
-            <span className="truncate">{item.email}</span>
-            <CopyButton
-              content={item.email}
-              variant="ghost"
-              size="icon"
-              className="size-5 shrink-0 hover:text-foreground"
-              toastMessage="האימייל הועתק"
-              title="העתקת אימייל"
-            />
-          </p>
-          {item.kind === "pending" && (
-            <p className="mt-0.5 text-[11px]">
-              {item.inviteSentAt ? (
-                <span className="text-brand-green-base">
-                  ✓ הזמנה נשלחה · {new Date(item.inviteSentAt).toLocaleDateString("he-IL")}
-                </span>
-              ) : (
-                <span className="text-muted-foreground">טרם נשלחה הזמנה</span>
-              )}
-            </p>
-          )}
-          {item.kind === "active" && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {item.lastSeen
-                ? `פעילות אחרונה: ${new Date(item.lastSeen).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`
-                : "טרם נכנס"}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        {badge}
-        {item.kind === "pending" && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
-            title={item.inviteSentAt ? "שלח הזמנה שוב" : "שלח הזמנה"}
-            disabled={resending}
-            onClick={resendInvite}
-          >
-            <Mail className="size-4" />
-          </Button>
-        )}
-        {item.kind === "active" && item.id && (
-          <Button variant="ghost" size="icon" aria-label="צפייה" asChild>
-            <Link to={`/admin/clients/${item.id}`}>
-              <Eye className="size-4" />
-            </Link>
-          </Button>
-        )}
-        <Button variant="ghost" size="icon" aria-label="עריכה" onClick={() => onEdit(item)}>
-          <Pencil className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="מחיקה"
-          className="text-destructive"
-          onClick={() => onDelete(item)}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-    </Card>
   );
 }
 
