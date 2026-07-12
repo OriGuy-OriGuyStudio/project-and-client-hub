@@ -1,9 +1,11 @@
 // pull-cloudflare-metrics — resolves each active package's Cloudflare zone (by
 // domain, cached on project_service.cf_zone_id) and pulls the last few days of
 // zone analytics (requests, cached requests, bytes, threats blocked, unique
-// visitors) via the Cloudflare GraphQL Analytics API, merge-upserting into
-// site_metrics per day without clobbering non-null values written by other
-// sources (e.g. ingest-site-metrics / pagespeed/uptime pushers).
+// visitors) via the Cloudflare GraphQL Analytics API, upserting into
+// site_metrics per day via the atomic `upsert_site_metrics` RPC (coalesce
+// on conflict) so this never clobbers non-null values written by other
+// sources (e.g. ingest-site-metrics / pagespeed/uptime pushers) racing on the
+// same project/day row.
 //
 // Auth: no user JWT (verify_jwt off) — called by a cron job or invoked
 // directly by the admin, same pattern as ingest-site-metrics / poll-site-metrics.
@@ -13,6 +15,11 @@
 //
 // Body (optional): { "project_id": "<uuid>" } to limit the pull to one
 // package; empty body processes every active project_service row.
+//
+// Each package is processed inside its own try/catch (mirrors
+// poll-site-metrics's per-source best-effort pattern) so a bad zone / CF error
+// for ONE package (e.g. a non-JSON 403 for a zone the token can't access)
+// can't abort the whole run and silently starve every remaining package.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -56,82 +63,80 @@ Deno.serve(async (req) => {
   const results: Record<string, string> = {};
 
   for (const p of pkgs ?? []) {
-    const domain = domainOf(p.site_url ?? "");
-    if (!domain) {
-      results[p.project_id] = "no domain";
-      continue;
-    }
-
-    // resolve + cache the CF zone id for this domain if we don't have it yet
-    let zone = p.cf_zone_id as string | null;
-    if (!zone) {
-      const zr = await fetch(`${CF}/zones?name=${encodeURIComponent(domain)}&status=active`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const zj = await zr.json();
-      zone = zj?.result?.[0]?.id ?? null;
-      await admin
-        .from("project_service")
-        .update({ cf_zone_id: zone, cf_zone_checked_at: new Date().toISOString() })
-        .eq("project_id", p.project_id);
-      if (!zone) {
-        results[p.project_id] = "zone not found";
+    try {
+      const domain = domainOf(p.site_url ?? "");
+      if (!domain) {
+        results[p.project_id] = "no domain";
         continue;
       }
-    }
 
-    // pull the last 3 days of daily zone analytics (today is usually partial,
-    // but re-pulling recent days keeps them fresh as the day progresses)
-    const since = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
-    const until = new Date().toISOString().slice(0, 10);
-    const gql = {
-      query: `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:10,filter:{date_geq:$since,date_leq:$until},orderBy:[date_ASC]){dimensions{date} uniq{uniques} sum{requests cachedRequests bytes threats}}}}}`,
-      variables: { zone, since, until },
-    };
-    const gr = await fetch(`${CF}/graphql`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(gql),
-    });
-    const gj = await gr.json();
-    const groups = gj?.data?.viewer?.zones?.[0]?.httpRequests1dGroups ?? [];
-
-    for (const g of groups) {
-      const row: Record<string, unknown> = {
-        project_id: p.project_id,
-        metric_date: g.dimensions.date,
-        requests: g.sum.requests ?? null,
-        cached_requests: g.sum.cachedRequests ?? null,
-        bytes: g.sum.bytes ?? null,
-        threats_blocked: g.sum.threats ?? null,
-        visitors: g.uniq?.uniques ?? null,
-      };
-
-      // merge-upsert: don't let a null from this pull clobber a non-null
-      // value another source (e.g. pagespeed/uptime pusher) already wrote
-      // for the same project/day.
-      const { data: existing } = await admin
-        .from("site_metrics")
-        .select("*")
-        .eq("project_id", p.project_id)
-        .eq("metric_date", row.metric_date)
-        .maybeSingle();
-      const merged: Record<string, unknown> = { ...row };
-      if (existing) {
-        const existingRow = existing as Record<string, unknown>;
-        for (const k of Object.keys(row)) {
-          if (row[k] == null && existingRow[k] != null) merged[k] = existingRow[k];
+      // resolve + cache the CF zone id for this domain if we don't have it yet
+      let zone = p.cf_zone_id as string | null;
+      if (!zone) {
+        const zr = await fetch(`${CF}/zones?name=${encodeURIComponent(domain)}&status=active`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const zj = await zr.json();
+        zone = zj?.result?.[0]?.id ?? null;
+        const { error: zoneErr } = await admin
+          .from("project_service")
+          .update({ cf_zone_id: zone, cf_zone_checked_at: new Date().toISOString() })
+          .eq("project_id", p.project_id);
+        if (zoneErr) throw new Error(`zone cache write: ${zoneErr.message}`);
+        if (!zone) {
+          results[p.project_id] = "zone not found";
+          continue;
         }
       }
-      await admin.from("site_metrics").upsert(merged, { onConflict: "project_id,metric_date" });
-    }
 
-    // Turnstile: probe the account/zone Turnstile analytics dataset; if the
-    // query errors or returns nothing (e.g. unavailable on the current CF
-    // plan), leave turnstile_solved / turnstile_blocked null and the client
-    // dashboard shows "בקרוב". Not wired yet — the exact dataset/field names
-    // need confirming against a real zone during Ori QA before we upsert them.
-    results[p.project_id] = `${groups.length} days`;
+      // pull the last 3 days of daily zone analytics (today is usually partial,
+      // but re-pulling recent days keeps them fresh as the day progresses)
+      const since = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+      const until = new Date().toISOString().slice(0, 10);
+      const gql = {
+        query: `query($zone:String!,$since:Date!,$until:Date!){viewer{zones(filter:{zoneTag:$zone}){httpRequests1dGroups(limit:10,filter:{date_geq:$since,date_leq:$until},orderBy:[date_ASC]){dimensions{date} uniq{uniques} sum{requests cachedRequests bytes threats}}}}}`,
+        variables: { zone, since, until },
+      };
+      const gr = await fetch(`${CF}/graphql`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(gql),
+      });
+      const gj = await gr.json();
+      if (gj?.errors?.length) throw new Error(String(gj.errors[0]?.message ?? "cloudflare graphql error"));
+      const groups = gj?.data?.viewer?.zones?.[0]?.httpRequests1dGroups ?? [];
+
+      // atomic coalesce-upsert per day: `upsert_site_metrics` only overwrites
+      // columns whose new value is non-null, so a concurrent writer (e.g.
+      // poll-site-metrics / ingest-site-metrics) touching the same
+      // project/day row can't be clobbered back to null by this pull.
+      let daysWritten = 0;
+      for (const g of groups) {
+        const metricDate = g?.dimensions?.date;
+        if (!metricDate) continue; // guard a partial/malformed group
+        const { error: upsertErr } = await admin.rpc("upsert_site_metrics", {
+          p_project: p.project_id,
+          p_date: metricDate,
+          p_visitors: g.uniq?.uniques ?? null,
+          p_threats_blocked: g.sum?.threats ?? null,
+          p_requests: g.sum?.requests ?? null,
+          p_cached_requests: g.sum?.cachedRequests ?? null,
+          p_bytes: g.sum?.bytes ?? null,
+        });
+        if (upsertErr) throw new Error(`site_metrics upsert: ${upsertErr.message}`);
+        daysWritten++;
+      }
+
+      // Turnstile: probe the account/zone Turnstile analytics dataset; if the
+      // query errors or returns nothing (e.g. unavailable on the current CF
+      // plan), leave turnstile_solved / turnstile_blocked null and the client
+      // dashboard shows "בקרוב". Not wired yet — the exact dataset/field names
+      // need confirming against a real zone during Ori QA before we upsert them.
+      results[p.project_id] = `${daysWritten} days`;
+    } catch (e) {
+      results[p.project_id] = String(e instanceof Error ? e.message : e);
+      continue;
+    }
   }
 
   return json({ ok: true, results });
