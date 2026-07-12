@@ -810,6 +810,37 @@ export type DiscoverySession = {
   updated_at: string;
 };
 
+/** Structured content of a `persona` deliverable (content jsonb). */
+export type PersonaContent = {
+  name: string;
+  archetype: string;
+  summary: string;
+  age: string;
+  location: string;
+  traits: string[];
+  quote: string;
+  goals: string[];
+  pains: string[];
+  motivations: string[];
+  how_we_help: string;
+  avatar_url: string | null;
+};
+
+/** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
+ *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
+export type ProjectDeliverable = {
+  id: string;
+  project_id: string;
+  org_id: string | null;
+  kind: "persona" | "journey" | "sitemap";
+  title: string | null;
+  content: Record<string, unknown>;
+  status: "draft" | "published";
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DevFeedback = {
   id: string;
   project_id: string;
@@ -1020,6 +1051,7 @@ export interface Database {
       admin_task_groups: TableShape<AdminTaskGroup>;
       admin_tasks: TableShape<AdminTask>;
       discovery_sessions: TableShape<DiscoverySession>;
+      project_deliverables: TableShape<ProjectDeliverable>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
