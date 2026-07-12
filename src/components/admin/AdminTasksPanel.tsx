@@ -202,7 +202,7 @@ export function AdminTasksPanel() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Button asChild size="sm">
-                    <Link to={a.clientId ? `/admin/clients/${a.clientId}` : "/admin/clients"}>
+                    <Link to={a.projectId ? `/projects/${a.projectId}` : "/admin/maintenance"}>
                       פתח חבילה <ExternalLink className="size-3.5" />
                     </Link>
                   </Button>

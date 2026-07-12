@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Trash2, UserPlus, Users } from "lucide-react";
+import { Trash2, UserPlus, Users, IdCard } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,17 +132,26 @@ function MemberRow({ row, onSaved }: { row: OrgMemberRow; onSaved: () => void })
             <p className="truncate font-mono-code text-xs text-muted-foreground">{row.email}</p>
           )}
         </div>
-        {!row.is_pending && row.member_id && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="הסרת חבר צוות"
-            disabled={removing}
-            onClick={() => setConfirmOpen(true)}
-          >
-            <Trash2 className="size-4 text-muted-foreground" />
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {row.user_id && (
+            <Button asChild variant="ghost" size="sm" title="פתיחת כרטיס הלקוח">
+              <Link to={`/admin/clients/${row.user_id}`}>
+                <IdCard className="size-4" /> לכרטיס לקוח
+              </Link>
+            </Button>
+          )}
+          {!row.is_pending && row.member_id && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="הסרת חבר צוות"
+              disabled={removing}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <Trash2 className="size-4 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {row.is_pending ? (
