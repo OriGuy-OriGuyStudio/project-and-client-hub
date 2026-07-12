@@ -211,6 +211,8 @@ export type ClientBrand = {
   logo_fit: LogoFit;
   /** The organization (multi-tenancy) this client's brand/account belongs to. */
   org_id: string | null;
+  /** True for the org's single canonical brand row (the founding member's). */
+  is_org_primary: boolean;
   updated_at: string;
 }
 
