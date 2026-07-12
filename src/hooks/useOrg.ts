@@ -3,17 +3,20 @@ import { supabase } from "@/lib/supabase";
 import type { MemberInviteRequest, OrgMemberRow, Project } from "@/types/database";
 import type { CapValues } from "@/components/org/capabilityFields";
 
-/** The organization a client's brand/account belongs to (admin reads via
- * client_brand). null when the client has no org yet (rare - pre-onboarding). */
+/** The organization a client (any member, not just the founder) belongs to -
+ * read from `organization_members`, the authoritative membership table (not
+ * `client_brand`, which post-brand-to-org only has a row per business, not
+ * per member). null when the client has no org yet (rare - pre-onboarding). */
 export function useClientOrgId(clientId: string | null | undefined) {
   return useQuery({
     queryKey: ["client-org", clientId],
     enabled: !!clientId,
     queryFn: async (): Promise<string | null> => {
       const { data, error } = await supabase
-        .from("client_brand")
+        .from("organization_members")
         .select("org_id")
-        .eq("client_id", clientId!)
+        .eq("user_id", clientId!)
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data?.org_id ?? null;

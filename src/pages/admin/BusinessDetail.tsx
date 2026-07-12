@@ -56,13 +56,17 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
 
 /**
  * Admin: a single business's ("organization") detail page - members, projects,
- * and (for now) the founding member's brand/CRM.
+ * brand identity, and (for now) the founding member's CRM note.
  *
- * KNOWN LIMITATION (see docs/superpowers/specs/2026-07-12-org-centric-admin-design.md,
- * "brand -> organization" phase): brand identity and the CRM note are still keyed
- * on one member (the org's founder - the earliest to join) rather than the org
- * itself, so this page reads/edits them via that member's client_id until Phase
- * 2/3 migrates `client_brand`/`admin_client_notes` to be org-scoped.
+ * Brand identity is resolved by ORGANIZATION (Task 8: `useClientDetail` reads
+ * `client_brand` via the org's single primary row, not this member's own
+ * client_id), so it's the same brand regardless of which member is queried.
+ *
+ * KNOWN LIMITATION (see docs/superpowers/specs/2026-07-12-org-centric-admin-design.md):
+ * the CRM note is still keyed on one member (the org's founder - the earliest
+ * to join) rather than the org itself, so this page reads/edits it via that
+ * member's client_id until a later task migrates `admin_client_notes` to be
+ * org-scoped.
  */
 export default function BusinessDetail() {
   const { orgId } = useParams();
@@ -70,7 +74,8 @@ export default function BusinessDetail() {
   const { data: founder, isLoading: founderLoading } = useOrgFounder(orgId);
   const { data: members } = useAdminOrgMembers(orgId);
   const { data: orgProjects, isLoading: projectsLoading } = useOrgProjects(orgId);
-  // Founder-keyed brand/CRM read - see the KNOWN LIMITATION note above.
+  // Brand resolves via the org (see file header); the CRM note is still
+  // founder-keyed - see the KNOWN LIMITATION note above.
   const { data: founderDetail, isLoading: founderDetailLoading } = useClientDetail(founder?.user_id);
 
   // project.client_id -> the member's display name, for the "responsible
@@ -164,7 +169,7 @@ export default function BusinessDetail() {
           {/* Team + access (members, caps, presets, pending, invite requests) */}
           <OrgMembersSection clientId={founder.user_id} />
 
-          {/* Brand identity (founder-keyed - known limitation, see file header) */}
+          {/* Brand identity (org-resolved - see file header) */}
           <Card id="bd-brand" data-section className="scroll-mt-20 space-y-4 p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-foreground">

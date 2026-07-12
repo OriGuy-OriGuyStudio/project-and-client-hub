@@ -44,6 +44,7 @@ import { isDemoEmail } from "@/lib/demo";
 import { isInternalClient } from "@/lib/internal";
 import { DemoAccountControls } from "@/components/admin/DemoAccountControls";
 import { useClientCrm } from "@/hooks/useClientCrm";
+import { resolveOrgPrimaryClientId } from "@/hooks/useClientBrand";
 import { useAuth } from "@/hooks/useAuth";
 import type { ClientCallLog } from "@/types/database";
 
@@ -419,12 +420,18 @@ function EditClientDialog({
           })
           .eq("id", target.id!);
         if (pErr) throw pErr;
-        const { error: bErr } = await supabase
-          .from("client_brand")
-          .upsert(
-            { client_id: target.id!, business_name: clampText(form.business_name.trim(), 120) || null },
-            { onConflict: "client_id" }
-          );
+        // Business name lives on the org's single primary client_brand row -
+        // resolve it so quick-editing from a non-primary member's row edits
+        // (and never duplicates) the business's one brand row.
+        const brandTarget = await resolveOrgPrimaryClientId(target.id!);
+        const { error: bErr } = await supabase.from("client_brand").upsert(
+          {
+            client_id: brandTarget.clientId,
+            ...(brandTarget.orgId ? { org_id: brandTarget.orgId, is_org_primary: true } : {}),
+            business_name: clampText(form.business_name.trim(), 120) || null,
+          },
+          { onConflict: "client_id" }
+        );
         if (bErr) throw bErr;
 
         // Admin-private CRM info.
