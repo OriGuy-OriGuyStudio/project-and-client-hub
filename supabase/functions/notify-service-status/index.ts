@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey);
   const { data: call, error: callErr } = await admin
     .from("service_calls")
-    .select("title, status, client_id")
+    .select("title, status, client_id, project_id")
     .eq("id", callId)
     .maybeSingle();
   if (callErr) return json({ ok: false, error: callErr.message }, 500);
@@ -142,7 +142,12 @@ Deno.serve(async (req) => {
   const { data: prof, error: profErr } = await admin
     .from("profiles").select("email, full_name").eq("id", call.client_id).maybeSingle();
   if (profErr) return json({ ok: false, error: profErr.message }, 500);
-  if (!prof?.email) return json({ ok: false, error: "recipient not found" }, 404);
+  // The package may have its own notification email (set on the landing form
+  // / admin edit), which takes priority over the account owner's login email.
+  const { data: ps } = await admin
+    .from("project_service").select("notify_email").eq("project_id", call.project_id).maybeSingle();
+  const to = String(ps?.notify_email || prof?.email || "").trim();
+  if (!to) return json({ ok: false, error: "recipient not found" }, 404);
 
   const { data: settings } = await admin
     .from("studio_settings").select("studio_name, portal_url").maybeSingle();
@@ -150,7 +155,7 @@ Deno.serve(async (req) => {
   const portal = (settings?.portal_url || DEFAULT_PORTAL).replace(/\/+$/, "");
   const loginUrl = `${portal}/service`;
 
-  const firstName = (prof.full_name || "").trim().split(/\s+/)[0] || "";
+  const firstName = (prof?.full_name || "").trim().split(/\s+/)[0] || "";
   const hi = firstName ? `היי ${firstName},` : "היי,";
   const done = call.status === "done";
   const heading = done ? "✅ קריאת השירות שלך טופלה" : "🛠️ קריאת השירות שלך בטיפול";
@@ -165,7 +170,7 @@ Deno.serve(async (req) => {
 
   try {
     const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
-    const res = await sendGmail(accessToken, prof.email, subject, buildHtml({ heading, lines, loginUrl, studioName }));
+    const res = await sendGmail(accessToken, to, subject, buildHtml({ heading, lines, loginUrl, studioName }));
     if (!res.ok) {
       const detail = await res.text();
       console.error("gmail send failed", res.status, detail);

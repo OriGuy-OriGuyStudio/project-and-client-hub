@@ -78,7 +78,10 @@ Deno.serve(async (req: Request) => {
   const { data: proj } = await admin.from("projects").select("client_id, title").eq("id", projectId).maybeSingle();
   if (!proj?.client_id) return json({ ok: false, error: "no client for project" });
   const { data: prof } = await admin.from("profiles").select("email, full_name, gender").eq("id", proj.client_id).maybeSingle();
-  const to = String(prof?.email ?? "").trim();
+  // The package may have its own notification email (set on the landing form
+  // / admin edit), which takes priority over the account owner's login email.
+  const { data: ps } = await admin.from("project_service").select("notify_email").eq("project_id", projectId).maybeSingle();
+  const to = String(ps?.notify_email || prof?.email || "").trim();
   if (!to) return json({ ok: false, error: "client has no email" });
 
   const female = prof?.gender === "female";

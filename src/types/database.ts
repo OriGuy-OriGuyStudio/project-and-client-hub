@@ -421,6 +421,7 @@ export type ProjectService = {
   preview_token: string | null;
   activated_at: string | null;
   welcome_seen_at: string | null;
+  notify_email: string | null;
   updated_at: string;
 }
 

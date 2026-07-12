@@ -79,19 +79,50 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const [svcUrl, setSvcUrl] = useState("");
   const [svcBillingDay, setSvcBillingDay] = useState("1");
   const [svcHourly, setSvcHourly] = useState("");
+  const [svcNotifyEmail, setSvcNotifyEmail] = useState("");
   useEffect(() => {
     setSvcTier(service && service.active ? service.tier : "none");
     setSvcSiteType(service?.site_type ?? "wordpress");
     setSvcUrl(service?.site_url ?? "");
     setSvcBillingDay(String(service?.billing_day ?? 1));
+    setSvcNotifyEmail(service?.notify_email ?? "");
   }, [service]);
   useEffect(() => {
     setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
   }, [serviceMoney]);
+  // The package doesn't have its own notification email yet (e.g. a package
+  // just opened before any prior agreement was linked) — prefill it from the
+  // client's latest signed agreement for this project, same source the admin
+  // used to open the package in the first place.
+  useEffect(() => {
+    if (service?.notify_email) return;
+    let cancelled = false;
+    supabase
+      .from("service_agreements")
+      .select("email")
+      .eq("project_id", project.id)
+      .eq("status", "submitted")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.email) {
+          setSvcNotifyEmail((cur) => cur || data.email!.trim());
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, service?.notify_email]);
 
   async function save() {
     const title = clampText(draft.title.trim(), 200);
     if (!title) return toastError("תן שם לפרויקט.");
+
+    const notifyEmail = svcNotifyEmail.trim();
+    if (!draft.parent_project_id && notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)) {
+      return toastError("כתובת המייל להתראות ולדוחות אינה תקינה.");
+    }
 
     setSaving(true);
     const { error } = await supabase
@@ -133,6 +164,7 @@ export function EditProjectSheet({ project }: { project: Project }) {
           site_url: svcUrl.trim() || null,
           billing_day: billingDay,
           active: svcTier !== "none",
+          notify_email: notifyEmail || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" },
@@ -395,6 +427,20 @@ export function EditProjectSheet({ project }: { project: Project }) {
                   />
                   <p className="text-xs text-muted-foreground">
                     משמש לחישוב שווי החבילה שמוצג ללקוח (שעות × תעריף) ולחריגת שעות.
+                  </p>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="ep-svc-notify-email">מייל להתראות והדוחות</Label>
+                  <Input
+                    id="ep-svc-notify-email"
+                    type="email"
+                    dir="ltr"
+                    placeholder="client@example.com"
+                    value={svcNotifyEmail}
+                    onChange={(e) => setSvcNotifyEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    המייל שאליו יישלחו הדוחות ואישור החבילה. אם ריק, יישלח למייל של הלקוח.
                   </p>
                 </div>
               </div>
