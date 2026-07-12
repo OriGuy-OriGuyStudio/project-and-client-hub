@@ -524,6 +524,7 @@ export type ClientCallLog = {
   summary: string;
   created_at: string;
   created_by: string | null;
+  org_id: string | null;
 }
 
 export type Notification = {
