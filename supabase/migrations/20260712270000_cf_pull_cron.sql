@@ -6,10 +6,13 @@
 -- requests/cached_requests/bytes/threats/visitors into site_metrics via the
 -- atomic upsert_site_metrics RPC (see 20260712260000_upsert_site_metrics_cf.sql).
 --
--- Auth: pull-cloudflare-metrics has verify_jwt=false and checks NO incoming
--- secret (unlike warranty-reminder) — it authenticates to Cloudflare itself via
--- webhook_secrets['cloudflare_api_token']. So the cron body is just `{}`, no
--- bearer token needed.
+-- Auth: pull-cloudflare-metrics has verify_jwt=false and originally checked NO
+-- incoming secret — it only authenticated to Cloudflare itself via
+-- webhook_secrets['cloudflare_api_token']. That was a gap (anyone could POST it
+-- once the CF token existed): fixed in 20260712300000_cf_pull_cron_auth.sql,
+-- which re-schedules this same job with an x-webhook-secret header so it passes
+-- the function's new caller-auth gate (secret or admin JWT). See that file for
+-- the actual deployed cron body.
 --
 -- Base URL: resolved from webhook_secrets['functions_base_url'] at run time
 -- (same pattern as notify_service_activated / notify_agreement_inserted), so a

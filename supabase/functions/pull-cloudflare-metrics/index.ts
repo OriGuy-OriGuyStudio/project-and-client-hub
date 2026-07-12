@@ -7,8 +7,11 @@
 // sources (e.g. ingest-site-metrics / pagespeed/uptime pushers) racing on the
 // same project/day row.
 //
-// Auth: no user JWT (verify_jwt off) — called by a cron job or invoked
-// directly by the admin, same pattern as ingest-site-metrics / poll-site-metrics.
+// Auth: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an admin JWT
+// (same pattern as poll-site-metrics) — checked BEFORE the cloudflare_api_token
+// lookup below. Without this gate the function would be publicly triggerable
+// once Ori adds the CF token (CF quota burn, unwanted DB writes, leaks active
+// project ids), so this is a hard requirement, not best-effort.
 // Secret: webhook_secrets['cloudflare_api_token'] (a CF API token with
 // Zone:Read + Analytics:Read on the zones in question). Ori adds this at QA
 // time; until then the function returns a clean "no cloudflare_api_token" error.
@@ -44,21 +47,41 @@ const domainOf = (url: string) => {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(supabaseUrl, serviceKey);
 
-  const { data: sec } = await admin
+  const { data: secRows, error: secErr } = await admin
     .from("webhook_secrets")
-    .select("value")
-    .eq("name", "cloudflare_api_token")
-    .maybeSingle();
-  const token = sec?.value as string | undefined;
+    .select("name, value")
+    .in("name", ["metrics_ingest", "cloudflare_api_token"]);
+  if (secErr) return json({ ok: false, error: secErr.message }, 500);
+  const secrets: Record<string, string> = Object.fromEntries((secRows ?? []).map((r) => [r.name, r.value]));
+
+  // Auth gate: x-webhook-secret == webhook_secrets['metrics_ingest'], OR an
+  // admin JWT (mirrors poll-site-metrics exactly).
+  const provided = req.headers.get("x-webhook-secret") ?? "";
+  let authed = !!secrets.metrics_ingest && provided === secrets.metrics_ingest;
+  if (!authed) {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (authHeader) {
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const asUser = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+      const { data: role } = await asUser.rpc("get_my_role");
+      authed = role === "admin";
+    }
+  }
+  if (!authed) return json({ error: "unauthorized" }, 401);
+
+  const token = secrets.cloudflare_api_token;
   if (!token) return json({ ok: false, error: "no cloudflare_api_token" }, 400);
 
   const body = (await req.json().catch(() => ({}))) as { project_id?: string };
 
   let q = admin.from("project_service").select("project_id, site_url, cf_zone_id, active").eq("active", true);
   if (body.project_id) q = q.eq("project_id", body.project_id);
-  const { data: pkgs } = await q;
+  const { data: pkgs, error: pkgErr } = await q;
+  if (pkgErr) return json({ ok: false, error: pkgErr.message }, 500);
 
   const results: Record<string, string> = {};
 
