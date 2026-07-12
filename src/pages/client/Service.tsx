@@ -19,6 +19,7 @@ import {
   LifeBuoy,
   Paperclip,
   X,
+  Bot,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
@@ -400,6 +401,32 @@ export function ServiceBoard({
   const traffic7 = useMemo(() => metrics.slice(0, 7).reverse().map((m) => m.visitors ?? 0), [metrics]);
   const hasTraffic = traffic7.some((v) => v > 0);
 
+  // Tier gate (per Ori): core = performance + uptime + backups only; pro adds
+  // Turnstile (bot protection), threats/firewall and traffic/requests; ultra
+  // includes everything pro has.
+  const showSecurity = svc.tier === "pro" || svc.tier === "ultra";
+  const showTraffic = svc.tier === "pro" || svc.tier === "ultra";
+
+  // site_metrics has no per-day backup count column, so derive a small
+  // zero-filled daily series straight from the maintenance log the page
+  // already loads (kind === "backup"), last 14 days. Never a fake value: if
+  // the log has no backup entries in range the chart is simply skipped.
+  const backupSeries = useMemo(() => {
+    const days = 14;
+    const buckets = new Array(days).fill(0) as number[];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const m of log) {
+      if (m.kind !== "backup") continue;
+      const d = new Date(m.occurred_at);
+      d.setHours(0, 0, 0, 0);
+      const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+      if (diff >= 0 && diff < days) buckets[days - 1 - diff] += m.count ?? 1;
+    }
+    return buckets;
+  }, [log]);
+  const hasBackupHistory = backupSeries.some((v) => v > 0);
+
   // Health ring color + label must match the score, never green-on-bad.
   const ps = latest?.pagespeed ?? null;
   const healthColor = ps == null ? GREEN : ps >= 90 ? GREEN : ps >= 50 ? "#F5A623" : "#F22C61";
@@ -494,12 +521,23 @@ export function ServiceBoard({
             sub={wp ? "ליבה + תוספים" : "עדכוני קוד + תוכן"}
           />
           <Metric icon={DatabaseBackup} label="גיבויים" value={String(monthCount(["backup"]))} sub="החודש" tone="cyan" />
-          <Metric
-            icon={ShieldCheck}
-            label="איומים שנחסמו"
-            value={latest?.threats_blocked != null ? String(latest.threats_blocked) : "בקרוב"}
-            sub={wp ? "Malware + Firewall" : "Cloudflare Firewall"}
-          />
+          {showSecurity && (
+            <Metric
+              icon={ShieldCheck}
+              label="איומים שנחסמו"
+              value={latest?.threats_blocked != null ? String(latest.threats_blocked) : "בקרוב"}
+              sub={wp ? "Malware + Firewall" : "Cloudflare Firewall"}
+            />
+          )}
+          {showSecurity && (
+            <Metric
+              icon={Bot}
+              label="חסימות בוטים"
+              value={latest?.turnstile_blocked != null ? String(latest.turnstile_blocked) : "בקרוב"}
+              sub="הגנת Cloudflare Turnstile"
+              tone="cyan"
+            />
+          )}
           <Metric
             icon={TrendingUp}
             label="זמינות (Uptime)"
@@ -507,6 +545,27 @@ export function ServiceBoard({
             sub="30 יום אחרונים"
             tone="cyan"
           />
+          {showTraffic && (
+            <Metric
+              icon={Globe}
+              label="בקשות (Requests)"
+              value={latest?.requests != null ? latest.requests.toLocaleString("he-IL") : "בקרוב"}
+              sub="Cloudflare, 24 שעות אחרונות"
+            />
+          )}
+          {showTraffic && (
+            <Metric
+              icon={GaugeIcon}
+              label="יחס קאש (Cache Hit)"
+              value={
+                latest?.requests
+                  ? `${Math.round((100 * (latest.cached_requests ?? 0)) / latest.requests)}%`
+                  : "בקרוב"
+              }
+              sub="בקשות שהוגשו מהקאש"
+              tone="cyan"
+            />
+          )}
           {(meta.hours > 0 || (summary?.hours_month ?? 0) > 0) && (
             <Metric
               icon={Clock}
@@ -531,6 +590,15 @@ export function ServiceBoard({
             tone="cyan"
           />
         </div>
+        {hasBackupHistory && (
+          <div className="mt-3 rounded-2xl border border-border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">גיבויים לאורך זמן</p>
+              <span className="text-xs text-muted-foreground">14 ימים אחרונים</span>
+            </div>
+            <Spark data={backupSeries} color={CYAN} />
+          </div>
+        )}
       </div>
 
       {/* site performance */}
@@ -593,6 +661,47 @@ export function ServiceBoard({
           </div>
         )}
       </div>
+
+      {/* security & bot protection (Cloudflare) */}
+      {showSecurity && (
+        <div>
+          <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <ShieldCheck className="size-5 text-primary" /> אבטחה והגנה מבוטים
+          </h3>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">חסימות בוטים (Turnstile)</p>
+                <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
+              </div>
+              <PerfChart metrics={metrics} field="turnstile_blocked" color={GREEN} name="חסימות בוטים" />
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">איומים שנחסמו</p>
+                <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
+              </div>
+              <PerfChart metrics={metrics} field="threats_blocked" color={GREEN} name="איומים שנחסמו" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* traffic & requests (Cloudflare) */}
+      {showTraffic && (
+        <div>
+          <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
+            <Globe className="size-5 text-brand-cyan-base" /> תנועה ובקשות (Cloudflare)
+          </h3>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">בקשות לאורך זמן</p>
+              <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
+            </div>
+            <PerfChart metrics={metrics} field="requests" color={CYAN} name="בקשות" />
+          </div>
+        </div>
+      )}
 
       {/* cumulative value */}
       {showMoney && (
