@@ -867,6 +867,16 @@ export type Organization = {
   kind: "real" | "demo" | "studio";
 };
 
+/** Return row of admin_businesses(): one aggregated row per org (admin list). */
+export type BusinessRow = {
+  id: string;
+  name: string;
+  kind: "real" | "demo" | "studio";
+  members: number;
+  projects: number;
+  last_activity: string | null;
+};
+
 export type OrganizationMember = {
   id: string;
   org_id: string;
@@ -1181,6 +1191,7 @@ export interface Database {
         Args: { p_project: string; p_type: string; p_title: string; p_body: string | null; p_link: string; p_entity_id?: string | null };
         Returns: undefined;
       };
+      admin_businesses: { Args: Record<string, never>; Returns: BusinessRow[] };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -34,6 +34,7 @@ const Discovery = lazy(() => import("@/pages/admin/Discovery"));
 const DiscoverySessionPage = lazy(() => import("@/pages/admin/DiscoverySession"));
 const Clients = lazy(() => import("@/pages/admin/Clients"));
 const ClientDetail = lazy(() => import("@/pages/admin/ClientDetail"));
+const Businesses = lazy(() => import("@/pages/admin/Businesses"));
 const Projects = lazy(() => import("@/pages/admin/Projects"));
 const Partners = lazy(() => import("@/pages/admin/Partners"));
 const PartnerDetail = lazy(() => import("@/pages/admin/PartnerDetail"));
@@ -120,6 +121,7 @@ function App() {
                   <Route path="/admin/discovery/:id" element={<DiscoverySessionPage />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
+                  <Route path="/admin/businesses" element={<Businesses />} />
                   <Route path="/admin/projects" element={<Projects />} />
                   <Route path="/admin/partners" element={<Partners />} />
                   <Route path="/admin/partners/:id" element={<PartnerDetail />} />
