@@ -1,92 +1,128 @@
-import { AlertTriangle, HeartHandshake, MapPin, Target, UserRound, Users } from "lucide-react";
+import { useState } from "react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  HeartHandshake,
+  MapPin,
+  Target,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { usePublishedPersonas } from "@/hooks/useDeliverables";
 import type { PersonaContent } from "@/types/database";
 
-/** Client-facing "קהל היעד" section: the published personas for a project.
- *  Hidden when the project has none. */
+/** Client-facing "קהל היעד" section: the published personas for a project,
+ *  stacked one below the other, each a collapsible card. Hidden when none. */
 export function PersonaSection({ projectId }: { projectId: string }) {
   const { data } = usePublishedPersonas(projectId);
   if (!data || data.length === 0) return null;
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <div className="flex items-center gap-2">
         <Users className="size-5 text-primary" />
         <h2 className="font-heading text-lg font-bold text-foreground">קהל היעד</h2>
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {data.map((d) => (
-          <PersonaCard key={d.id} p={d.content as unknown as PersonaContent} />
+      <div className="space-y-3">
+        {data.map((d, i) => (
+          <PersonaCard key={d.id} p={d.content as unknown as PersonaContent} defaultOpen={i === 0} />
         ))}
       </div>
     </section>
   );
 }
 
-function PersonaCard({ p }: { p: PersonaContent }) {
+function Avatar({ url, className }: { url: string | null; className?: string }) {
   return (
-    <Card className="space-y-4 p-5">
-      <div className="flex items-start gap-3">
-        <div className="size-20 shrink-0 overflow-hidden rounded-full bg-muted">
-          {p.avatar_url ? (
-            <img src={p.avatar_url} alt="" className="size-full object-cover" />
-          ) : (
-            <span className="flex size-full items-center justify-center text-muted-foreground">
-              <UserRound className="size-8" />
-            </span>
-          )}
-        </div>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-heading text-lg font-bold text-foreground">{p.name}</h3>
-            {p.archetype && <Badge variant="cyan">{p.archetype}</Badge>}
-          </div>
-          {p.summary && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>}
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            {p.age && <span>{p.age}</span>}
-            {p.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="size-3.5" />
-                {p.location}
-              </span>
+    <div className={cn("shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border", className)}>
+      {url ? (
+        <img src={url} alt="" className="size-full object-cover" />
+      ) : (
+        <span className="flex size-full items-center justify-center text-muted-foreground">
+          <UserRound className="size-6" />
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PersonaCard({ p, defaultOpen }: { p: PersonaContent; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className={cn("overflow-hidden p-0 transition-colors", open && "border-primary/30")}>
+        <CollapsibleTrigger className="flex w-full items-center gap-3 p-4 text-start transition-colors hover:bg-card/60">
+          <Avatar url={p.avatar_url} className="size-14" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-heading text-base font-bold text-foreground">{p.name}</span>
+              {p.archetype && <Badge variant="cyan">{p.archetype}</Badge>}
+            </div>
+            {p.summary && (
+              <p className={cn("mt-0.5 text-sm text-muted-foreground", !open && "line-clamp-1")}>
+                {p.summary}
+              </p>
             )}
           </div>
-          {p.traits?.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {p.traits.map((t, i) => (
-                <span key={i} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {t}
+          <ChevronDown
+            className={cn(
+              "size-5 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
+          />
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <div className="space-y-4 border-t border-border px-4 pb-5 pt-4">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {p.age && <span>{p.age}</span>}
+              {p.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-3.5" />
+                  {p.location}
                 </span>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      </div>
 
-      {p.quote && (
-        <blockquote className="rounded-xl bg-muted/50 p-3 text-sm leading-relaxed text-foreground">
-          ״{p.quote}״
-        </blockquote>
-      )}
+            {p.traits?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {p.traits.map((t, i) => (
+                  <span key={i} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {p.goals?.length > 0 && <PersonaList icon={Target} title="מטרות" items={p.goals} accent />}
-        {p.pains?.length > 0 && <PersonaList icon={AlertTriangle} title="כאבים וחסמים" items={p.pains} />}
-      </div>
+            {p.quote && (
+              <blockquote className="rounded-xl bg-muted/50 p-3 text-sm leading-relaxed text-foreground">
+                ״{p.quote}״
+              </blockquote>
+            )}
 
-      {p.how_we_help && (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
-            <HeartHandshake className="size-4" />
-            איך אנחנו עוזרים
-          </p>
-          <p className="text-sm leading-relaxed text-foreground/90">{p.how_we_help}</p>
-        </div>
-      )}
-    </Card>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {p.goals?.length > 0 && <PersonaList icon={Target} title="מטרות" items={p.goals} accent />}
+              {p.pains?.length > 0 && <PersonaList icon={AlertTriangle} title="כאבים וחסמים" items={p.pains} />}
+            </div>
+
+            {p.how_we_help && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                  <HeartHandshake className="size-4" />
+                  איך אנחנו עוזרים
+                </p>
+                <p className="text-sm leading-relaxed text-foreground/90">{p.how_we_help}</p>
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
