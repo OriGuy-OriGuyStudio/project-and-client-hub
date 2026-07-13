@@ -46,7 +46,11 @@ export interface OrgBrandBundle {
 export async function fetchOrgBrand(orgId: string): Promise<OrgBrandBundle> {
   const { data: brand, error } = await supabase.rpc("org_brand", { p_org: orgId });
   if (error) throw error;
-  if (!brand) return { brand: null, colors: [] };
+  // `org_brand` returns a client_brand-shaped row; for an org with NO brand it
+  // comes back as an object of all-null fields (not SQL null). Treat a missing
+  // `id` as "no brand" — otherwise the null `client_id` below builds an invalid
+  // `client_id=eq.null` colors query (HTTP 400) that crashes the whole page.
+  if (!brand || !brand.id) return { brand: null, colors: [] };
 
   const { data: colors, error: colorsError } = await supabase
     .from("brand_colors")
