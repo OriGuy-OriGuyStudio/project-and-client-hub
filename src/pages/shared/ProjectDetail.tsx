@@ -14,6 +14,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectHero } from "@/components/project/ProjectHero";
 import { BrandGuidelines } from "@/components/brand/BrandGuidelines";
 import { SiteBlueprintPanel } from "@/components/project/SiteBlueprintPanel";
+import { EmptyAwareSection } from "@/components/project/EmptyAwareSection";
+import { useProjectSectionCounts } from "@/hooks/useProjectSectionCounts";
+import { BadgeCheck, ListChecks, Milestone, CreditCard } from "lucide-react";
 import { ProgressTimeline } from "@/components/project/ProgressTimeline";
 import { ApprovalsSection } from "@/components/project/ApprovalsSection";
 import { DevFeedbackSection } from "@/components/project/DevFeedbackSection";
@@ -52,6 +55,7 @@ export default function ProjectDetail() {
   const caps = useMyCapabilities(isAdmin ? null : id ?? null);
   const reduced = usePrefersReducedMotion();
   const { data, isLoading, isError } = useProject(id);
+  const { data: sectionCounts } = useProjectSectionCounts(id);
   const qc = useQueryClient();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -188,20 +192,35 @@ export default function ProjectDetail() {
           <div data-reveal data-section className="scroll-mt-20">
             <SiteBlueprintPanel projectId={project.id} />
           </div>
-          <div data-reveal data-section className="scroll-mt-20">
+          <EmptyAwareSection
+            isAdmin={isAdmin}
+            isEmpty={(sectionCounts?.stages ?? 1) === 0}
+            title="שלבי הפרויקט"
+            icon={Milestone}
+          >
             <ProgressTimeline projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
-          </div>
-          <div data-reveal data-section className="scroll-mt-20">
+          </EmptyAwareSection>
+          <EmptyAwareSection
+            isAdmin={isAdmin}
+            isEmpty={(sectionCounts?.approvals ?? 1) === 0}
+            title="אישורים"
+            icon={BadgeCheck}
+          >
             <SectionUpdated show={updatedSections.has("approval")} />
             <ApprovalsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
-          </div>
+          </EmptyAwareSection>
           <div data-reveal data-section className="scroll-mt-20">
             <DevFeedbackSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
-          <div data-reveal data-section className="scroll-mt-20">
+          <EmptyAwareSection
+            isAdmin={isAdmin}
+            isEmpty={(sectionCounts?.checklist ?? 1) === 0}
+            title="צ׳קליסט"
+            icon={ListChecks}
+          >
             <SectionUpdated show={updatedSections.has("checklist")} />
             <ChecklistSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
-          </div>
+          </EmptyAwareSection>
           <div data-reveal data-section className="scroll-mt-20">
             <TasksSection
               projectId={project.id}
@@ -223,9 +242,14 @@ export default function ProjectDetail() {
             <DocsSection projectId={project.id} isAdmin={isAdmin} actorId={actorId} />
           </div>
           {(isAdmin || caps.finance) && (
-            <div data-reveal data-section className="scroll-mt-20">
+            <EmptyAwareSection
+              isAdmin={isAdmin}
+              isEmpty={(sectionCounts?.payments ?? 1) === 0}
+              title="תשלומים"
+              icon={CreditCard}
+            >
               <PaymentsSection projectId={project.id} isAdmin={isAdmin} />
-            </div>
+            </EmptyAwareSection>
           )}
         </div>
 
