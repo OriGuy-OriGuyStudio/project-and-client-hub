@@ -186,6 +186,11 @@ export default function CopyTool() {
             </Button>
           </div>
         )}
+        {projectId && sitemapRow && (
+          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {`הקופי יתבסס על שיחת האפיון, ${personaHints.length} פרסונות${journey ? ", מסע הלקוח" : ""} ומפת האתר.`}
+          </p>
+        )}
         {projectId && !sitemapRow && (
           <Button asChild variant="secondary" size="sm">
             <Link to="/admin/tools/sitemap">
