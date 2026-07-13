@@ -28,7 +28,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useBusinesses } from "@/hooks/useBusinesses";
 import { useProjectDeliverables, useProjectDiscoveryItems } from "@/hooks/useDeliverables";
 import { generateJourney } from "@/lib/deliverables";
-import type { JourneyContent, JourneyStage, ProjectDeliverable } from "@/types/database";
+import type { JourneyContent, JourneyStage, PersonaContent, ProjectDeliverable } from "@/types/database";
 
 export default function JourneyTool() {
   const qc = useQueryClient();
@@ -65,7 +65,20 @@ export default function JourneyTool() {
       return toastError("אין שיחת אפיון משויכת לפרויקט הזה. שייך שיחה בעמוד שיחות האפיון קודם.");
     }
     setGenerating(true);
-    const r = await generateJourney({ title: disc.title, items: disc.items });
+    // Ground the journey in the project's personas (they are who walk the journey).
+    const personaHints = (deliverables ?? [])
+      .filter((d) => d.kind === "persona")
+      .map((d) => {
+        const pc = d.content as unknown as PersonaContent;
+        return {
+          name: pc.name ?? "",
+          archetype: pc.archetype ?? "",
+          summary: pc.summary ?? "",
+          goals: pc.goals ?? [],
+          pains: pc.pains ?? [],
+        };
+      });
+    const r = await generateJourney({ title: disc.title, items: disc.items, personas: personaHints });
     if (!r.ok || !r.journey) {
       setGenerating(false);
       return toastError(r.error || "יצירת המסע נכשלה.");
@@ -179,6 +192,7 @@ interface StageForm {
   emotion: string;
   touchpoints: string;
   pains: string;
+  on_site: string;
   actions: string;
 }
 
@@ -195,6 +209,7 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
       emotion: s.emotion ?? "",
       touchpoints: toLines(s.touchpoints),
       pains: toLines(s.pains),
+      on_site: s.on_site ?? "",
       actions: toLines(s.actions),
     }))
   );
@@ -215,7 +230,10 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
     setStages((arr) => arr.filter((_, idx) => idx !== i));
   }
   function addStage() {
-    setStages((arr) => [...arr, { name: "", goal: "", emotion: "", touchpoints: "", pains: "", actions: "" }]);
+    setStages((arr) => [
+      ...arr,
+      { name: "", goal: "", emotion: "", touchpoints: "", pains: "", on_site: "", actions: "" },
+    ]);
   }
 
   function buildContent(): JourneyContent {
@@ -226,6 +244,7 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
         emotion: s.emotion.trim(),
         touchpoints: fromLines(s.touchpoints),
         pains: fromLines(s.pains),
+        on_site: s.on_site.trim(),
         actions: fromLines(s.actions),
       }))
       .filter((s) => s.name);
@@ -328,6 +347,10 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
               <Label>מה אנחנו עושים</Label>
               <Textarea value={s.actions} onChange={(e) => patchStage(i, { actions: e.target.value })} rows={3} />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>מה קורה באתר בשלב הזה (המסע בתוך האתר)</Label>
+            <Textarea value={s.on_site} onChange={(e) => patchStage(i, { on_site: e.target.value })} rows={2} />
           </div>
         </Card>
       ))}

@@ -1,5 +1,5 @@
 import { motion, useReducedMotion, type Variants } from "framer-motion";
-import { Lightbulb, MapPin, AlertTriangle, Route } from "lucide-react";
+import { AppWindow, Lightbulb, MapPin, AlertTriangle, Route } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { usePublishedJourney } from "@/hooks/useDeliverables";
@@ -77,6 +77,23 @@ export function JourneySection({ projectId }: { projectId: string }) {
   );
 }
 
+function BlockLabel({
+  icon: Icon,
+  title,
+  className,
+}: {
+  icon: typeof MapPin;
+  title: string;
+  className?: string;
+}) {
+  return (
+    <p className={cn("mb-1.5 flex items-center gap-1.5 text-xs font-semibold", className ?? "text-muted-foreground")}>
+      <Icon className="size-3.5" />
+      {title}
+    </p>
+  );
+}
+
 function StageCard({ s }: { s: JourneyStage }) {
   return (
     <Card className="space-y-3 p-4 transition-transform hover:-translate-y-0.5">
@@ -92,36 +109,42 @@ function StageCard({ s }: { s: JourneyStage }) {
       {s.goal && <p className="text-sm leading-relaxed text-foreground/90">{s.goal}</p>}
 
       {s.touchpoints?.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {s.touchpoints.map((t, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
-            >
-              <MapPin className="size-3" />
-              {t}
-            </span>
-          ))}
+        <div>
+          <BlockLabel icon={MapPin} title="נקודות מגע" />
+          <div className="flex flex-wrap gap-1.5">
+            {s.touchpoints.map((t, i) => (
+              <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                {t}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
       {s.pains?.length > 0 && (
-        <ul className="space-y-1 text-sm text-muted-foreground">
-          {s.pains.map((p, i) => (
-            <li key={i} className="flex gap-1.5">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-400/80" />
-              {p}
-            </li>
-          ))}
-        </ul>
+        <div>
+          <BlockLabel icon={AlertTriangle} title="כאבים וחסמים" className="text-amber-400" />
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {s.pains.map((p, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="mt-1.5 size-1 shrink-0 rounded-full bg-amber-400/70" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {s.on_site?.trim() && (
+        <div className="rounded-xl border border-brand-cyan-base/25 bg-brand-cyan-base/5 p-3">
+          <BlockLabel icon={AppWindow} title="באתר" className="text-brand-cyan-base" />
+          <p className="text-sm leading-relaxed text-foreground/90">{s.on_site}</p>
+        </div>
       )}
 
       {s.actions?.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Lightbulb className="size-4" />
-            מה אנחנו עושים
-          </p>
+          <BlockLabel icon={Lightbulb} title="מה אנחנו עושים" className="text-primary" />
           <ul className="space-y-1 text-sm text-foreground/90">
             {s.actions.map((a, i) => (
               <li key={i} className="flex gap-1.5">

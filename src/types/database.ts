@@ -840,6 +840,9 @@ export type JourneyStage = {
   emotion: string;
   touchpoints: string[];
   pains: string[];
+  /** How the website itself serves this stage (which page/section/CTA). Connects
+   *  the general journey to the on-site journey. */
+  on_site: string;
   /** What the studio does at this stage (the payoff / opportunity). */
   actions: string[];
 };

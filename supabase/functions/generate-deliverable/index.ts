@@ -145,7 +145,7 @@ async function generatePersonas(apiKey: string, title: string, items: Item[]) {
   };
 }
 
-function journeyPrompt(title: string, items: Item[]): string {
+function journeyPrompt(title: string, items: Item[], personasText: string): string {
   const data = items
     .filter((i) => (i.answer ?? "").trim().length > 0)
     .map((i) => "- " + i.question + " " + i.answer.trim())
@@ -153,6 +153,9 @@ function journeyPrompt(title: string, items: Item[]): string {
   return [
     "אתה מעצב UX/UI בכיר מאוד (15+ שנים) שבונה מפת מסע לקוח (Customer Journey Map) לקראת עיצוב אתר, על בסיס שיחת אפיון.",
     "עקרונות: התבסס רק על מה שנאמר בשיחה, בלי להמציא. כל פרט חייב להשפיע על החלטת עיצוב או קופי. ריאליסטי ולא סטריאוטיפ. עברית מדוברת וטבעית, בלי מקף ארוך, בלי באזזוורדס, בלי סימני קריאה מוגזמים.",
+    personasText
+      ? "הלקוחות שעוברים את המסע הם הפרסונות הבאות. בסס את המסע עליהן, על המטרות, הכאבים וההתנהגות שלהן, כדי שהמסע יהיה מדויק:\n" + personasText
+      : "",
     "בנה מסע של 4 עד 6 שלבים לפי סדר כרונולוגי, מהרגע שהלקוח נעשה מודע לצורך ועד אחרי ההמרה והשימור. התאם את שמות השלבים לעסק.",
     "לכל שלב מלא:",
     "- name: שם השלב.",
@@ -160,13 +163,14 @@ function journeyPrompt(title: string, items: Item[]): string {
     "- emotion: מילה או שתיים על איך הוא מרגיש בשלב הזה.",
     "- touchpoints: נקודות המגע (איפה ואיך הוא נתקל בעסק בשלב הזה).",
     "- pains: כאבים וחסמים בשלב הזה.",
-    "- actions: מה אנחנו עושים באתר או בשירות כדי לעזור לו לעבור לשלב הבא (מזין ישירות עיצוב וקופי).",
+    "- on_site: מה קורה באתר עצמו בשלב הזה, איזה עמוד או סקשן או רכיב או CTA משרת את השלב וכיצד האתר פותר אותו. זה המסע של הלקוח בתוך האתר.",
+    "- actions: מה אנחנו עושים (באתר או בשירות) כדי לעזור לו לעבור לשלב הבא.",
     "בנוסף: title קצר למסע, ו-design_notes עם המלצות עיצוב וקופי כלליות למסע (פנימי, לא ללקוח).",
     "פרטי העסק: " + title,
     "מתוך שיחת האפיון:",
     data,
     "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
-  ].join(NL);
+  ].filter(Boolean).join(NL);
 }
 
 const JOURNEY_SCHEMA = {
@@ -183,9 +187,10 @@ const JOURNEY_SCHEMA = {
           emotion: { type: "STRING" },
           touchpoints: { type: "ARRAY", items: { type: "STRING" } },
           pains: { type: "ARRAY", items: { type: "STRING" } },
+          on_site: { type: "STRING" },
           actions: { type: "ARRAY", items: { type: "STRING" } },
         },
-        required: ["name", "goal", "emotion", "touchpoints", "pains", "actions"],
+        required: ["name", "goal", "emotion", "touchpoints", "pains", "on_site", "actions"],
       },
     },
     design_notes: { type: "STRING" },
@@ -193,8 +198,8 @@ const JOURNEY_SCHEMA = {
   required: ["title", "stages", "design_notes"],
 };
 
-async function generateJourney(apiKey: string, title: string, items: Item[]) {
-  const prompt = journeyPrompt(title, items);
+async function generateJourney(apiKey: string, title: string, items: Item[], personasText: string) {
+  const prompt = journeyPrompt(title, items, personasText);
   const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
   let lastStatus = 0;
   let lastReason = "";
@@ -340,7 +345,16 @@ Deno.serve(async (req) => {
   }
 
   if (mode === "journey") {
-    const jr = await generateJourney(apiKey, title, items);
+    const personas: any[] = Array.isArray(body?.personas) ? body.personas : [];
+    const personasText = personas
+      .map(
+        (p) =>
+          "- " + (p?.name ?? "") + " (" + (p?.archetype ?? "") + "): " + (p?.summary ?? "") +
+          (Array.isArray(p?.goals) && p.goals.length ? " | מטרות: " + p.goals.join(", ") : "") +
+          (Array.isArray(p?.pains) && p.pains.length ? " | כאבים: " + p.pains.join(", ") : ""),
+      )
+      .join(NL);
+    const jr = await generateJourney(apiKey, title, items, personasText);
     if (!jr.ok) return json({ ok: false, error: jr.error }, jr.status ?? 502);
     return json({ ok: true, journey: jr.journey });
   }
