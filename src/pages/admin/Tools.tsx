@@ -20,7 +20,13 @@ const TOOLS = [
     desc: "מפת מסע לקוח מהאפיון, שלבים עם רגשות, כאבים ומה אנחנו עושים. עריכה והצגה בעמוד הפרויקט.",
     ready: true,
   },
-  { icon: Network, title: "מפת אתר", desc: "בקרוב, על אותה תשתית.", ready: false },
+  {
+    to: "/admin/tools/sitemap",
+    icon: Network,
+    title: "מפת אתר",
+    desc: "עץ עמודים וסקשנים, נגזר מהאפיון, מהפרסונות וממסע הלקוח. עריכה והצגה בעמוד הפרויקט.",
+    ready: true,
+  },
 ];
 
 export default function Tools() {

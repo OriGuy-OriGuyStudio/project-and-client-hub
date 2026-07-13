@@ -253,6 +253,131 @@ async function generateJourney(apiKey: string, title: string, items: Item[], per
   };
 }
 
+function sitemapPrompt(
+  title: string,
+  items: Item[],
+  personasText: string,
+  journeyText: string,
+): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+  return [
+    "אתה מעצב UX/UI בכיר מאוד (15+ שנים) שבונה מפת אתר (Sitemap) לקראת עיצוב אתר, על בסיס שיחת אפיון, הפרסונות ומסע הלקוח.",
+    "עקרונות: התבסס רק על מה שנאמר, בלי להמציא. כל עמוד וכל סקשן חייב לשרת פרסונה ושלב במסע הלקוח. עברית טבעית, בלי מקף ארוך, בלי באזזוורדס, בלי סימני קריאה מוגזמים.",
+    personasText ? "הפרסונות של הפרויקט:\n" + personasText : "",
+    journeyText ? "שלבי מסע הלקוח:\n" + journeyText : "",
+    "בנה עץ עמודים היררכי של עד שתי רמות: עמודים ראשיים, וכשצריך תת-עמודים מתחתם. גזור את העמודים והסקשנים ממה שהפרסונות צריכות ומהשלבים במסע.",
+    "לכל עמוד מלא:",
+    "- name: שם העמוד.",
+    "- purpose: מטרת העמוד באתר.",
+    "- sections: הסקשנים המרכזיים בעמוד, לפי סדר.",
+    "- serves: איזה שלב במסע או איזו פרסונה העמוד משרת בעיקר.",
+    "- children: תת-עמודים אם יש. לכל תת-עמוד name, purpose, sections, serves. אם אין, החזר מערך ריק.",
+    "בנוסף: title קצר למפה, ו-design_notes עם המלצות עיצוב וקופי כלליות (פנימי, לא ללקוח).",
+    "פרטי העסק: " + title,
+    "מתוך שיחת האפיון:",
+    data,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const SITEMAP_LEAF_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    purpose: { type: "STRING" },
+    sections: { type: "ARRAY", items: { type: "STRING" } },
+    serves: { type: "STRING" },
+  },
+  required: ["name", "purpose", "sections", "serves"],
+};
+
+const SITEMAP_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    pages: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          purpose: { type: "STRING" },
+          sections: { type: "ARRAY", items: { type: "STRING" } },
+          serves: { type: "STRING" },
+          children: { type: "ARRAY", items: SITEMAP_LEAF_SCHEMA },
+        },
+        required: ["name", "purpose", "sections", "serves", "children"],
+      },
+    },
+    design_notes: { type: "STRING" },
+  },
+  required: ["title", "pages", "design_notes"],
+};
+
+async function generateSitemap(
+  apiKey: string,
+  title: string,
+  items: Item[],
+  personasText: string,
+  journeyText: string,
+) {
+  const prompt = sitemapPrompt(title, items, personasText, journeyText);
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.8,
+      maxOutputTokens: 4000,
+      responseMimeType: "application/json",
+      responseSchema: SITEMAP_SCHEMA,
+    };
+    if (model.startsWith("gemini-2.5")) {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let sitemap: any;
+      try {
+        sitemap = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!sitemap || !Array.isArray(sitemap.pages) || sitemap.pages.length === 0) {
+        return { ok: false, status: 502, error: "לא נוצרה מפת אתר. נסה שוב." };
+      }
+      return { ok: true, sitemap };
+    }
+    const detail = await res.text();
+    console.error("gemini sitemap error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 function imagePrompt(persona: any): string {
   const g = persona?.gender === "female" ? "woman" : "man";
   return [
@@ -328,7 +453,13 @@ Deno.serve(async (req) => {
   }
 
   const mode =
-    body?.mode === "image" ? "image" : body?.mode === "journey" ? "journey" : "personas";
+    body?.mode === "image"
+      ? "image"
+      : body?.mode === "journey"
+        ? "journey"
+        : body?.mode === "sitemap"
+          ? "sitemap"
+          : "personas";
 
   if (mode === "image") {
     if (!body?.persona) return json({ ok: false, error: "missing persona" }, 400);
@@ -344,7 +475,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "אין תשובות אפיון לעבוד מהן. מלא את שיחת האפיון קודם." }, 400);
   }
 
-  if (mode === "journey") {
+  if (mode === "journey" || mode === "sitemap") {
     const personas: any[] = Array.isArray(body?.personas) ? body.personas : [];
     const personasText = personas
       .map(
@@ -354,9 +485,21 @@ Deno.serve(async (req) => {
           (Array.isArray(p?.pains) && p.pains.length ? " | כאבים: " + p.pains.join(", ") : ""),
       )
       .join(NL);
-    const jr = await generateJourney(apiKey, title, items, personasText);
-    if (!jr.ok) return json({ ok: false, error: jr.error }, jr.status ?? 502);
-    return json({ ok: true, journey: jr.journey });
+
+    if (mode === "journey") {
+      const jr = await generateJourney(apiKey, title, items, personasText);
+      if (!jr.ok) return json({ ok: false, error: jr.error }, jr.status ?? 502);
+      return json({ ok: true, journey: jr.journey });
+    }
+
+    const journey = body?.journey;
+    const journeyText =
+      journey && Array.isArray(journey.stages)
+        ? journey.stages.map((s: any) => "- " + (s?.name ?? "") + ": " + (s?.goal ?? "")).join(NL)
+        : "";
+    const sm = await generateSitemap(apiKey, title, items, personasText, journeyText);
+    if (!sm.ok) return json({ ok: false, error: sm.error }, sm.status ?? 502);
+    return json({ ok: true, sitemap: sm.sitemap });
   }
 
   const result = await generatePersonas(apiKey, title, items);

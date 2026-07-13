@@ -855,6 +855,24 @@ export type JourneyContent = {
   design_notes: string;
 };
 
+/** One page in a sitemap deliverable (2 levels: pages with sub-pages). */
+export type SitemapPage = {
+  name: string;
+  purpose: string;
+  sections: string[];
+  /** Which journey stage / persona this page serves (ties to the other tools). */
+  serves: string;
+  children: SitemapPage[];
+};
+
+/** Structured content of a `sitemap` deliverable (content jsonb). */
+export type SitemapContent = {
+  title: string;
+  pages: SitemapPage[];
+  /** Admin-only UX/design guidance; not shown to the client. */
+  design_notes: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {

@@ -1,6 +1,31 @@
 import { supabase } from "./supabase";
 import { fnErrorMessage } from "./invite";
-import type { JourneyContent, PersonaContent } from "@/types/database";
+import type { JourneyContent, PersonaContent, SitemapContent } from "@/types/database";
+
+/** Generate a sitemap tree, grounded in the project's personas + journey. */
+export async function generateSitemap(payload: {
+  title: string;
+  items: { question: string; answer: string }[];
+  personas?: JourneyPersonaHint[];
+  journey?: JourneyContent | null;
+}): Promise<{ ok: boolean; sitemap?: SitemapContent; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "sitemap",
+        title: payload.title,
+        items: payload.items,
+        personas: payload.personas ?? [],
+        journey: payload.journey ?? null,
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    return { ok: true, sitemap: data?.sitemap as SitemapContent };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 export interface JourneyPersonaHint {
   name: string;
