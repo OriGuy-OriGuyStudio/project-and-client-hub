@@ -48,6 +48,7 @@ import { GrantCoinsDialog } from "@/components/admin/GrantCoinsDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CoinGrantsAudit } from "@/components/admin/CoinGrantsAudit";
 import { OrgMembersSection } from "@/components/admin/OrgMembersSection";
+import { ConvertClientToBusiness } from "@/components/admin/ConvertClientToBusiness";
 import { supabase } from "@/lib/supabase";
 import { sendInvite, sendRedemptionNotice } from "@/lib/invite";
 import { SectionNav } from "@/components/layout/SectionNav";
@@ -405,6 +406,11 @@ export default function ClientDetail() {
       </div>
 
       <SectionNav />
+
+      <ConvertClientToBusiness
+        clientId={profile.id}
+        defaultName={brand?.business_name || profile.full_name || profile.email}
+      />
 
       {/* Contact + CRM */}
       <Card id="cd-details" data-section className="scroll-mt-20 space-y-3 p-5">

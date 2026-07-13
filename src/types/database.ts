@@ -1116,6 +1116,14 @@ export interface Database {
       clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
       reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
       delete_organization: { Args: { p_org_id: string }; Returns: undefined };
+      approve_access_request_as_business: {
+        Args: { p_id: string; p_business_name: string; p_manager_name: string };
+        Returns: { status: string; org_id: string };
+      };
+      convert_client_to_business: {
+        Args: { p_client_id: string; p_business_name: string };
+        Returns: { status: string; org_id: string };
+      };
       is_demo_account: { Args: { p_uid: string }; Returns: boolean };
       promote_dev_feedback: { Args: { p_id: string }; Returns: string };
       apply_guide_template: { Args: { p_project_id: string; p_template_id: string }; Returns: string };

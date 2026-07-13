@@ -37,12 +37,14 @@ export default function AccessDenied() {
 
   async function submit() {
     const full_name = clampText(form.full_name.trim(), 120);
-    if (!full_name) return toastError("צריך לפחות שם מלא.");
+    const business_name = clampText(form.business_name.trim(), 160);
+    if (!full_name) return toastError("צריך שם מלא.");
+    if (!business_name) return toastError("צריך שם עסק, כדי שאורי יפתח לך עסק במערכת.");
     setSending(true);
     const { error } = await supabase.from("access_requests").insert({
       email: user?.email ?? "",
       full_name,
-      business_name: clampText(form.business_name.trim(), 160) || null,
+      business_name,
       phone: clampText(form.phone.trim(), 40) || null,
       message: clampText(form.message.trim(), 1000) || null,
     });
@@ -91,9 +93,9 @@ export default function AccessDenied() {
               <ShieldAlert className="size-8" />
             </div>
             <div className="space-y-2">
-              <h1 className="font-heading text-2xl font-black text-foreground">עדיין אין לך גישה</h1>
+              <h1 className="font-heading text-2xl font-black text-foreground">פתיחת עסק בפורטל</h1>
               <p className="mx-auto max-w-sm text-muted-foreground">
-                הגישה שמורה ללקוחות שלי. אם תרצה שאפתח לך כרטיס, מלא את הפרטים ואחזור אליך.
+                הגישה שמורה ללקוחות שלי. מלא את פרטי העסק ואיש הקשר, ואורי יפתח לך עסק וגישה לפורטל.
               </p>
               {user?.email && (
                 <p className="font-mono-code text-xs text-muted-foreground">{user.email}</p>
@@ -102,7 +104,7 @@ export default function AccessDenied() {
 
             <div className="w-full space-y-3 text-start">
               <div className="space-y-1.5">
-                <Label htmlFor="ad-name">שם מלא</Label>
+                <Label htmlFor="ad-name">שם מלא (איש הקשר / מנהל)</Label>
                 <Input
                   id="ad-name"
                   value={form.full_name}
@@ -116,6 +118,7 @@ export default function AccessDenied() {
                   id="ad-biz"
                   value={form.business_name}
                   maxLength={160}
+                  placeholder="השם שיופיע לעסק שלך בפורטל"
                   onChange={(e) => setForm((f) => ({ ...f, business_name: e.target.value }))}
                 />
               </div>
