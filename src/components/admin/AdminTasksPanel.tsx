@@ -13,10 +13,16 @@ import { feedbackStatusHe } from "@/hooks/useClientFeedback";
 import { sendRedemptionNotice } from "@/lib/invite";
 import { toast, toastError } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useAdminTasks, type AdminTaskRedemption, type AdminTaskMemberInvite } from "@/hooks/useAdminTasks";
+import {
+  useAdminTasks,
+  type AdminTaskRedemption,
+  type AdminTaskMemberInvite,
+  type AdminTaskAccessRequest,
+} from "@/hooks/useAdminTasks";
 import { dismissAgreement } from "@/hooks/useService";
 import { rejectMemberInvite } from "@/hooks/useOrg";
 import { ApproveMemberInviteSheet } from "@/components/admin/ApproveMemberInviteSheet";
+import { ApproveAccessRequestSheet } from "@/components/admin/ApproveAccessRequestSheet";
 
 const PROJECT_TYPE_HE: Record<string, string> = {
   business_site: "אתר תדמית",
@@ -33,6 +39,7 @@ export function AdminTasksPanel() {
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [fbStatus, setFbStatus] = useState<Record<string, "open" | "in_progress" | "resolved">>({});
   const [approveTarget, setApproveTarget] = useState<AdminTaskMemberInvite | null>(null);
+  const [accessTarget, setAccessTarget] = useState<AdminTaskAccessRequest | null>(null);
 
   const redemptions = data?.redemptions ?? [];
   const messages = data?.messages ?? [];
@@ -82,19 +89,13 @@ export function AdminTasksPanel() {
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
   }
 
-  async function decideAccess(id: string, approve: boolean) {
+  async function decideAccess(id: string) {
     setBusy(id);
-    const { error } = approve
-      ? await supabase.rpc("approve_access_request", { p_id: id, p_role: "client" })
-      : await supabase.rpc("reject_access_request", { p_id: id });
+    const { error } = await supabase.rpc("reject_access_request", { p_id: id });
     setBusy(null);
     if (error) return toastError(error.message || "הפעולה נכשלה.");
-    toast({
-      title: approve ? "הלקוח הוקם ✓ עכשיו הוא יכול להתחבר" : "הבקשה נדחתה",
-      variant: "success",
-    });
+    toast({ title: "הבקשה נדחתה", variant: "success" });
     qc.invalidateQueries({ queryKey: ["admin-tasks"] });
-    qc.invalidateQueries({ queryKey: ["clients"] });
   }
 
   async function decideRedemption(t: AdminTaskRedemption, status: "fulfilled" | "cancelled") {
@@ -284,14 +285,14 @@ export function AdminTasksPanel() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" disabled={busy === r.id} onClick={() => decideAccess(r.id, true)}>
-                    <UserPlus className="size-4" /> הקם לקוח
+                  <Button size="sm" disabled={busy === r.id} onClick={() => setAccessTarget(r)}>
+                    <UserPlus className="size-4" /> הקם עסק + לקוח
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     disabled={busy === r.id}
-                    onClick={() => decideAccess(r.id, false)}
+                    onClick={() => decideAccess(r.id)}
                   >
                     <X className="size-4" /> דחייה
                   </Button>
@@ -512,6 +513,17 @@ export function AdminTasksPanel() {
           setApproveTarget(null);
           qc.invalidateQueries({ queryKey: ["admin-tasks"] });
           qc.invalidateQueries({ queryKey: ["member-invite-requests"] });
+        }}
+      />
+
+      <ApproveAccessRequestSheet
+        request={accessTarget}
+        onClose={() => setAccessTarget(null)}
+        onApproved={() => {
+          setAccessTarget(null);
+          qc.invalidateQueries({ queryKey: ["admin-tasks"] });
+          qc.invalidateQueries({ queryKey: ["admin-businesses"] });
+          qc.invalidateQueries({ queryKey: ["clients"] });
         }}
       />
     </Card>

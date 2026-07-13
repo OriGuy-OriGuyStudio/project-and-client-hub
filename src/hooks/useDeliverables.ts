@@ -62,6 +62,44 @@ export function usePublishedJourney(projectId: string | null | undefined) {
   });
 }
 
+/** The published sitemap (single) for a project, for the client project page. */
+export function usePublishedSitemap(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["published-sitemap", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<ProjectDeliverable | null> => {
+      const { data, error } = await supabase
+        .from("project_deliverables")
+        .select("*")
+        .eq("project_id", projectId!)
+        .eq("kind", "sitemap")
+        .eq("status", "published")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ProjectDeliverable | null) ?? null;
+    },
+  });
+}
+
+/** The public share link (token + title) for a project's discovery-call summary,
+ *  or null when there's no shareable summary. Works for org members too (the RPC
+ *  is definer), so the client project page can link to /discovery/<token>. */
+export function useProjectDiscoveryShare(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["discovery-share", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<{ token: string; title: string } | null> => {
+      const { data, error } = await supabase.rpc("get_project_discovery_share", {
+        p_project_id: projectId!,
+      });
+      if (error) throw error;
+      return (data as { token: string; title: string } | null) ?? null;
+    },
+  });
+}
+
 export interface DiscoveryForGen {
   title: string;
   items: { question: string; answer: string }[];

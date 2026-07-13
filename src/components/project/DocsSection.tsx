@@ -13,7 +13,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -103,19 +103,18 @@ export function DocsSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <FileText className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">מסמכים</h2>
-        </div>
-        {canWrite && (
+    <SectionShell
+      icon={FileText}
+      iconClass="text-brand-cyan-base"
+      title="מסמכים"
+      actions={
+        canWrite ? (
           <Button size="sm" variant="ghost" onClick={() => setAdding((v) => !v)}>
             <Plus className="size-4" /> מסמך
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {adding && canWrite && (
         <div className="mb-4 flex items-center gap-2">
           <Input
@@ -174,7 +173,7 @@ export function DocsSection({
           </div>
         </div>
       )}
-    </Card>
+    </SectionShell>
   );
 }
 

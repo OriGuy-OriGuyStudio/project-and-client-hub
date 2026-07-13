@@ -855,6 +855,26 @@ export type JourneyContent = {
   design_notes: string;
 };
 
+/** One page in a sitemap deliverable (2 levels: pages with sub-pages). */
+export type SitemapPage = {
+  name: string;
+  purpose: string;
+  sections: string[];
+  /** Why the sections are ordered this way (top-level pages only; optional). */
+  order_rationale?: string;
+  /** Which journey stage / persona this page serves (ties to the other tools). */
+  serves: string;
+  children: SitemapPage[];
+};
+
+/** Structured content of a `sitemap` deliverable (content jsonb). */
+export type SitemapContent = {
+  title: string;
+  pages: SitemapPage[];
+  /** Admin-only UX/design guidance; not shown to the client. */
+  design_notes: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
@@ -1096,6 +1116,18 @@ export interface Database {
       clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
       reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
       delete_organization: { Args: { p_org_id: string }; Returns: undefined };
+      approve_access_request_as_business: {
+        Args: { p_id: string; p_business_name: string; p_manager_name: string };
+        Returns: { status: string; org_id: string };
+      };
+      convert_client_to_business: {
+        Args: { p_client_id: string; p_business_name: string };
+        Returns: { status: string; org_id: string };
+      };
+      get_project_discovery_share: {
+        Args: { p_project_id: string };
+        Returns: { token: string; title: string } | null;
+      };
       is_demo_account: { Args: { p_uid: string }; Returns: boolean };
       promote_dev_feedback: { Args: { p_id: string }; Returns: string };
       apply_guide_template: { Args: { p_project_id: string; p_template_id: string }; Returns: string };

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { CheckCircle2, MessageSquareWarning, Plus, Stamp } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -75,21 +75,18 @@ export function ApprovalsSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Stamp className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">
-            אישור עבודה
-          </h2>
-        </div>
-        {isAdmin && (
+    <SectionShell
+      icon={Stamp}
+      iconClass="text-brand-cyan-base"
+      title="אישור עבודה"
+      actions={
+        isAdmin ? (
           <Button size="sm" variant="ghost" onClick={() => setAdding((v) => !v)}>
             <Plus className="size-4" /> בקשת אישור
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {adding && (
         <div className="mb-4 flex items-center gap-2">
           <Input
@@ -136,7 +133,7 @@ export function ApprovalsSection({
           ))}
         </div>
       )}
-    </Card>
+    </SectionShell>
   );
 }
 

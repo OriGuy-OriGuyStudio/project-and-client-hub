@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardList, Plus, Trash2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -83,21 +83,18 @@ export function ChecklistSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">
-            חומרים דרושים
-          </h2>
-        </div>
-        {items && items.length > 0 && (
+    <SectionShell
+      icon={ClipboardList}
+      iconClass="text-brand-cyan-base"
+      title="חומרים דרושים"
+      actions={
+        items && items.length > 0 ? (
           <span className="text-sm text-muted-foreground">
             {sent}/{items.length} נשלחו
           </span>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {isAdmin && (
         <div className="mb-4 flex items-center gap-2">
           <Input
@@ -159,6 +156,6 @@ export function ChecklistSection({
           ))}
         </ul>
       )}
-    </Card>
+    </SectionShell>
   );
 }

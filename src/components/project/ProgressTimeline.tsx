@@ -29,7 +29,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,22 +248,19 @@ export function ProgressTimeline({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex shrink-0 items-center gap-2">
-          <MapIcon className="size-5 text-brand-cyan-base" />
-          <h2 className="whitespace-nowrap font-heading text-lg font-semibold text-foreground">
-            ציר התקדמות
-          </h2>
-        </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
+    <SectionShell
+      icon={MapIcon}
+      iconClass="text-brand-cyan-base"
+      title="ציר התקדמות"
+      actions={
+        isAdmin ? (
+          <>
             <TemplateDialog projectId={projectId} nextOrder={nextOrder} />
             <AddStageDialog projectId={projectId} nextOrder={nextOrder} />
-          </div>
-        )}
-      </div>
-
+          </>
+        ) : null
+      }
+    >
       {isLoading ? (
         <Skeleton className="h-24 w-full rounded-xl" />
       ) : total === 0 ? (
@@ -340,7 +337,7 @@ export function ProgressTimeline({
         description={confirm?.description}
         onConfirm={() => confirm?.onConfirm()}
       />
-    </Card>
+    </SectionShell>
   );
 }
 
