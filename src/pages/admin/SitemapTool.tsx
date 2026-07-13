@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  ArrowUpDown,
   ChevronDown,
   ChevronUp,
   Eye,
   EyeOff,
+  Lightbulb,
   Loader2,
   Network,
   Plus,
@@ -27,7 +29,7 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useProjects } from "@/hooks/useProjects";
 import { useBusinesses } from "@/hooks/useBusinesses";
 import { useProjectDeliverables, useProjectDiscoveryItems } from "@/hooks/useDeliverables";
-import { generateSitemap } from "@/lib/deliverables";
+import { generateSitemap, sitemapAssist, type JourneyPersonaHint } from "@/lib/deliverables";
 import type {
   JourneyContent,
   PersonaContent,
@@ -49,6 +51,28 @@ export default function SitemapTool() {
   const sitemap = (deliverables ?? []).find((d) => d.kind === "sitemap") ?? null;
   const personaCount = (deliverables ?? []).filter((d) => d.kind === "persona").length;
   const hasJourney = (deliverables ?? []).some((d) => d.kind === "journey");
+
+  // Persona + journey context, shared by full generation and the per-page AI helpers.
+  const personaHints: JourneyPersonaHint[] = useMemo(
+    () =>
+      (deliverables ?? [])
+        .filter((d) => d.kind === "persona")
+        .map((d) => {
+          const pc = d.content as unknown as PersonaContent;
+          return {
+            name: pc.name ?? "",
+            archetype: pc.archetype ?? "",
+            summary: pc.summary ?? "",
+            goals: pc.goals ?? [],
+            pains: pc.pains ?? [],
+          };
+        }),
+    [deliverables]
+  );
+  const journey: JourneyContent | null = useMemo(() => {
+    const row = (deliverables ?? []).find((d) => d.kind === "journey");
+    return row ? (row.content as unknown as JourneyContent) : null;
+  }, [deliverables]);
 
   const orgOptions = useMemo(
     () => [
@@ -73,21 +97,6 @@ export default function SitemapTool() {
       return toastError("אין שיחת אפיון משויכת לפרויקט הזה. שייך שיחה בעמוד שיחות האפיון קודם.");
     }
     setGenerating(true);
-    const personaHints = (deliverables ?? [])
-      .filter((d) => d.kind === "persona")
-      .map((d) => {
-        const pc = d.content as unknown as PersonaContent;
-        return {
-          name: pc.name ?? "",
-          archetype: pc.archetype ?? "",
-          summary: pc.summary ?? "",
-          goals: pc.goals ?? [],
-          pains: pc.pains ?? [],
-        };
-      });
-    const journeyRow = (deliverables ?? []).find((d) => d.kind === "journey");
-    const journey = journeyRow ? (journeyRow.content as unknown as JourneyContent) : null;
-
     const r = await generateSitemap({
       title: disc.title,
       items: disc.items,
@@ -183,7 +192,13 @@ export default function SitemapTool() {
 
       {projectId &&
         (sitemap ? (
-          <SitemapEditor d={sitemap} projectId={projectId} />
+          <SitemapEditor
+            d={sitemap}
+            projectId={projectId}
+            aiTitle={disc?.title || sitemap.title || "האתר"}
+            personas={personaHints}
+            journey={journey}
+          />
         ) : (
           <EmptyState
             icon={Network}
@@ -209,6 +224,7 @@ interface PageForm {
   name: string;
   purpose: string;
   sections: string;
+  order_rationale: string;
   serves: string;
   children: {
     name: string;
@@ -223,6 +239,7 @@ function pageToForm(p: SitemapPage): PageForm {
     name: p.name ?? "",
     purpose: p.purpose ?? "",
     sections: toLines(p.sections),
+    order_rationale: p.order_rationale ?? "",
     serves: p.serves ?? "",
     children: (p.children ?? []).map((c) => ({
       name: c.name ?? "",
@@ -233,7 +250,19 @@ function pageToForm(p: SitemapPage): PageForm {
   };
 }
 
-function SitemapEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string }) {
+function SitemapEditor({
+  d,
+  projectId,
+  aiTitle,
+  personas,
+  journey,
+}: {
+  d: ProjectDeliverable;
+  projectId: string;
+  aiTitle: string;
+  personas: JourneyPersonaHint[];
+  journey: JourneyContent | null;
+}) {
   const qc = useQueryClient();
   const c = d.content as unknown as SitemapContent;
   const [saving, setSaving] = useState(false);
@@ -257,7 +286,10 @@ function SitemapEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
     setPages((arr) => arr.filter((_, idx) => idx !== i));
   }
   function addPage() {
-    setPages((arr) => [...arr, { name: "", purpose: "", sections: "", serves: "", children: [] }]);
+    setPages((arr) => [
+      ...arr,
+      { name: "", purpose: "", sections: "", order_rationale: "", serves: "", children: [] },
+    ]);
   }
   function patchChild(pi: number, ci: number, patch: Partial<PageForm["children"][number]>) {
     setPages((arr) =>
@@ -279,12 +311,74 @@ function SitemapEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
     );
   }
 
+  // Per-page AI helpers: task loading + section suggestions, keyed by page index.
+  const [assist, setAssist] = useState<
+    Record<number, { loading: null | "sections" | "reorder" | "subpages"; suggestions: string[] }>
+  >({});
+
+  async function runAssist(i: number, task: "sections" | "reorder" | "subpages") {
+    const p = pages[i];
+    if (!p.name.trim()) return toastError("תן שם לעמוד קודם.");
+    setAssist((s) => ({ ...s, [i]: { loading: task, suggestions: s[i]?.suggestions ?? [] } }));
+    const r = await sitemapAssist({
+      task,
+      title: aiTitle,
+      page: {
+        name: p.name.trim(),
+        purpose: p.purpose.trim(),
+        sections: fromLines(p.sections),
+        serves: p.serves.trim(),
+      },
+      personas,
+      journey,
+    });
+    setAssist((s) => ({ ...s, [i]: { loading: null, suggestions: s[i]?.suggestions ?? [] } }));
+    if (!r.ok || !r.result) return toastError(r.error || "ה-AI לא הצליח. נסה שוב.");
+
+    if (task === "sections") {
+      const secs = ("sections" in r.result ? r.result.sections : []) ?? [];
+      const existing = new Set(fromLines(p.sections));
+      const fresh = secs.filter((x) => x && !existing.has(x));
+      if (fresh.length === 0) return toast({ title: "אין סקשנים חדשים להציע.", variant: "success" });
+      setAssist((s) => ({ ...s, [i]: { loading: null, suggestions: fresh } }));
+    } else if (task === "reorder") {
+      if ("rationale" in r.result) {
+        patchPage(i, {
+          sections: toLines(r.result.sections),
+          order_rationale: r.result.rationale,
+        });
+        toast({ title: "הסקשנים סודרו מחדש ✓", variant: "success" });
+      }
+    } else if ("subpages" in r.result) {
+      const add = (r.result.subpages ?? []).map((c) => ({
+        name: c.name ?? "",
+        purpose: c.purpose ?? "",
+        sections: toLines(c.sections),
+        serves: c.serves ?? "",
+      }));
+      if (add.length === 0) return toast({ title: "אין צורך בתת-עמודים לעמוד הזה.", variant: "success" });
+      setPages((arr) => arr.map((pg, idx) => (idx === i ? { ...pg, children: [...pg.children, ...add] } : pg)));
+      toast({ title: `נוספו ${add.length} תת-עמודים ✓`, variant: "success" });
+    }
+  }
+
+  function addSuggestedSection(i: number, sec: string) {
+    setPages((arr) =>
+      arr.map((p, idx) => (idx === i ? { ...p, sections: p.sections ? p.sections + "\n" + sec : sec } : p))
+    );
+    setAssist((s) => ({
+      ...s,
+      [i]: { loading: s[i]?.loading ?? null, suggestions: (s[i]?.suggestions ?? []).filter((x) => x !== sec) },
+    }));
+  }
+
   function buildContent(): SitemapContent {
     const cleanPages: SitemapPage[] = pages
       .map((p) => ({
         name: p.name.trim(),
         purpose: p.purpose.trim(),
         sections: fromLines(p.sections),
+        order_rationale: p.order_rationale.trim(),
         serves: p.serves.trim(),
         children: p.children
           .map((c2) => ({
@@ -373,12 +467,96 @@ function SitemapEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>סקשנים (שורה לכל אחד)</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>סקשנים (שורה לכל אחד)</Label>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={() => runAssist(i, "sections")}
+                  disabled={assist[i]?.loading != null}
+                >
+                  {assist[i]?.loading === "sections" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Lightbulb className="size-3.5" />
+                  )}
+                  המלצות סקשנים
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={() => runAssist(i, "reorder")}
+                  disabled={assist[i]?.loading != null || fromLines(p.sections).length < 2}
+                >
+                  {assist[i]?.loading === "reorder" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <ArrowUpDown className="size-3.5" />
+                  )}
+                  סדר עם AI
+                </Button>
+              </div>
+            </div>
             <Textarea value={p.sections} onChange={(e) => patchPage(i, { sections: e.target.value })} rows={3} />
+            {(assist[i]?.suggestions ?? []).length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2">
+                <span className="text-xs text-muted-foreground">לחץ להוספה:</span>
+                {(assist[i]?.suggestions ?? []).map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => addSuggestedSection(i, sec)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-primary/10"
+                  >
+                    <Plus className="size-3" /> {sec}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-2 text-muted-foreground">
+              <ArrowUpDown className="size-3.5" /> למה הסדר הזה
+            </Label>
+            <Textarea
+              value={p.order_rationale}
+              onChange={(e) => patchPage(i, { order_rationale: e.target.value })}
+              rows={2}
+              placeholder="ההיגיון מאחורי סדר הסקשנים בעמוד (מוצג ללקוח). כפתור 'סדר עם AI' ממלא את זה אוטומטית."
+              className="bg-muted/30 text-sm"
+            />
           </div>
 
           <div className="space-y-2 rounded-xl border border-dashed border-border bg-background/30 p-3">
-            <p className="text-xs font-semibold text-muted-foreground">תת-עמודים</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">תת-עמודים</p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  עמוד שיושב מתחת לעמוד הזה בתפריט (למשל שירות ספציפי תחת "שירותים").
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => runAssist(i, "subpages")}
+                disabled={assist[i]?.loading != null}
+              >
+                {assist[i]?.loading === "subpages" ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                הצע תת-עמודים (AI)
+              </Button>
+            </div>
             {p.children.map((c2, ci) => (
               <div key={ci} className="space-y-2 rounded-lg border border-border/70 bg-card/40 p-3">
                 <div className="flex items-center gap-2">

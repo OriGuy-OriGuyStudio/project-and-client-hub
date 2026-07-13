@@ -860,6 +860,8 @@ export type SitemapPage = {
   name: string;
   purpose: string;
   sections: string[];
+  /** Why the sections are ordered this way (top-level pages only; optional). */
+  order_rationale?: string;
   /** Which journey stage / persona this page serves (ties to the other tools). */
   serves: string;
   children: SitemapPage[];

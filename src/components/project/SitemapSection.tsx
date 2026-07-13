@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, CornerDownRight, FileText, Network, Route } from "lucide-react";
+import { ChevronDown, CornerDownRight, FileText, Lightbulb, Network, Route } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,12 @@ function PageCard({ p }: { p: SitemapPage }) {
       </div>
       {p.purpose && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.purpose}</p>}
       <Sections sections={p.sections} />
+      {p.order_rationale?.trim() && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-primary/5 px-2.5 py-1.5 text-xs leading-relaxed text-muted-foreground">
+          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>{p.order_rationale}</span>
+        </p>
+      )}
 
       {p.children?.length > 0 && (
         <div className="mt-3 space-y-2 border-s-2 border-border ps-3">

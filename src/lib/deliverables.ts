@@ -35,6 +35,40 @@ export interface JourneyPersonaHint {
   pains: string[];
 }
 
+/** Result shapes for the per-page sitemap AI helpers. */
+export type SitemapAssistResult =
+  | { sections: string[] } // task = "sections"
+  | { sections: string[]; rationale: string } // task = "reorder"
+  | { subpages: SitemapContent["pages"] }; // task = "subpages"
+
+/** Per-page AI helper for the sitemap editor: recommend sections to add,
+ *  reorder the current sections (with a rationale), or suggest sub-pages. */
+export async function sitemapAssist(payload: {
+  task: "sections" | "reorder" | "subpages";
+  title: string;
+  page: { name: string; purpose: string; sections: string[]; serves: string };
+  personas?: JourneyPersonaHint[];
+  journey?: JourneyContent | null;
+}): Promise<{ ok: boolean; result?: SitemapAssistResult; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "sitemap_assist",
+        task: payload.task,
+        title: payload.title,
+        page: payload.page,
+        personas: payload.personas ?? [],
+        journey: payload.journey ?? null,
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    return { ok: true, result: data?.result as SitemapAssistResult };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Generate a customer-journey map from a discovery call (senior-UX AI brief),
  *  grounded in the project's personas when provided. */
 export async function generateJourney(payload: {
