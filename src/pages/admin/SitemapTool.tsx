@@ -176,7 +176,7 @@ export default function SitemapTool() {
         )}
         {projectId && (
           <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {`המפה תתבסס על ${personaCount} פרסונות ${hasJourney ? "ועל מסע הלקוח" : "(אין עדיין מסע לקוח, מומלץ ליצור קודם)"}.`}
+            {`המפה תתבסס על שיחת האפיון, ${personaCount} פרסונות${hasJourney ? " ומסע הלקוח" : " (אין עדיין מסע לקוח, מומלץ ליצור אותו קודם)"}.`}
           </p>
         )}
       </Card>
