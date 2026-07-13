@@ -24,6 +24,7 @@ import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/hooks/useProjects";
+import { useBusinesses } from "@/hooks/useBusinesses";
 import { useProjectDeliverables, useProjectDiscoveryItems } from "@/hooks/useDeliverables";
 import { generatePersonas, generatePersonaImage } from "@/lib/deliverables";
 import type { PersonaContent, ProjectDeliverable } from "@/types/database";
@@ -31,6 +32,8 @@ import type { PersonaContent, ProjectDeliverable } from "@/types/database";
 export default function PersonaTool() {
   const qc = useQueryClient();
   const { data: projects } = useProjects();
+  const { data: businesses } = useBusinesses();
+  const [orgId, setOrgId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [generating, setGenerating] = useState(false);
 
@@ -38,20 +41,22 @@ export default function PersonaTool() {
   const { data: deliverables } = useProjectDeliverables(projectId || null);
   const personas = (deliverables ?? []).filter((d) => d.kind === "persona");
 
+  const orgOptions = useMemo(
+    () => [
+      { value: "", label: "בחר עסק…" },
+      ...(businesses ?? []).map((b) => ({ value: b.id, label: b.name })),
+    ],
+    [businesses]
+  );
   const projectOptions = useMemo(
     () => [
       { value: "", label: "בחר פרויקט…" },
       ...(projects ?? [])
-        .map((p) => {
-          const biz = p.business_name?.trim();
-          const title = p.title?.trim();
-          const label =
-            biz && title && biz !== title ? `${biz} · ${title}` : biz || title || "פרויקט ללא שם";
-          return { value: p.id, label };
-        })
+        .filter((p) => p.org_id === orgId)
+        .map((p) => ({ value: p.id, label: p.title || "פרויקט ללא שם" }))
         .sort((a, b) => a.label.localeCompare(b.label, "he")),
     ],
-    [projects]
+    [projects, orgId]
   );
 
   async function generate() {
@@ -114,16 +119,32 @@ export default function PersonaTool() {
 
       <Card className="space-y-3 p-4">
         <div className="space-y-1.5">
-          <Label htmlFor="pt-project">פרויקט</Label>
+          <Label htmlFor="pt-org">עסק</Label>
           <SelectMenu
-            id="pt-project"
+            id="pt-org"
             variant="field"
-            ariaLabel="פרויקט"
-            value={projectId}
-            onChange={(v) => setProjectId(v)}
-            options={projectOptions}
+            ariaLabel="עסק"
+            value={orgId}
+            onChange={(v) => {
+              setOrgId(v);
+              setProjectId("");
+            }}
+            options={orgOptions}
           />
         </div>
+        {orgId && (
+          <div className="space-y-1.5">
+            <Label htmlFor="pt-project">פרויקט</Label>
+            <SelectMenu
+              id="pt-project"
+              variant="field"
+              ariaLabel="פרויקט"
+              value={projectId}
+              onChange={(v) => setProjectId(v)}
+              options={projectOptions}
+            />
+          </div>
+        )}
         {projectId && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
