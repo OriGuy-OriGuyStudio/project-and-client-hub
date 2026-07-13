@@ -117,8 +117,10 @@ function BriefItemRow({
   uploadedBy: string | null;
   onSave: (patch: Partial<Pick<BriefResponse, "text" | "files" | "done">>) => Promise<boolean>;
 }) {
-  const [text, setText] = useState(resp?.text ?? "");
+  // Seed text items from the discovery-prefilled value so the client just confirms/fixes.
+  const [text, setText] = useState(resp?.text ?? item.prefill ?? "");
   const [uploading, setUploading] = useState(false);
+  const usingPrefill = !resp?.text && !!item.prefill;
   const fileRef = useRef<HTMLInputElement>(null);
   const files = resp?.files ?? [];
   const done = resp?.done ?? false;
@@ -161,10 +163,13 @@ function BriefItemRow({
             {item.required && <span className="text-primary"> *</span>}
           </p>
           {item.help && <p className="text-xs text-muted-foreground">{item.help}</p>}
+          {isText && usingPrefill && (
+            <p className="text-xs text-primary/80">מולא מראש מהשיחה, אשרו או תקנו.</p>
+          )}
         </div>
         <button
           type="button"
-          onClick={() => onSave({ done: !done })}
+          onClick={() => onSave({ done: !done, text })}
           className={cnDone(done)}
           aria-pressed={done}
         >

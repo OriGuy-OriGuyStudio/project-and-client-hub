@@ -68,6 +68,7 @@ function withIds(c: BriefContent): BriefContent {
         help: it.help ?? "",
         kind: (it.kind ?? "text") as BriefItemKind,
         required: !!it.required,
+        prefill: it.prefill ?? "",
       })),
     })),
     design_notes: c.design_notes ?? "",
@@ -215,6 +216,11 @@ export default function BriefTool() {
             </Button>
           </div>
         )}
+        {projectId && sitemapRow && (
+          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {`הבריף יתבסס על שיחת האפיון, ${personaHints.length} פרסונות ומפת האתר, וימלא מראש מה שכבר ידוע מהשיחה.`}
+          </p>
+        )}
         {projectId && !sitemapRow && (
           <Button asChild variant="secondary" size="sm">
             <Link to="/admin/tools/sitemap">
@@ -244,6 +250,7 @@ interface ItemForm {
   help: string;
   kind: BriefItemKind;
   required: boolean;
+  prefill: string;
 }
 interface PageForm {
   name: string;
@@ -259,6 +266,7 @@ function toForm(c: BriefContent): PageForm[] {
       help: it.help ?? "",
       kind: (it.kind ?? "text") as BriefItemKind,
       required: !!it.required,
+      prefill: it.prefill ?? "",
     })),
   }));
 }
@@ -285,7 +293,7 @@ function BriefEditor({ d, projectId }: { d: ProjectDeliverable; projectId: strin
     setPages((arr) =>
       arr.map((p, i) =>
         i === pi
-          ? { ...p, items: [...p.items, { id: uid(), label: "", help: "", kind: "text", required: false }] }
+          ? { ...p, items: [...p.items, { id: uid(), label: "", help: "", kind: "text", required: false, prefill: "" }] }
           : p
       )
     );
@@ -304,6 +312,7 @@ function BriefEditor({ d, projectId }: { d: ProjectDeliverable; projectId: strin
             help: it.help.trim() || undefined,
             kind: it.kind,
             required: it.required,
+            prefill: it.prefill.trim() || undefined,
           })),
       })),
       design_notes: (c.design_notes ?? "").trim(),
@@ -445,6 +454,14 @@ function PageBriefCard({
                 placeholder="הסבר קצר ללקוח (מה בדיוק לספק)"
                 className="h-9"
               />
+              {it.kind === "text" && (
+                <Input
+                  value={it.prefill}
+                  onChange={(e) => onPatch(ii, { prefill: e.target.value })}
+                  placeholder="מולא מראש מהאפיון (הלקוח יאשר או יתקן), אופציונלי"
+                  className="h-9"
+                />
+              )}
               <div className="flex items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
                   <input

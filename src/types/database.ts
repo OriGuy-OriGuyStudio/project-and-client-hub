@@ -908,6 +908,8 @@ export type BriefItem = {
   help?: string;
   kind: BriefItemKind;
   required?: boolean;
+  /** Answer pre-filled from the discovery call (text items); client confirms/fixes. */
+  prefill?: string;
 };
 
 /** A page's collection items, following the sitemap page structure. */
