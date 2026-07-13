@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ProjectHero } from "@/components/project/ProjectHero";
 import { BrandGuidelines } from "@/components/brand/BrandGuidelines";
 import { SiteBlueprintPanel } from "@/components/project/SiteBlueprintPanel";
+import { ContentBriefSection } from "@/components/project/ContentBriefSection";
 import { ProgressTimeline } from "@/components/project/ProgressTimeline";
 import { ApprovalsSection } from "@/components/project/ApprovalsSection";
 import { DevFeedbackSection } from "@/components/project/DevFeedbackSection";
@@ -187,6 +188,9 @@ export default function ProjectDetail() {
           </div>
           <div data-reveal data-section className="scroll-mt-20">
             <SiteBlueprintPanel projectId={project.id} />
+          </div>
+          <div data-reveal data-section className="scroll-mt-20">
+            <ContentBriefSection projectId={project.id} />
           </div>
           <div data-reveal data-section className="scroll-mt-20">
             <ProgressTimeline projectId={project.id} isAdmin={isAdmin} actorId={actorId} />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UsersRound, Route as RouteIcon, Network, PenLine, Sparkles } from "lucide-react";
+import { UsersRound, Route as RouteIcon, Network, PenLine, ClipboardList, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,13 @@ const TOOLS = [
     icon: PenLine,
     title: "מחולל פרומפטים",
     desc: "פרומפט מפורט לכל עמוד וסקשן במפת האתר, מותאם לגוף ולטון שתבחר. כלי פנימי, לא מוצג ללקוח.",
+    ready: true,
+  },
+  {
+    to: "/admin/tools/brief",
+    icon: ClipboardList,
+    title: "בריף תוכן ותמונות",
+    desc: "רשימת חומרים לאיסוף מהלקוח לכל עמוד. הלקוח ממלא ומעלה בפורטל, והחומרים נכנסים לקבצים.",
     ready: true,
   },
 ];

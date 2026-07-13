@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { questionText } from "@/lib/discovery";
-import type { ProjectDeliverable } from "@/types/database";
+import type { BriefResponse, ProjectDeliverable } from "@/types/database";
 
 /** Admin: all tool deliverables for a project (persona/journey/sitemap). */
 export function useProjectDeliverables(projectId: string | null | undefined) {
@@ -79,6 +79,43 @@ export function usePublishedSitemap(projectId: string | null | undefined) {
         .maybeSingle();
       if (error) throw error;
       return (data as ProjectDeliverable | null) ?? null;
+    },
+  });
+}
+
+/** The published content brief (single) for a project, for the client to fill. */
+export function usePublishedBrief(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["published-brief", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<ProjectDeliverable | null> => {
+      const { data, error } = await supabase
+        .from("project_deliverables")
+        .select("*")
+        .eq("project_id", projectId!)
+        .eq("kind", "brief")
+        .eq("status", "published")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ProjectDeliverable | null) ?? null;
+    },
+  });
+}
+
+/** The client's answers to the content brief (both admin + client can read). */
+export function useBriefResponses(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["brief-responses", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<BriefResponse[]> => {
+      const { data, error } = await supabase
+        .from("brief_responses")
+        .select("*")
+        .eq("project_id", projectId!);
+      if (error) throw error;
+      return (data ?? []) as BriefResponse[];
     },
   });
 }

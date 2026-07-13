@@ -1,6 +1,12 @@
 import { supabase } from "./supabase";
 import { fnErrorMessage } from "./invite";
-import type { CopyContent, JourneyContent, PersonaContent, SitemapContent } from "@/types/database";
+import type {
+  BriefContent,
+  CopyContent,
+  JourneyContent,
+  PersonaContent,
+  SitemapContent,
+} from "@/types/database";
 
 /** Generate page/section copy that follows the project's sitemap, grounded in the
  *  discovery + personas + journey. Requires an existing sitemap. */
@@ -32,6 +38,32 @@ export async function generateCopy(payload: {
     if (error) return { ok: false, error: await fnErrorMessage(error) };
     if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
     return { ok: true, copy: data?.copy as CopyContent };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Generate a content-collection brief (what to gather from the client), grounded
+ *  in the discovery + personas + sitemap. Requires an existing sitemap. */
+export async function generateBrief(payload: {
+  title: string;
+  items: { question: string; answer: string }[];
+  personas?: JourneyPersonaHint[];
+  sitemap: SitemapContent;
+}): Promise<{ ok: boolean; brief?: BriefContent; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "brief",
+        title: payload.title,
+        items: payload.items,
+        personas: payload.personas ?? [],
+        sitemap: payload.sitemap,
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    return { ok: true, brief: data?.brief as BriefContent };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

@@ -6,6 +6,7 @@ import {
   ArrowUpDown,
   ChevronDown,
   ChevronUp,
+  ClipboardList,
   Eye,
   EyeOff,
   Lightbulb,
@@ -190,11 +191,18 @@ export default function SitemapTool() {
           </p>
         )}
         {projectId && sitemap && (
-          <Button asChild variant="secondary" size="sm">
-            <Link to="/admin/tools/copy">
-              <PenLine className="size-4" /> צור פרומפטים לעמודים
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/admin/tools/copy">
+                <PenLine className="size-4" /> צור פרומפטים לעמודים
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/admin/tools/brief">
+                <ClipboardList className="size-4" /> צור בריף תוכן
+              </Link>
+            </Button>
+          </div>
         )}
       </Card>
 

@@ -589,6 +589,131 @@ async function generateCopy(
   };
 }
 
+function briefPrompt(title: string, items: Item[], personasText: string, sitemap: any): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+  return [
+    "אתה מנהל פרויקטים ומעצב בסטודיו אתרים. המשימה: להכין ללקוח בריף איסוף חומרים, לכל עמוד באתר, רשימת הפריטים שהלקוח צריך לספק כדי שנבנה את האתר: טקסטים, תמונות, לוגו, פרטים.",
+    "עקרונות: התבסס על מפת האתר ושיחת האפיון. כל פריט חייב להיות דבר קונקרטי שהלקוח מספק. עברית פשוטה וברורה, בלי מקף ארוך, בלי באזזוורדס, בלי סימני קריאה מוגזמים.",
+    "לכל פריט מלא:",
+    "- label: שם קצר וברור של מה שצריך (למשל 'לוגו', 'תמונת רקע לדף הבית', 'טקסט אודות').",
+    "- help: משפט אחד שמסביר בדיוק מה לספק ובאיזה פורמט או כמות (למשל 'קובץ לוגו באיכות גבוהה, רצוי PNG שקוף או וקטור', 'תמונה אופקית באיכות גבוהה', '2 עד 4 פסקאות על העסק').",
+    "- kind: 'text' לטקסט, 'image' לתמונה בודדת, 'gallery' לכמה תמונות, 'file' לקובץ אחר (מסמך, מצגת).",
+    "- required: true אם הפריט הכרחי לבניית העמוד, false אם נחמד שיהיה.",
+    "התאם את הפריטים לסוג הסקשנים בכל עמוד:",
+    "- הירו/דף בית: תמונת רקע ראשית, לוגו, ורעיון למשפט פתיחה אם ללקוח יש.",
+    "- אודות/סיפור: טקסט על העסק, תמונה של בעל העסק או הצוות.",
+    "- שירותים/מוצרים: שם + תיאור קצר לכל שירות, ותמונה לכל שירות אם רלוונטי.",
+    "- גלריה/תיק עבודות: אוסף תמונות (gallery), ציין כמה מומלץ.",
+    "- המלצות: 3 עד 5 ציטוטים של לקוחות + שם ותפקיד.",
+    "- צוות: לכל איש צוות תמונה + שם + תפקיד.",
+    "- צור קשר: טלפון, אימייל, כתובת, שעות פעילות, קישורי רשתות.",
+    "- אל תבקש חומרים שאפשר לייצר בלי הלקוח (למשל טקסט משפטי סטנדרטי, תקנון).",
+    personasText ? "קהל היעד (רק להקשר):\n" + personasText : "",
+    "מבנה האתר (כתוב פריטים לכל עמוד, לפי אותם שמות עמודים):\n" + sitemapPagesText(sitemap),
+    "פרטים כלליים שמשמשים את כל האתר (לוגו, צבעי מותג, גופנים אם יש) שים פעם אחת בלבד, בעמוד הראשון.",
+    "פרטי העסק: " + title,
+    "מתוך שיחת האפיון:",
+    data,
+    "בנוסף: title קצר (למשל 'החומרים לאתר'), design_notes פנימי.",
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const BRIEF_ITEM_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    label: { type: "STRING" },
+    help: { type: "STRING" },
+    kind: { type: "STRING", enum: ["text", "image", "file", "gallery"] },
+    required: { type: "BOOLEAN" },
+  },
+  required: ["label", "help", "kind", "required"],
+};
+
+const BRIEF_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    pages: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          items: { type: "ARRAY", items: BRIEF_ITEM_SCHEMA },
+        },
+        required: ["name", "items"],
+      },
+    },
+    design_notes: { type: "STRING" },
+  },
+  required: ["title", "pages", "design_notes"],
+};
+
+async function generateBrief(
+  apiKey: string,
+  title: string,
+  items: Item[],
+  personasText: string,
+  sitemap: any,
+) {
+  const prompt = briefPrompt(title, items, personasText, sitemap);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.7,
+      maxOutputTokens: 8000,
+      responseMimeType: "application/json",
+      responseSchema: BRIEF_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let brief: any;
+      try {
+        brief = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!brief || !Array.isArray(brief.pages) || brief.pages.length === 0) {
+        return { ok: false, status: 502, error: "לא נוצר בריף. נסה שוב." };
+      }
+      return { ok: true, brief };
+    }
+    const detail = await res.text();
+    console.error("gemini brief error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 // Per-page AI helpers for the sitemap editor: task = "sections" | "reorder" | "subpages".
 async function generateAssist(
   apiKey: string,
@@ -753,7 +878,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy"].includes(body?.mode)
+  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief"].includes(body?.mode)
     ? body.mode
     : "personas";
 
@@ -799,6 +924,15 @@ Deno.serve(async (req) => {
     );
     if (!cp.ok) return json({ ok: false, error: cp.error }, cp.status ?? 502);
     return json({ ok: true, copy: cp.copy });
+  }
+
+  if (mode === "brief") {
+    if (!body?.sitemap?.pages?.length) {
+      return json({ ok: false, error: "צריך מפת אתר לפני יצירת בריף. צור מפת אתר קודם." }, 400);
+    }
+    const br = await generateBrief(apiKey, title, items, personasToText(body?.personas), body.sitemap);
+    if (!br.ok) return json({ ok: false, error: br.error }, br.status ?? 502);
+    return json({ ok: true, brief: br.brief });
   }
 
   if (mode === "journey" || mode === "sitemap") {

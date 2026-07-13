@@ -897,13 +897,62 @@ export type CopyContent = {
   design_notes: string;
 };
 
+/** What the client must provide for one brief item. */
+export type BriefItemKind = "text" | "image" | "file" | "gallery";
+
+/** One thing to collect from the client (a text answer and/or file uploads). */
+export type BriefItem = {
+  id: string;
+  label: string;
+  /** Short helper line telling the client exactly what to provide. */
+  help?: string;
+  kind: BriefItemKind;
+  required?: boolean;
+};
+
+/** A page's collection items, following the sitemap page structure. */
+export type BriefPage = {
+  name: string;
+  items: BriefItem[];
+};
+
+/** Structured content of a `brief` deliverable: the checklist of content + assets
+ *  to collect from the client, grouped by page. Admin-authored (AI-generated). */
+export type BriefContent = {
+  title: string;
+  pages: BriefPage[];
+  /** Admin-only note. */
+  design_notes?: string;
+};
+
+/** One uploaded file recorded on a brief response. */
+export type BriefFileRef = {
+  path: string;
+  name: string;
+  mime: string;
+  size: number;
+};
+
+/** The client's answer to a single brief item. */
+export type BriefResponse = {
+  id: string;
+  project_id: string;
+  org_id: string | null;
+  item_id: string;
+  text: string | null;
+  files: BriefFileRef[];
+  done: boolean;
+  updated_by: string | null;
+  updated_at: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
   id: string;
   project_id: string;
   org_id: string | null;
-  kind: "persona" | "journey" | "sitemap" | "copy";
+  kind: "persona" | "journey" | "sitemap" | "copy" | "brief";
   title: string | null;
   content: Record<string, unknown>;
   status: "draft" | "published";
@@ -1123,6 +1172,7 @@ export interface Database {
       admin_tasks: TableShape<AdminTask>;
       discovery_sessions: TableShape<DiscoverySession>;
       project_deliverables: TableShape<ProjectDeliverable>;
+      brief_responses: TableShape<BriefResponse>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;

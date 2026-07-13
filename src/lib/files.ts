@@ -6,7 +6,7 @@ import {
   GUIDE_MEDIA_BUCKET,
   SIGNED_URL_TTL,
 } from "./supabase";
-import type { FileRow } from "@/types/database";
+import type { BriefFileRef, FileRow } from "@/types/database";
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
 
@@ -200,6 +200,44 @@ export async function uploadProjectFile(params: {
     await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
     throw rowErr;
   }
+}
+
+/**
+ * Upload one file the client provides for the content brief. Goes into the normal
+ * project-files system (so it also appears in "קבצים") under a dedicated folder,
+ * and returns a compact ref stored on the brief response. Client-writable per the
+ * files RLS (owns_project + not private + uploaded_by = self).
+ */
+export async function uploadBriefFile(params: {
+  projectId: string;
+  file: File;
+  uploadedBy: string | null;
+}): Promise<BriefFileRef> {
+  const { projectId, file, uploadedBy } = params;
+  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  // First path segment MUST be the project id (storage RLS relies on it).
+  const storagePath = `${projectId}/${crypto.randomUUID()}-${safeName}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(PROJECT_FILES_BUCKET)
+    .upload(storagePath, file, { contentType: file.type, upsert: false });
+  if (upErr) throw upErr;
+
+  const { error: rowErr } = await supabase.from("files").insert({
+    project_id: projectId,
+    folder_path: "/חומרים מהלקוח",
+    file_name: file.name,
+    storage_path: storagePath,
+    file_size: file.size,
+    mime_type: file.type,
+    uploaded_by: uploadedBy,
+    is_private: false,
+  });
+  if (rowErr) {
+    await supabase.storage.from(PROJECT_FILES_BUCKET).remove([storagePath]);
+    throw rowErr;
+  }
+  return { path: storagePath, name: file.name, mime: file.type, size: file.size };
 }
 
 /**
