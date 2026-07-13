@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Building2, FolderKanban, Globe, Palette, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, Building2, FolderKanban, Globe, Loader2, Palette, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionNav } from "@/components/layout/SectionNav";
 import { Card } from "@/components/ui/card";
@@ -84,6 +84,8 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Users; label: string;
  */
 export default function BusinessDetail() {
   const { orgId } = useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: org, isLoading: orgLoading } = useOrgHeader(orgId);
   const { data: founder, isLoading: founderLoading } = useOrgFounder(orgId);
   const { data: members } = useAdminOrgMembers(orgId);
@@ -352,7 +354,77 @@ export default function BusinessDetail() {
           description="המנהל/ת שהוזמן/ה עדיין לא התחבר/ה בפעם הראשונה, כך שאין עדיין צוות, מותג או מידע אישי להצגה."
         />
       )}
+
+      <DangerZone
+        orgId={org.id}
+        orgName={brand?.business_name || org.name}
+        projectCount={orgProjects?.length ?? 0}
+        onDeleted={() => {
+          qc.invalidateQueries({ queryKey: ["admin-businesses"] });
+          navigate("/admin/businesses");
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * Admin "danger zone": hard-delete an EMPTY business. The `delete_organization`
+ * RPC (SECURITY DEFINER) refuses when the org still has projects, so the button
+ * is disabled in that case with an inline explanation - the server guard is the
+ * real gate, this is just to avoid a pointless failed click.
+ */
+function DangerZone({
+  orgId,
+  orgName,
+  projectCount,
+  onDeleted,
+}: {
+  orgId: string;
+  orgName: string;
+  projectCount: number;
+  onDeleted: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const hasProjects = projectCount > 0;
+
+  async function onDelete() {
+    if (hasProjects) return;
+    if (
+      !window.confirm(
+        `למחוק לצמיתות את "${orgName}"? הפעולה תמחק את חברי הצוות, המותג, הערות ה-CRM וסיכומי השיחות של העסק, ואינה ניתנת לשחזור.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    const { error } = await supabase.rpc("delete_organization", { p_org_id: orgId });
+    setDeleting(false);
+    if (error) return toastError(error.message || "מחיקת העסק נכשלה.");
+    toast({ title: "העסק נמחק", variant: "success" });
+    onDeleted();
+  }
+
+  return (
+    <Card className="space-y-3 border-destructive/40 p-5">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold text-destructive">
+        <AlertTriangle className="size-5" /> אזור מסוכן
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        מחיקת העסק מסירה לצמיתות את חברי הצוות, המותג, הערות ה-CRM וסיכומי השיחות שלו. אי אפשר לשחזר.
+      </p>
+      {hasProjects && (
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          לעסק הזה יש {projectCount} פרויקטים. מחק או העבר אותם לעסק אחר קודם, ואז אפשר יהיה למחוק את העסק.
+        </p>
+      )}
+      <div>
+        <Button variant="destructive" onClick={onDelete} disabled={deleting || hasProjects}>
+          {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          מחיקת העסק
+        </Button>
+      </div>
+    </Card>
   );
 }
 
