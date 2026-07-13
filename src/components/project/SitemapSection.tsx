@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { ChevronDown, CornerDownRight, FileText, Lightbulb, Network, Route } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { usePublishedSitemap } from "@/hooks/useDeliverables";
 import type { SitemapContent, SitemapPage } from "@/types/database";
 
-/** Client-facing "מפת האתר": the published sitemap as a page tree (main pages +
- *  sub-pages), each showing purpose, sections, and which journey stage it serves.
- *  Whole section is collapsible. Hidden when there is no published sitemap. */
+/** Client-facing "מפת האתר": the published sitemap as a page tree. Each page is
+ *  shown as a stacked "skeleton" of its sections in order (like the real page,
+ *  block by block) rather than a wall of chips/text. The order rationale is
+ *  tucked behind a small toggle. Whole section collapses; hidden when unpublished. */
 export function SitemapSection({ projectId }: { projectId: string }) {
   const { data } = usePublishedSitemap(projectId);
   const [open, setOpen] = useState(true);
@@ -42,29 +42,59 @@ export function SitemapSection({ projectId }: { projectId: string }) {
 function Serves({ serves }: { serves: string }) {
   if (!serves?.trim()) return null;
   return (
-    <span className="flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs text-primary">
+    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
       <Route className="size-3" />
       {serves}
     </span>
   );
 }
 
-function Sections({ sections }: { sections: string[] }) {
+/** The page's sections as a numbered vertical stack, mirroring how the blocks
+ *  are actually stacked on the page, top to bottom. */
+function SectionStack({ sections }: { sections: string[] }) {
   if (!sections?.length) return null;
   return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-col gap-1.5">
       {sections.map((s, i) => (
-        <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-          {s}
-        </span>
+        <div
+          key={i}
+          className="flex items-center gap-2.5 rounded-md bg-muted/50 px-3 py-2"
+        >
+          <span className="w-4 shrink-0 text-[11px] tabular-nums text-muted-foreground">{i + 1}</span>
+          <span className="text-sm font-medium text-foreground">{s}</span>
+        </div>
       ))}
+    </div>
+  );
+}
+
+/** Collapsible "why this order" note, closed by default to avoid a wall of text. */
+function OrderRationale({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  if (!text?.trim()) return null;
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-xs text-primary transition-colors hover:text-primary/80"
+      >
+        <Lightbulb className="size-3.5" />
+        למה הסדר הזה?
+        <ChevronDown className={cn("size-3.5 transition-transform", show && "rotate-180")} />
+      </button>
+      {show && (
+        <p className="mt-1.5 rounded-lg bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          {text}
+        </p>
+      )}
     </div>
   );
 }
 
 function PageCard({ p }: { p: SitemapPage }) {
   return (
-    <Card className="p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <FileText className="size-4 shrink-0 text-primary" />
@@ -73,13 +103,8 @@ function PageCard({ p }: { p: SitemapPage }) {
         <Serves serves={p.serves} />
       </div>
       {p.purpose && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.purpose}</p>}
-      <Sections sections={p.sections} />
-      {p.order_rationale?.trim() && (
-        <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-primary/5 px-2.5 py-1.5 text-xs leading-relaxed text-muted-foreground">
-          <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-primary" />
-          <span>{p.order_rationale}</span>
-        </p>
-      )}
+      <SectionStack sections={p.sections} />
+      <OrderRationale text={p.order_rationale ?? ""} />
 
       {p.children?.length > 0 && (
         <div className="mt-3 space-y-2 border-s-2 border-border ps-3">
@@ -93,11 +118,11 @@ function PageCard({ p }: { p: SitemapPage }) {
                 <Serves serves={c.serves} />
               </div>
               {c.purpose && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{c.purpose}</p>}
-              <Sections sections={c.sections} />
+              <SectionStack sections={c.sections} />
             </div>
           ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
