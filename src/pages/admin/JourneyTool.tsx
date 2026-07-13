@@ -41,6 +41,10 @@ export default function JourneyTool() {
   const { data: disc, isLoading: discLoading } = useProjectDiscoveryItems(projectId || null);
   const { data: deliverables } = useProjectDeliverables(projectId || null);
   const journey = (deliverables ?? []).find((d) => d.kind === "journey") ?? null;
+  const personaNames = (deliverables ?? [])
+    .filter((d) => d.kind === "persona")
+    .map((d) => (d.content as unknown as PersonaContent).name)
+    .filter(Boolean);
 
   const orgOptions = useMemo(
     () => [
@@ -159,6 +163,13 @@ export default function JourneyTool() {
               {generating ? "בונה מסע…" : journey ? "צור מחדש (AI)" : "צור מסע (AI)"}
             </Button>
           </div>
+        )}
+        {projectId && (
+          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {personaNames.length > 0
+              ? `המסע יתבסס על ${personaNames.length} פרסונות: ${personaNames.join(", ")}.`
+              : "לא נמצאו פרסונות לפרויקט הזה. מומלץ ליצור פרסונות קודם, כדי שהמסע יתבסס עליהן ויהיה מדויק יותר."}
+          </p>
         )}
       </Card>
 
