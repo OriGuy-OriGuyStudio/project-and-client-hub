@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Compass, ExternalLink, Network, Route, Sparkles, Users } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   usePublishedPersonas,
@@ -38,16 +39,18 @@ export function SiteBlueprintPanel({ projectId }: { projectId: string }) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <section className="space-y-4">
-        <CollapsibleTrigger className="flex w-full items-center gap-2 text-start">
-          <Compass className="size-5 text-primary" />
-          <h2 className="font-heading text-lg font-bold text-foreground">אפיון האתר</h2>
+      <Card>
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-5 text-start">
+          <div className="flex items-center gap-2">
+            <Compass className="size-5 text-primary" />
+            <span className="font-heading text-lg font-semibold text-foreground">אפיון האתר</span>
+          </div>
           <ChevronDown
-            className={cn("ms-auto size-5 text-muted-foreground transition-transform", open && "rotate-180")}
+            className={cn("size-5 text-muted-foreground transition-transform", open && "rotate-180")}
           />
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-4">
+        <CollapsibleContent className="space-y-4 px-5 pb-6">
           {share?.token && (
             <a
               href={`/discovery/${share.token}`}
@@ -88,7 +91,7 @@ export function SiteBlueprintPanel({ projectId }: { projectId: string }) {
             {activeKey === "sitemap" && <SitemapBody projectId={projectId} />}
           </div>
         </CollapsibleContent>
-      </section>
+      </Card>
     </Collapsible>
   );
 }
