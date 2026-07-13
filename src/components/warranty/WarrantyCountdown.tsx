@@ -1,7 +1,7 @@
 import { differenceInCalendarDays } from "date-fns";
 import { ShieldCheck, ShieldX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import type { Project } from "@/types/database";
 
 function formatHe(date: string) {
@@ -29,14 +29,11 @@ export function WarrantyBadge({ project }: { project: Project }) {
 export function WarrantyCountdown({ project }: { project: Project }) {
   if (!project.warranty_end_date) {
     return (
-      <Card className="p-5">
-        <h2 className="mb-1 font-heading text-lg font-semibold text-foreground">
-          תמיכה ואחריות
-        </h2>
+      <SectionShell icon={ShieldCheck} iconClass="text-muted-foreground" title="תמיכה ואחריות">
         <p className="text-sm text-muted-foreground">
           תקופת האחריות תיקבע עם השלמת הפרויקט.
         </p>
-      </Card>
+      </SectionShell>
     );
   }
 
@@ -45,18 +42,11 @@ export function WarrantyCountdown({ project }: { project: Project }) {
   const active = daysLeft >= 0;
 
   return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center gap-2">
-        {active ? (
-          <ShieldCheck className="size-5 text-brand-green-base" />
-        ) : (
-          <ShieldX className="size-5 text-muted-foreground" />
-        )}
-        <h2 className="font-heading text-lg font-semibold text-foreground">
-          תמיכה ואחריות - Studio Pro
-        </h2>
-      </div>
-
+    <SectionShell
+      icon={active ? ShieldCheck : ShieldX}
+      iconClass={active ? "text-brand-green-base" : "text-muted-foreground"}
+      title="תמיכה ואחריות - Studio Pro"
+    >
       {active ? (
         <p className="text-sm text-foreground">
           האחריות שלך פעילה עד:{" "}
@@ -70,6 +60,6 @@ export function WarrantyCountdown({ project }: { project: Project }) {
           תקופת האחריות הסתיימה ב-{formatHe(project.warranty_end_date)}.
         </p>
       )}
-    </Card>
+    </SectionShell>
   );
 }

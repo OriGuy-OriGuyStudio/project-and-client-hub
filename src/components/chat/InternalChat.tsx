@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MessagesSquare, Send } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,18 +97,14 @@ export function InternalChat({
   }
 
   return (
-    <Card className="flex h-[28rem] flex-col p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <MessagesSquare className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">
-            צ'אט פנימי
-          </h2>
-        </div>
-        <WhatsAppButton projectTitle={projectTitle} />
-      </div>
-
-      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto pe-1">
+    <SectionShell
+      icon={MessagesSquare}
+      iconClass="text-brand-cyan-base"
+      title="צ'אט פנימי"
+      actions={<WhatsAppButton projectTitle={projectTitle} />}
+    >
+      <div className="flex h-[24rem] flex-col">
+        <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto pe-1">
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -169,6 +165,7 @@ export function InternalChat({
           <Send className="size-4" />
         </Button>
       </div>
-    </Card>
+      </div>
+    </SectionShell>
   );
 }

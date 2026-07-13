@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { supabase } from "@/lib/supabase";
@@ -45,14 +45,7 @@ export function ActivityFeed({ projectId }: { projectId: string }) {
   }, [projectId, qc]);
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Activity className="size-5 text-brand-cyan-base" />
-        <h2 className="font-heading text-lg font-semibold text-foreground">
-          יומן פעילות
-        </h2>
-      </div>
-
+    <SectionShell icon={Activity} iconClass="text-brand-cyan-base" title="יומן פעילות">
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -78,6 +71,6 @@ export function ActivityFeed({ projectId }: { projectId: string }) {
           ))}
         </ol>
       )}
-    </Card>
+    </SectionShell>
   );
 }
