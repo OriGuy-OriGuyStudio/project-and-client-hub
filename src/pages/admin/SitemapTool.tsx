@@ -192,7 +192,7 @@ export default function SitemapTool() {
         {projectId && sitemap && (
           <Button asChild variant="secondary" size="sm">
             <Link to="/admin/tools/copy">
-              <PenLine className="size-4" /> צור קופי לעמודים
+              <PenLine className="size-4" /> צור פרומפטים לעמודים
             </Link>
           </Button>
         )}

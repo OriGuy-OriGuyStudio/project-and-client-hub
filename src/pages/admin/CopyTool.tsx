@@ -4,8 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   ChevronDown,
-  Eye,
-  EyeOff,
+  Copy,
   FileText,
   Loader2,
   PenLine,
@@ -18,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -114,7 +112,7 @@ export default function CopyTool() {
       return toastError("אין שיחת אפיון משויכת לפרויקט הזה.");
     }
     if (!sitemapRow) {
-      return toastError("צריך מפת אתר לפני יצירת קופי. צור מפת אתר קודם.");
+      return toastError("צריך מפת אתר לפני יצירת פרומפטים. צור מפת אתר קודם.");
     }
     setGenerating(true);
     const r = await generateCopy({
@@ -128,14 +126,14 @@ export default function CopyTool() {
     });
     if (!r.ok || !r.copy) {
       setGenerating(false);
-      return toastError(r.error || "יצירת הקופי נכשלה.");
+      return toastError(r.error || "יצירת הפרומפטים נכשלה.");
     }
     const project = projects?.find((p) => p.id === projectId);
     const row = {
       project_id: projectId,
       org_id: project?.org_id ?? null,
       kind: "copy" as const,
-      title: r.copy.title || "תוכן האתר",
+      title: r.copy.title || "פרומפטים לאתר",
       content: r.copy as unknown as Record<string, unknown>,
       status: "draft" as const,
     };
@@ -144,8 +142,8 @@ export default function CopyTool() {
       : supabase.from("project_deliverables").insert(row);
     const { error } = await q;
     setGenerating(false);
-    if (error) return toastError("שמירת הקופי נכשלה.");
-    toast({ title: "הקופי נוצר. אפשר לערוך ולפרסם.", variant: "success" });
+    if (error) return toastError("שמירת הפרומפטים נכשלה.");
+    toast({ title: "הפרומפטים נוצרו. אפשר לערוך ולהעתיק.", variant: "success" });
     qc.invalidateQueries({ queryKey: ["deliverables", projectId] });
   }
 
@@ -158,8 +156,8 @@ export default function CopyTool() {
           </Link>
         </Button>
         <PageHeader
-          title="מחולל קופי"
-          subtitle="בחר פרויקט, וה-AI יכתוב טיוטת קופי לכל עמוד וסקשן לפי מפת האתר. ערוך, ואז הצג ללקוח."
+          title="מחולל פרומפטים לתוכן"
+          subtitle="לכל עמוד וסקשן במפת האתר, פרומפט מפורט שאתה מזין ל-AI כדי לייצר את התוכן. כלי פנימי, לא מוצג ללקוח."
         />
       </div>
 
@@ -230,13 +228,13 @@ export default function CopyTool() {
             </p>
             <Button onClick={generate} disabled={generating || !disc?.found || !sitemapRow}>
               {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {generating ? "כותב קופי…" : copy ? "צור מחדש (AI)" : "צור קופי (AI)"}
+              {generating ? "כותב פרומפטים…" : copy ? "צור מחדש (AI)" : "צור פרומפטים (AI)"}
             </Button>
           </div>
         )}
         {projectId && sitemapRow && (
           <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {`הקופי יתבסס על שיחת האפיון, ${personaHints.length} פרסונות${journey ? ", מסע הלקוח" : ""} ומפת האתר, ויכתב ב${VOICE_OPTIONS.find((o) => o.value === voice)?.label} בטון ${TONE_OPTIONS.find((o) => o.value === tone)?.label}.`}
+            {`הפרומפטים יתבססו על שיחת האפיון, ${personaHints.length} פרסונות${journey ? ", מסע הלקוח" : ""} ומפת האתר, ויונחו ב${VOICE_OPTIONS.find((o) => o.value === voice)?.label} בטון ${TONE_OPTIONS.find((o) => o.value === tone)?.label}.`}
           </p>
         )}
         {projectId && !sitemapRow && (
@@ -250,12 +248,12 @@ export default function CopyTool() {
 
       {projectId &&
         (copy ? (
-          <CopyEditor d={copy} projectId={projectId} />
+          <PromptsEditor d={copy} projectId={projectId} />
         ) : (
           <EmptyState
             icon={PenLine}
-            title="אין עדיין קופי לפרויקט הזה"
-            description="לחץ 'צור קופי' כדי לייצר טיוטת תוכן מהאפיון, הפרסונות, המסע ומפת האתר."
+            title="אין עדיין פרומפטים לפרויקט הזה"
+            description="לחץ 'צור פרומפטים' כדי לייצר פרומפט מותאם לכל סקשן, מהאפיון, הפרסונות, המסע ומפת האתר."
           />
         ))}
     </div>
@@ -264,10 +262,7 @@ export default function CopyTool() {
 
 interface SectionForm {
   name: string;
-  heading: string;
-  subheading: string;
-  body: string;
-  cta: string;
+  prompt: string;
 }
 interface PageForm {
   name: string;
@@ -279,19 +274,16 @@ function toForm(c: CopyContent): PageForm[] {
     name: p.name ?? "",
     sections: (p.sections ?? []).map((s) => ({
       name: s.name ?? "",
-      heading: s.heading ?? "",
-      subheading: s.subheading ?? "",
-      body: s.body ?? "",
-      cta: s.cta ?? "",
+      prompt: s.prompt ?? "",
     })),
   }));
 }
 
-function CopyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string }) {
+function PromptsEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string }) {
   const qc = useQueryClient();
   const c = d.content as unknown as CopyContent;
   const [saving, setSaving] = useState(false);
-  const [title, setTitle] = useState(c.title ?? "תוכן האתר");
+  const [title, setTitle] = useState(c.title ?? "פרומפטים לאתר");
   const [pages, setPages] = useState<PageForm[]>(toForm(c));
 
   function patchSection(pi: number, si: number, patch: Partial<SectionForm>) {
@@ -304,22 +296,19 @@ function CopyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string
 
   function buildContent(): CopyContent {
     return {
-      title: title.trim() || "תוכן האתר",
+      title: title.trim() || "פרומפטים לאתר",
       pages: pages.map((p) => ({
         name: p.name.trim(),
         sections: p.sections.map((s) => ({
           name: s.name.trim(),
-          heading: s.heading.trim() || undefined,
-          subheading: s.subheading.trim() || undefined,
-          body: s.body.trim() || undefined,
-          cta: s.cta.trim() || undefined,
+          prompt: s.prompt.trim() || undefined,
         })),
       })),
       design_notes: (c.design_notes ?? "").trim(),
     };
   }
 
-  async function save(nextStatus?: "draft" | "published") {
+  async function save() {
     setSaving(true);
     const content = buildContent();
     const { error } = await supabase
@@ -327,65 +316,48 @@ function CopyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string
       .update({
         content: content as unknown as Record<string, unknown>,
         title: content.title,
-        status: nextStatus ?? d.status,
         updated_at: new Date().toISOString(),
       })
       .eq("id", d.id);
     setSaving(false);
     if (error) return toastError("השמירה נכשלה.");
-    toast({ title: nextStatus === "published" ? "פורסם ללקוח ✓" : "נשמר", variant: "success" });
+    toast({ title: "נשמר", variant: "success" });
     qc.invalidateQueries({ queryKey: ["deliverables", projectId] });
   }
 
   async function remove() {
-    if (!window.confirm("למחוק את הקופי?")) return;
+    if (!window.confirm("למחוק את הפרומפטים?")) return;
     const { error } = await supabase.from("project_deliverables").delete().eq("id", d.id);
     if (error) return toastError("המחיקה נכשלה.");
     qc.invalidateQueries({ queryKey: ["deliverables", projectId] });
   }
 
-  const published = d.status === "published";
-
   return (
     <div className="space-y-4">
-      <Card className="flex flex-wrap items-center justify-between gap-2 p-5">
+      <Card className="flex flex-wrap items-center gap-2 p-5">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="cp-title">שם</Label>
           <Input id="cp-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
         </div>
-        <Badge variant={published ? "success" : "warning"} className="mt-6">
-          {published ? "מוצג ללקוח" : "טיוטה"}
-        </Badge>
       </Card>
 
       {pages.map((p, pi) => (
-        <PageCopyCard key={pi} page={p} onPatch={(si, patch) => patchSection(pi, si, patch)} />
+        <PagePromptsCard key={pi} page={p} onPatch={(si, patch) => patchSection(pi, si, patch)} />
       ))}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" className="text-destructive" onClick={remove}>
-          <Trash2 className="size-4" /> מחיקת הקופי
+          <Trash2 className="size-4" /> מחיקת הפרומפטים
         </Button>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => save()} disabled={saving}>
-            {saving ? "שומר…" : "שמירה"}
-          </Button>
-          {published ? (
-            <Button variant="secondary" onClick={() => save("draft")} disabled={saving}>
-              <EyeOff className="size-4" /> הסתר מהלקוח
-            </Button>
-          ) : (
-            <Button onClick={() => save("published")} disabled={saving}>
-              <Eye className="size-4" /> הצג ללקוח
-            </Button>
-          )}
-        </div>
+        <Button onClick={save} disabled={saving}>
+          {saving ? "שומר…" : "שמירה"}
+        </Button>
       </div>
     </div>
   );
 }
 
-function PageCopyCard({
+function PagePromptsCard({
   page,
   onPatch,
 }: {
@@ -393,6 +365,16 @@ function PageCopyCard({
   onPatch: (si: number, patch: Partial<SectionForm>) => void;
 }) {
   const [open, setOpen] = useState(true);
+
+  async function copyPrompt(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "הפרומפט הועתק", variant: "success" });
+    } catch {
+      toastError("ההעתקה נכשלה, סמן והעתק ידנית.");
+    }
+  }
+
   return (
     <Card className="p-5">
       <Collapsible open={open} onOpenChange={setOpen}>
@@ -407,32 +389,24 @@ function PageCopyCard({
         <CollapsibleContent className="space-y-3 pt-3">
           {page.sections.map((s, si) => (
             <div key={si} className="space-y-2 rounded-xl border border-border bg-background/30 p-3">
-              <p className="text-sm font-semibold text-foreground">{s.name}</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                  value={s.heading}
-                  onChange={(e) => onPatch(si, { heading: e.target.value })}
-                  placeholder="כותרת"
-                  className="h-9"
-                />
-                <Input
-                  value={s.subheading}
-                  onChange={(e) => onPatch(si, { subheading: e.target.value })}
-                  placeholder="כותרת משנה"
-                  className="h-9"
-                />
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">{s.name}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
+                  onClick={() => copyPrompt(s.prompt)}
+                  disabled={!s.prompt.trim()}
+                >
+                  <Copy className="size-3.5" /> העתק
+                </Button>
               </div>
               <Textarea
-                value={s.body}
-                onChange={(e) => onPatch(si, { body: e.target.value })}
-                placeholder="טקסט תוכן"
-                rows={2}
-              />
-              <Input
-                value={s.cta}
-                onChange={(e) => onPatch(si, { cta: e.target.value })}
-                placeholder="טקסט כפתור (CTA)"
-                className="h-9"
+                value={s.prompt}
+                onChange={(e) => onPatch(si, { prompt: e.target.value })}
+                placeholder="פרומפט לסקשן"
+                rows={5}
               />
             </div>
           ))}

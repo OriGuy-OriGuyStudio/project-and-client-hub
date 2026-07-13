@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Compass, ExternalLink, Network, PenLine, Route, Sparkles, Users } from "lucide-react";
+import { ChevronDown, Compass, ExternalLink, Network, Route, Sparkles, Users } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -7,13 +7,11 @@ import {
   usePublishedPersonas,
   usePublishedJourney,
   usePublishedSitemap,
-  usePublishedCopy,
   useProjectDiscoveryShare,
 } from "@/hooks/useDeliverables";
 import { PersonaBody } from "@/components/project/PersonaSection";
 import { JourneyBody } from "@/components/project/JourneySection";
 import { SitemapBody } from "@/components/project/SitemapSection";
-import { CopyBody } from "@/components/project/CopyBody";
 
 /**
  * "אפיון האתר": one collapsible panel that consolidates the three discovery
@@ -26,7 +24,6 @@ export function SiteBlueprintPanel({ projectId }: { projectId: string }) {
   const { data: personas } = usePublishedPersonas(projectId);
   const { data: journey } = usePublishedJourney(projectId);
   const { data: sitemap } = usePublishedSitemap(projectId);
-  const { data: copy } = usePublishedCopy(projectId);
   const { data: share } = useProjectDiscoveryShare(projectId);
   const [open, setOpen] = useState(true);
   const [active, setActive] = useState<string | null>(null);
@@ -35,7 +32,6 @@ export function SiteBlueprintPanel({ projectId }: { projectId: string }) {
     { key: "persona", label: "פרסונות", icon: Users, has: (personas?.length ?? 0) > 0 },
     { key: "journey", label: "מסע לקוח", icon: Route, has: !!journey },
     { key: "sitemap", label: "מפת אתר", icon: Network, has: !!sitemap },
-    { key: "copy", label: "תוכן", icon: PenLine, has: !!copy },
   ].filter((t) => t.has);
 
   if (tabs.length === 0) return null;
@@ -93,7 +89,6 @@ export function SiteBlueprintPanel({ projectId }: { projectId: string }) {
             {activeKey === "persona" && <PersonaBody projectId={projectId} />}
             {activeKey === "journey" && <JourneyBody projectId={projectId} />}
             {activeKey === "sitemap" && <SitemapBody projectId={projectId} />}
-            {activeKey === "copy" && <CopyBody projectId={projectId} />}
           </div>
         </CollapsibleContent>
       </Card>

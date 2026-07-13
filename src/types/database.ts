@@ -875,27 +875,25 @@ export type SitemapContent = {
   design_notes: string;
 };
 
-/** One section's drafted copy (only the fields relevant to that section type). */
+/** One section's generation prompt. */
 export type SiteCopySection = {
   name: string;
-  heading?: string;
-  subheading?: string;
-  body?: string;
-  cta?: string;
+  /** A ready-to-use generation PROMPT for this section (admin tool, not client copy). */
+  prompt?: string;
 };
 
-/** A page's copy, following the sitemap page/section structure. */
+/** A page's section prompts, following the sitemap page/section structure. */
 export type SiteCopyPage = {
   name: string;
   sections: SiteCopySection[];
 };
 
-/** Structured content of a `copy` deliverable: AI-drafted page copy that mirrors
- *  the project's sitemap. Lives beside the sitemap, not inside it. */
+/** Structured content of a `copy` deliverable: per-section generation PROMPTS the
+ *  studio uses to produce content. Admin-only, never shown to the client. */
 export type CopyContent = {
   title: string;
   pages: SiteCopyPage[];
-  /** Admin-only voice/tone notes; not shown to the client. */
+  /** Admin-only voice/tone notes. */
   design_notes: string;
 };
 

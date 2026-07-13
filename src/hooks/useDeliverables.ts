@@ -100,27 +100,6 @@ export function useProjectDiscoveryShare(projectId: string | null | undefined) {
   });
 }
 
-/** The published copy (single) for a project, for the client project page. */
-export function usePublishedCopy(projectId: string | null | undefined) {
-  return useQuery({
-    queryKey: ["published-copy", projectId],
-    enabled: !!projectId,
-    queryFn: async (): Promise<ProjectDeliverable | null> => {
-      const { data, error } = await supabase
-        .from("project_deliverables")
-        .select("*")
-        .eq("project_id", projectId!)
-        .eq("kind", "copy")
-        .eq("status", "published")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as ProjectDeliverable | null) ?? null;
-    },
-  });
-}
-
 export interface DiscoveryForGen {
   title: string;
   items: { question: string; answer: string }[];
