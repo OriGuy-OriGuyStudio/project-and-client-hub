@@ -832,6 +832,26 @@ export type PersonaContent = {
   avatar_url: string | null;
 };
 
+/** One stage of a customer-journey-map deliverable. */
+export type JourneyStage = {
+  name: string;
+  goal: string;
+  /** Short emotion label at this stage (drives the emotional-arc colour). */
+  emotion: string;
+  touchpoints: string[];
+  pains: string[];
+  /** What the studio does at this stage (the payoff / opportunity). */
+  actions: string[];
+};
+
+/** Structured content of a `journey` deliverable (content jsonb). */
+export type JourneyContent = {
+  title: string;
+  stages: JourneyStage[];
+  /** Admin-only UX/design guidance; not shown to the client. */
+  design_notes: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {

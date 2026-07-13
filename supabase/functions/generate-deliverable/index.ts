@@ -145,6 +145,109 @@ async function generatePersonas(apiKey: string, title: string, items: Item[]) {
   };
 }
 
+function journeyPrompt(title: string, items: Item[]): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+  return [
+    "אתה מעצב UX/UI בכיר מאוד (15+ שנים) שבונה מפת מסע לקוח (Customer Journey Map) לקראת עיצוב אתר, על בסיס שיחת אפיון.",
+    "עקרונות: התבסס רק על מה שנאמר בשיחה, בלי להמציא. כל פרט חייב להשפיע על החלטת עיצוב או קופי. ריאליסטי ולא סטריאוטיפ. עברית מדוברת וטבעית, בלי מקף ארוך, בלי באזזוורדס, בלי סימני קריאה מוגזמים.",
+    "בנה מסע של 4 עד 6 שלבים לפי סדר כרונולוגי, מהרגע שהלקוח נעשה מודע לצורך ועד אחרי ההמרה והשימור. התאם את שמות השלבים לעסק.",
+    "לכל שלב מלא:",
+    "- name: שם השלב.",
+    "- goal: מה הלקוח רוצה להשיג בשלב הזה.",
+    "- emotion: מילה או שתיים על איך הוא מרגיש בשלב הזה.",
+    "- touchpoints: נקודות המגע (איפה ואיך הוא נתקל בעסק בשלב הזה).",
+    "- pains: כאבים וחסמים בשלב הזה.",
+    "- actions: מה אנחנו עושים באתר או בשירות כדי לעזור לו לעבור לשלב הבא (מזין ישירות עיצוב וקופי).",
+    "בנוסף: title קצר למסע, ו-design_notes עם המלצות עיצוב וקופי כלליות למסע (פנימי, לא ללקוח).",
+    "פרטי העסק: " + title,
+    "מתוך שיחת האפיון:",
+    data,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].join(NL);
+}
+
+const JOURNEY_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    stages: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          goal: { type: "STRING" },
+          emotion: { type: "STRING" },
+          touchpoints: { type: "ARRAY", items: { type: "STRING" } },
+          pains: { type: "ARRAY", items: { type: "STRING" } },
+          actions: { type: "ARRAY", items: { type: "STRING" } },
+        },
+        required: ["name", "goal", "emotion", "touchpoints", "pains", "actions"],
+      },
+    },
+    design_notes: { type: "STRING" },
+  },
+  required: ["title", "stages", "design_notes"],
+};
+
+async function generateJourney(apiKey: string, title: string, items: Item[]) {
+  const prompt = journeyPrompt(title, items);
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.8,
+      maxOutputTokens: 4000,
+      responseMimeType: "application/json",
+      responseSchema: JOURNEY_SCHEMA,
+    };
+    if (model.startsWith("gemini-2.5")) {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let journey: any;
+      try {
+        journey = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!journey || !Array.isArray(journey.stages) || journey.stages.length === 0) {
+        return { ok: false, status: 502, error: "לא נוצר מסע. נסה שוב." };
+      }
+      return { ok: true, journey };
+    }
+    const detail = await res.text();
+    console.error("gemini journey error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 function imagePrompt(persona: any): string {
   const g = persona?.gender === "female" ? "woman" : "man";
   return [
@@ -219,7 +322,8 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = body?.mode === "image" ? "image" : "personas";
+  const mode =
+    body?.mode === "image" ? "image" : body?.mode === "journey" ? "journey" : "personas";
 
   if (mode === "image") {
     if (!body?.persona) return json({ ok: false, error: "missing persona" }, 400);
@@ -233,6 +337,12 @@ Deno.serve(async (req) => {
   const items = raw.filter((i) => (i?.answer ?? "").trim().length > 0);
   if (items.length === 0) {
     return json({ ok: false, error: "אין תשובות אפיון לעבוד מהן. מלא את שיחת האפיון קודם." }, 400);
+  }
+
+  if (mode === "journey") {
+    const jr = await generateJourney(apiKey, title, items);
+    if (!jr.ok) return json({ ok: false, error: jr.error }, jr.status ?? 502);
+    return json({ ok: true, journey: jr.journey });
   }
 
   const result = await generatePersonas(apiKey, title, items);
