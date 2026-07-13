@@ -1095,6 +1095,7 @@ export interface Database {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
       clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
       reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
+      delete_organization: { Args: { p_org_id: string }; Returns: undefined };
       is_demo_account: { Args: { p_uid: string }; Returns: boolean };
       promote_dev_feedback: { Args: { p_id: string }; Returns: string };
       apply_guide_template: { Args: { p_project_id: string; p_template_id: string }; Returns: string };
