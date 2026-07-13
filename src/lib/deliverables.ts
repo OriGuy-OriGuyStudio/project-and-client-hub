@@ -1,6 +1,34 @@
 import { supabase } from "./supabase";
 import { fnErrorMessage } from "./invite";
-import type { JourneyContent, PersonaContent, SitemapContent } from "@/types/database";
+import type { CopyContent, JourneyContent, PersonaContent, SitemapContent } from "@/types/database";
+
+/** Generate page/section copy that follows the project's sitemap, grounded in the
+ *  discovery + personas + journey. Requires an existing sitemap. */
+export async function generateCopy(payload: {
+  title: string;
+  items: { question: string; answer: string }[];
+  personas?: JourneyPersonaHint[];
+  journey?: JourneyContent | null;
+  sitemap: SitemapContent;
+}): Promise<{ ok: boolean; copy?: CopyContent; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "copy",
+        title: payload.title,
+        items: payload.items,
+        personas: payload.personas ?? [],
+        journey: payload.journey ?? null,
+        sitemap: payload.sitemap,
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    return { ok: true, copy: data?.copy as CopyContent };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 /** Generate a sitemap tree, grounded in the project's personas + journey. */
 export async function generateSitemap(payload: {

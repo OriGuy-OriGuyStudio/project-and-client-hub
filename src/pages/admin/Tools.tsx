@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UsersRound, Route as RouteIcon, Network, Sparkles } from "lucide-react";
+import { UsersRound, Route as RouteIcon, Network, PenLine, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,13 @@ const TOOLS = [
     icon: Network,
     title: "מפת אתר",
     desc: "עץ עמודים וסקשנים, נגזר מהאפיון, מהפרסונות וממסע הלקוח. עריכה והצגה בעמוד הפרויקט.",
+    ready: true,
+  },
+  {
+    to: "/admin/tools/copy",
+    icon: PenLine,
+    title: "מחולל קופי",
+    desc: "טיוטת קופי לכל עמוד וסקשן, בקול המותג ולפי מפת האתר. עריכה והצגה בעמוד הפרויקט.",
     ready: true,
   },
 ];

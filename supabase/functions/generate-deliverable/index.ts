@@ -412,6 +412,144 @@ function journeyToText(journey: any): string {
     : "";
 }
 
+// Flatten the sitemap's pages + sections so the copywriter knows exactly what to
+// write for (same page + section names, in the same order).
+function sitemapPagesText(sitemap: any): string {
+  const pages = sitemap && Array.isArray(sitemap.pages) ? sitemap.pages : [];
+  return pages
+    .map((p: any) => {
+      const secs = Array.isArray(p?.sections) ? p.sections.join(", ") : "";
+      return "- עמוד: " + (p?.name ?? "") + " | סקשנים: " + secs;
+    })
+    .join(NL);
+}
+
+function copyPrompt(
+  title: string,
+  items: Item[],
+  personasText: string,
+  journeyText: string,
+  sitemap: any,
+): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+  return [
+    "אתה קופירייטר בכיר מאוד בעברית שכותב קופי לאתר, בקול הסטודיו של אורי גיא.",
+    "עקרונות: עברית טבעית ומדוברת, ממוקדת בלקוח (בפרסונות), משכנעת אך לא מכירתית-אגרסיבית. אל תמציא עובדות או מספרים שלא עלו בשיחה. אסור: מקף ארוך (—), באזזוורדס ('ערך מוסף', 'סינרגיה'), סימני קריאה מוגזמים, קלישאות, שלשות תארים.",
+    personasText ? "פרסונות היעד:\n" + personasText : "",
+    journeyText ? "שלבי מסע הלקוח:\n" + journeyText : "",
+    "מבנה האתר (מפת האתר) שאתה כותב לו קופי:\n" + sitemapPagesText(sitemap),
+    "כתוב טיוטת קופי לכל עמוד ולכל סקשן בו. מלא רק את השדות שרלוונטיים לסוג הסקשן:",
+    "- heading: כותרת הסקשן.",
+    "- subheading: כותרת משנה, אם מתאים.",
+    "- body: פסקת תוכן, אם הסקשן דורש טקסט מוסבר.",
+    "- cta: טקסט לכפתור הנעה לפעולה, אם הסקשן כולל כזה.",
+    "לדוגמה: הירו = heading + subheading + cta; אודות = heading + body; אזור הנעה לפעולה = heading + cta; אזור יתרונות = heading + body קצר.",
+    "החזר בדיוק את אותם עמודים ואותם סקשנים כמו במפה, לפי אותם שמות ובאותו סדר.",
+    "פרטי העסק: " + title,
+    "מתוך שיחת האפיון:",
+    data,
+    "בנוסף: title קצר, ו-design_notes עם הערות טון וקול פנימיות (לא ללקוח).",
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const COPY_SECTION_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    heading: { type: "STRING" },
+    subheading: { type: "STRING" },
+    body: { type: "STRING" },
+    cta: { type: "STRING" },
+  },
+  required: ["name"],
+};
+
+const COPY_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    pages: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          sections: { type: "ARRAY", items: COPY_SECTION_SCHEMA },
+        },
+        required: ["name", "sections"],
+      },
+    },
+    design_notes: { type: "STRING" },
+  },
+  required: ["title", "pages", "design_notes"],
+};
+
+async function generateCopy(
+  apiKey: string,
+  title: string,
+  items: Item[],
+  personasText: string,
+  journeyText: string,
+  sitemap: any,
+) {
+  const prompt = copyPrompt(title, items, personasText, journeyText, sitemap);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.85,
+      maxOutputTokens: 8000,
+      responseMimeType: "application/json",
+      responseSchema: COPY_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let copy: any;
+      try {
+        copy = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!copy || !Array.isArray(copy.pages) || copy.pages.length === 0) {
+        return { ok: false, status: 502, error: "לא נוצר קופי. נסה שוב." };
+      }
+      return { ok: true, copy };
+    }
+    const detail = await res.text();
+    console.error("gemini copy error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 // Per-page AI helpers for the sitemap editor: task = "sections" | "reorder" | "subpages".
 async function generateAssist(
   apiKey: string,
@@ -576,7 +714,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = ["image", "journey", "sitemap", "sitemap_assist"].includes(body?.mode)
+  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy"].includes(body?.mode)
     ? body.mode
     : "personas";
 
@@ -604,6 +742,22 @@ Deno.serve(async (req) => {
   const items = raw.filter((i) => (i?.answer ?? "").trim().length > 0);
   if (items.length === 0) {
     return json({ ok: false, error: "אין תשובות אפיון לעבוד מהן. מלא את שיחת האפיון קודם." }, 400);
+  }
+
+  if (mode === "copy") {
+    if (!body?.sitemap?.pages?.length) {
+      return json({ ok: false, error: "צריך מפת אתר לפני יצירת קופי. צור מפת אתר קודם." }, 400);
+    }
+    const cp = await generateCopy(
+      apiKey,
+      title,
+      items,
+      personasToText(body?.personas),
+      journeyToText(body?.journey),
+      body.sitemap,
+    );
+    if (!cp.ok) return json({ ok: false, error: cp.error }, cp.status ?? 502);
+    return json({ ok: true, copy: cp.copy });
   }
 
   if (mode === "journey" || mode === "sitemap") {

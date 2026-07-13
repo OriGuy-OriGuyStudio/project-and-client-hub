@@ -875,13 +875,37 @@ export type SitemapContent = {
   design_notes: string;
 };
 
+/** One section's drafted copy (only the fields relevant to that section type). */
+export type SiteCopySection = {
+  name: string;
+  heading?: string;
+  subheading?: string;
+  body?: string;
+  cta?: string;
+};
+
+/** A page's copy, following the sitemap page/section structure. */
+export type SiteCopyPage = {
+  name: string;
+  sections: SiteCopySection[];
+};
+
+/** Structured content of a `copy` deliverable: AI-drafted page copy that mirrors
+ *  the project's sitemap. Lives beside the sitemap, not inside it. */
+export type CopyContent = {
+  title: string;
+  pages: SiteCopyPage[];
+  /** Admin-only voice/tone notes; not shown to the client. */
+  design_notes: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
   id: string;
   project_id: string;
   org_id: string | null;
-  kind: "persona" | "journey" | "sitemap";
+  kind: "persona" | "journey" | "sitemap" | "copy";
   title: string | null;
   content: Record<string, unknown>;
   status: "draft" | "published";

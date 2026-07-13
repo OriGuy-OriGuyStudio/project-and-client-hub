@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Loader2,
   Network,
+  PenLine,
   Plus,
   Sparkles,
   Trash2,
@@ -187,6 +188,13 @@ export default function SitemapTool() {
           <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             {`המפה תתבסס על שיחת האפיון, ${personaCount} פרסונות${hasJourney ? " ומסע הלקוח" : " (אין עדיין מסע לקוח, מומלץ ליצור אותו קודם)"}.`}
           </p>
+        )}
+        {projectId && sitemap && (
+          <Button asChild variant="secondary" size="sm">
+            <Link to="/admin/tools/copy">
+              <PenLine className="size-4" /> צור קופי לעמודים
+            </Link>
+          </Button>
         )}
       </Card>
 
