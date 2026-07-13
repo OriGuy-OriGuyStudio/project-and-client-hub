@@ -6,7 +6,6 @@ import {
   MapPin,
   Target,
   UserRound,
-  Users,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,30 +14,17 @@ import { cn } from "@/lib/utils";
 import { usePublishedPersonas } from "@/hooks/useDeliverables";
 import type { PersonaContent } from "@/types/database";
 
-/** Client-facing "קהל היעד" section: the published personas for a project,
- *  stacked one below the other, each a collapsible card. Hidden when none. */
-export function PersonaSection({ projectId }: { projectId: string }) {
+/** Client-facing personas ("קהל היעד"), stacked as collapsible cards. Rendered
+ *  as the "פרסונות" tab body inside the site-blueprint panel; null when none. */
+export function PersonaBody({ projectId }: { projectId: string }) {
   const { data } = usePublishedPersonas(projectId);
-  const [open, setOpen] = useState(true);
   if (!data || data.length === 0) return null;
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <section className="space-y-3">
-        <CollapsibleTrigger className="flex w-full items-center gap-2 text-start">
-          <Users className="size-5 text-primary" />
-          <h2 className="font-heading text-lg font-bold text-foreground">קהל היעד</h2>
-          <ChevronDown
-            className={cn("ms-auto size-5 text-muted-foreground transition-transform", open && "rotate-180")}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-3">
-          {data.map((d, i) => (
-            <PersonaCard key={d.id} p={d.content as unknown as PersonaContent} defaultOpen={i === 0} />
-          ))}
-        </CollapsibleContent>
-      </section>
-    </Collapsible>
+    <div className="space-y-3">
+      {data.map((d, i) => (
+        <PersonaCard key={d.id} p={d.content as unknown as PersonaContent} defaultOpen={i === 0} />
+      ))}
+    </div>
   );
 }
 

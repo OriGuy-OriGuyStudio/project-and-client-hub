@@ -83,6 +83,23 @@ export function usePublishedSitemap(projectId: string | null | undefined) {
   });
 }
 
+/** The public share link (token + title) for a project's discovery-call summary,
+ *  or null when there's no shareable summary. Works for org members too (the RPC
+ *  is definer), so the client project page can link to /discovery/<token>. */
+export function useProjectDiscoveryShare(projectId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["discovery-share", projectId],
+    enabled: !!projectId,
+    queryFn: async (): Promise<{ token: string; title: string } | null> => {
+      const { data, error } = await supabase.rpc("get_project_discovery_share", {
+        p_project_id: projectId!,
+      });
+      if (error) throw error;
+      return (data as { token: string; title: string } | null) ?? null;
+    },
+  });
+}
+
 export interface DiscoveryForGen {
   title: string;
   items: { question: string; answer: string }[];

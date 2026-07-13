@@ -1124,6 +1124,10 @@ export interface Database {
         Args: { p_client_id: string; p_business_name: string };
         Returns: { status: string; org_id: string };
       };
+      get_project_discovery_share: {
+        Args: { p_project_id: string };
+        Returns: { token: string; title: string } | null;
+      };
       is_demo_account: { Args: { p_uid: string }; Returns: boolean };
       promote_dev_feedback: { Args: { p_id: string }; Returns: string };
       apply_guide_template: { Args: { p_project_id: string; p_template_id: string }; Returns: string };

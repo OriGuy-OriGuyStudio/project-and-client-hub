@@ -1,41 +1,24 @@
 import { useState } from "react";
-import { ChevronDown, CornerDownRight, FileText, Lightbulb, Network, Route } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, CornerDownRight, FileText, Lightbulb, Route } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePublishedSitemap } from "@/hooks/useDeliverables";
 import type { SitemapContent, SitemapPage } from "@/types/database";
 
-/** Client-facing "מפת האתר": the published sitemap as a page tree. Each page is
- *  shown as a stacked "skeleton" of its sections in order (like the real page,
- *  block by block) rather than a wall of chips/text. The order rationale is
- *  tucked behind a small toggle. Whole section collapses; hidden when unpublished. */
-export function SitemapSection({ projectId }: { projectId: string }) {
+/** Client-facing sitemap as a page tree. Each page is a stacked "skeleton" of its
+ *  sections in order (like the real page, block by block) rather than a wall of
+ *  chips; the order rationale is tucked behind a toggle. The "מפת אתר" tab body of
+ *  the site-blueprint panel; null when there is no published sitemap. */
+export function SitemapBody({ projectId }: { projectId: string }) {
   const { data } = usePublishedSitemap(projectId);
-  const [open, setOpen] = useState(true);
   if (!data) return null;
   const sitemap = data.content as unknown as SitemapContent;
   if (!sitemap.pages?.length) return null;
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <section className="space-y-3">
-        <CollapsibleTrigger className="flex w-full items-center gap-2 text-start">
-          <Network className="size-5 text-primary" />
-          <h2 className="font-heading text-lg font-bold text-foreground">
-            {sitemap.title?.trim() || "מפת האתר"}
-          </h2>
-          <ChevronDown
-            className={cn("ms-auto size-5 text-muted-foreground transition-transform", open && "rotate-180")}
-          />
-        </CollapsibleTrigger>
-
-        <CollapsibleContent className="space-y-3">
-          {sitemap.pages.map((p, i) => (
-            <PageCard key={i} p={p} />
-          ))}
-        </CollapsibleContent>
-      </section>
-    </Collapsible>
+    <div className="space-y-3">
+      {sitemap.pages.map((p, i) => (
+        <PageCard key={i} p={p} />
+      ))}
+    </div>
   );
 }
 
