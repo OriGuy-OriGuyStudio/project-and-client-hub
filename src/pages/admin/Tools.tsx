@@ -13,7 +13,13 @@ const TOOLS = [
     desc: "יצירת פרסונות ללקוח מתוך שיחת האפיון, עם תמונה, בלחיצה. אתה עורך ומפרסם לעמוד הפרויקט.",
     ready: true,
   },
-  { icon: RouteIcon, title: "מסע לקוח", desc: "בקרוב, על אותה תשתית.", ready: false },
+  {
+    to: "/admin/tools/journey",
+    icon: RouteIcon,
+    title: "מסע לקוח",
+    desc: "מפת מסע לקוח מהאפיון, שלבים עם רגשות, כאבים ומה אנחנו עושים. עריכה והצגה בעמוד הפרויקט.",
+    ready: true,
+  },
   { icon: Network, title: "מפת אתר", desc: "בקרוב, על אותה תשתית.", ready: false },
 ];
 
