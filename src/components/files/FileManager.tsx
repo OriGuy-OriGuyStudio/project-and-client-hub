@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -241,12 +241,11 @@ export function FileManager({
   const folderRecord = (name: string) => folderRows?.find((f) => f.name === name);
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">קבצים ותיקיות</h2>
-        </div>
+    <SectionShell
+      icon={FolderOpen}
+      iconClass="text-brand-cyan-base"
+      title="קבצים ותיקיות"
+      actions={
         <div className="flex flex-wrap items-center gap-2">
           {canManageFiles && (
             <Button size="sm" variant="ghost" onClick={() => setAddingFolder((v) => !v)}>
@@ -272,8 +271,8 @@ export function FileManager({
             accept=".jpg,.jpeg,.png,.webp,.svg,.pdf,.doc,.docx,.zip"
           />
         </div>
-      </div>
-
+      }
+    >
       {addingFolder && canManageFiles && (
         <div className="mb-4 flex items-center gap-2">
           <Input
@@ -413,7 +412,7 @@ export function FileManager({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </SectionShell>
   );
 }
 

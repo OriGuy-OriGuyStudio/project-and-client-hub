@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListChecks, Lock, Plus, Trash2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -83,19 +83,18 @@ export function TasksSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ListChecks className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">משימות</h2>
-        </div>
-        {isAdmin && (
+    <SectionShell
+      icon={ListChecks}
+      iconClass="text-brand-cyan-base"
+      title="משימות"
+      actions={
+        isAdmin ? (
           <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
             <Plus className="size-4" /> משימה
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {isAdmin && open && (
         <div className="mb-4 space-y-2 rounded-xl border border-border bg-background/30 p-3">
           <Input
@@ -188,6 +187,6 @@ export function TasksSection({
           })}
         </div>
       )}
-    </Card>
+    </SectionShell>
   );
 }

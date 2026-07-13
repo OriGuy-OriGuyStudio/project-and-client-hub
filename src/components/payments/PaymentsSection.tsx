@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@/components/ui/badge";
@@ -119,19 +119,18 @@ export function PaymentsSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <CreditCard className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">תשלומים</h2>
-        </div>
-        {isAdmin && (
+    <SectionShell
+      icon={CreditCard}
+      iconClass="text-brand-cyan-base"
+      title="תשלומים"
+      actions={
+        isAdmin ? (
           <Button size="sm" variant="ghost" onClick={toggleAdd}>
             <Plus className="size-4" /> תשלום
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {isAdmin && open && (
         <div className="mb-4 space-y-2 rounded-xl border border-border bg-background/30 p-3">
           <Input
@@ -255,6 +254,6 @@ export function PaymentsSection({
           })}
         </div>
       )}
-    </Card>
+    </SectionShell>
   );
 }

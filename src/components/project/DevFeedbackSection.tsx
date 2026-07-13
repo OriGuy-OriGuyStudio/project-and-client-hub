@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { SectionShell } from "@/components/project/SectionShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,19 +122,18 @@ export function DevFeedbackSection({
   }
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Bug className="size-5 text-brand-cyan-base" />
-          <h2 className="font-heading text-lg font-semibold text-foreground">הערות פיתוח</h2>
-        </div>
-        {canWrite && (
+    <SectionShell
+      icon={Bug}
+      iconClass="text-brand-cyan-base"
+      title="הערות פיתוח"
+      actions={
+        canWrite ? (
           <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
             <Plus className="size-4" /> הערה
           </Button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {!isAdmin && canWrite && (
         <p className="mb-3 text-xs text-muted-foreground">
           ראית משהו באתר שצריך תיקון או שיפור? כתוב לי כאן, אפשר לצרף צילום מסך, ואני אטפל בזה.
@@ -219,7 +218,7 @@ export function DevFeedbackSection({
           ))}
         </div>
       )}
-    </Card>
+    </SectionShell>
   );
 }
 
