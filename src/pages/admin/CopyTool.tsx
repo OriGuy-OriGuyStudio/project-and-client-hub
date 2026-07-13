@@ -28,7 +28,12 @@ import { toast, toastError } from "@/hooks/use-toast";
 import { useProjects } from "@/hooks/useProjects";
 import { useBusinesses } from "@/hooks/useBusinesses";
 import { useProjectDeliverables, useProjectDiscoveryItems } from "@/hooks/useDeliverables";
-import { generateCopy, type JourneyPersonaHint } from "@/lib/deliverables";
+import {
+  generateCopy,
+  type CopyTone,
+  type CopyVoice,
+  type JourneyPersonaHint,
+} from "@/lib/deliverables";
 import type {
   CopyContent,
   JourneyContent,
@@ -37,12 +42,27 @@ import type {
   ProjectDeliverable,
 } from "@/types/database";
 
+const VOICE_OPTIONS = [
+  { value: "first_singular", label: "גוף ראשון יחיד (אני)" },
+  { value: "first_plural", label: "גוף ראשון רבים (אנחנו)" },
+  { value: "third", label: "גוף שלישי (שם העסק)" },
+];
+const TONE_OPTIONS = [
+  { value: "warm", label: "חם ואישי" },
+  { value: "professional", label: "מקצועי ואמין" },
+  { value: "energetic", label: "אנרגטי ושיווקי" },
+  { value: "calm", label: "רגוע ומרגיע" },
+  { value: "luxury", label: "יוקרתי ומעודן" },
+];
+
 export default function CopyTool() {
   const qc = useQueryClient();
   const { data: projects } = useProjects();
   const { data: businesses } = useBusinesses();
   const [orgId, setOrgId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [voice, setVoice] = useState<CopyVoice>("first_singular");
+  const [tone, setTone] = useState<CopyTone>("warm");
   const [generating, setGenerating] = useState(false);
 
   const { data: disc, isLoading: discLoading } = useProjectDiscoveryItems(projectId || null);
@@ -103,6 +123,8 @@ export default function CopyTool() {
       personas: personaHints,
       journey,
       sitemap: sitemapRow.content as unknown as SitemapContent,
+      voice,
+      tone,
     });
     if (!r.ok || !r.copy) {
       setGenerating(false);
@@ -169,6 +191,32 @@ export default function CopyTool() {
             />
           </div>
         )}
+        {projectId && sitemapRow && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cp-voice">גוף הכתיבה</Label>
+              <SelectMenu
+                id="cp-voice"
+                variant="field"
+                ariaLabel="גוף הכתיבה"
+                value={voice}
+                onChange={(v) => setVoice(v as CopyVoice)}
+                options={VOICE_OPTIONS}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cp-tone">טון הכתיבה</Label>
+              <SelectMenu
+                id="cp-tone"
+                variant="field"
+                ariaLabel="טון הכתיבה"
+                value={tone}
+                onChange={(v) => setTone(v as CopyTone)}
+                options={TONE_OPTIONS}
+              />
+            </div>
+          </div>
+        )}
         {projectId && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
@@ -188,7 +236,7 @@ export default function CopyTool() {
         )}
         {projectId && sitemapRow && (
           <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {`הקופי יתבסס על שיחת האפיון, ${personaHints.length} פרסונות${journey ? ", מסע הלקוח" : ""} ומפת האתר.`}
+            {`הקופי יתבסס על שיחת האפיון, ${personaHints.length} פרסונות${journey ? ", מסע הלקוח" : ""} ומפת האתר, ויכתב ב${VOICE_OPTIONS.find((o) => o.value === voice)?.label} בטון ${TONE_OPTIONS.find((o) => o.value === tone)?.label}.`}
           </p>
         )}
         {projectId && !sitemapRow && (

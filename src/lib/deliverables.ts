@@ -4,12 +4,17 @@ import type { CopyContent, JourneyContent, PersonaContent, SitemapContent } from
 
 /** Generate page/section copy that follows the project's sitemap, grounded in the
  *  discovery + personas + journey. Requires an existing sitemap. */
+export type CopyVoice = "first_singular" | "first_plural" | "third";
+export type CopyTone = "warm" | "professional" | "energetic" | "calm" | "luxury";
+
 export async function generateCopy(payload: {
   title: string;
   items: { question: string; answer: string }[];
   personas?: JourneyPersonaHint[];
   journey?: JourneyContent | null;
   sitemap: SitemapContent;
+  voice?: CopyVoice;
+  tone?: CopyTone;
 }): Promise<{ ok: boolean; copy?: CopyContent; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke("generate-deliverable", {
@@ -20,6 +25,8 @@ export async function generateCopy(payload: {
         personas: payload.personas ?? [],
         journey: payload.journey ?? null,
         sitemap: payload.sitemap,
+        voice: payload.voice ?? "first_singular",
+        tone: payload.tone ?? "warm",
       },
     });
     if (error) return { ok: false, error: await fnErrorMessage(error) };

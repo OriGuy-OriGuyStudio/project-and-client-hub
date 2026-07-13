@@ -424,17 +424,38 @@ function sitemapPagesText(sitemap: any): string {
     .join(NL);
 }
 
+const VOICE_TEXT: Record<string, string> = {
+  first_singular:
+    "גוף הכתיבה: גוף ראשון יחיד (לשון 'אני'). זה עסק של אדם אחד, אז דבר בשם עצמך ביחיד ('אני מלווה', 'אצלי', 'הלקוחות שלי'). אל תשתמש ב'אנחנו' או 'אנו'.",
+  first_plural:
+    "גוף הכתיבה: גוף ראשון רבים (לשון 'אנחנו'). דבר בשם הצוות ('אנחנו מלווים', 'אצלנו', 'הלקוחות שלנו').",
+  third:
+    "גוף הכתיבה: גוף שלישי, בשם העסק ('{שם העסק} מלווה', 'ב{שם העסק}'). אל תשתמש ב'אני' או ב'אנחנו', תמיד התייחס לעסק בשמו.",
+};
+
+const TONE_TEXT: Record<string, string> = {
+  warm: "טון: חם, אישי ואנושי. קרוב אל הקורא, בגובה העיניים.",
+  professional: "טון: מקצועי, אמין ומדויק. ענייני, בלי התלהמות.",
+  energetic: "טון: אנרגטי, שיווקי וממריץ. דוחף לפעולה עם ביטחון.",
+  calm: "טון: רגוע, מרגיע ושליו. מרגיע חששות ומייצר תחושת ביטחון.",
+  luxury: "טון: יוקרתי, מעודן ואיכותי. מדוד, נקי, בלי צעקנות.",
+};
+
 function copyPrompt(
   title: string,
   items: Item[],
   personasText: string,
   journeyText: string,
   sitemap: any,
+  voice: string,
+  tone: string,
 ): string {
   const data = items
     .filter((i) => (i.answer ?? "").trim().length > 0)
     .map((i) => "- " + i.question + " " + i.answer.trim())
     .join(NL);
+  const voiceLine = VOICE_TEXT[voice] ?? VOICE_TEXT.first_singular;
+  const toneLine = TONE_TEXT[tone] ?? TONE_TEXT.warm;
   return [
     "אתה קופירייטר בכיר מאוד בעברית (15+ שנים ניסיון), מומחה בקופי המרה לאתרים. אתה כותב באיכות של קופירייטר בכיר, לא טקסט גנרי ומשעמם. כל מילה עובדת.",
     "המטרה: קופי חד, ספציפי ומשכנע שמדבר את קול העסק הזה ישירות אל קהל היעד וגורם לפעולה.",
@@ -445,7 +466,11 @@ function copyPrompt(
     "4. שפת הלקוח: דבר במילים שקהל היעד משתמש בהן, ותגע בכאב וברצון האמיתיים שלו.",
     "5. רעיון אחד לכל סקשן, שמוביל את הקורא צעד קדימה להמרה.",
     "6. אסור: מקף ארוך (—), סימני קריאה, באזזוורדס ('ערך מוסף', 'סינרגיה', 'פתרונות', 'חוויה בלתי נשכחת', 'ללא פשרות', 'בלי פשרות'), קלישאות, שלשות תארים, האנשה.",
-    "קול העסק: כתוב באופי ובטון הספציפיים של העסק הזה כפי שעלו בשיחת האפיון, לא טון גנרי אחיד.",
+    "קול העסק: כתוב באופי הספציפי של העסק הזה כפי שעלה בשיחת האפיון, לא טון גנרי אחיד.",
+    voiceLine,
+    toneLine,
+    "עקביות: שמור על אותו גוף (אני/אנחנו/שם העסק) ואותו טון לאורך כל הקופי, בלי לערבב.",
+    "פנייה אל הקורא: קהל היעד כולל גברים ונשים, לכן הימנע מפנייה בזכר יחיד בלבד ('אתה'). העדף פנייה ניטרלית או לשון רבים ('אתם'), או ניסוח שלא מחייב מין.",
     personasText
       ? "קהל היעד: הפרסונות הבאות מתארות איך קהל היעד נראה ומרגיש, מה המטרות והכאבים שלו. השתמש בהן כדי לדבר ישירות אל הכאב והרצון של הקהל. אזהרה: אל תשתמש לעולם בשם הפרסונה בקופי ואל תפנה אל הקורא בשם פרטי, הפרסונה היא ייצוג של הקהל ולא לקוח אמיתי. כתוב לקהל, לא לדמות בשם.\n" + personasText
       : "",
@@ -509,8 +534,10 @@ async function generateCopy(
   personasText: string,
   journeyText: string,
   sitemap: any,
+  voice: string,
+  tone: string,
 ) {
-  const prompt = copyPrompt(title, items, personasText, journeyText, sitemap);
+  const prompt = copyPrompt(title, items, personasText, journeyText, sitemap, voice, tone);
   const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
   let lastStatus = 0;
   let lastReason = "";
@@ -769,6 +796,8 @@ Deno.serve(async (req) => {
       personasToText(body?.personas),
       journeyToText(body?.journey),
       body.sitemap,
+      String(body?.voice ?? "first_singular"),
+      String(body?.tone ?? "warm"),
     );
     if (!cp.ok) return json({ ok: false, error: cp.error }, cp.status ?? 502);
     return json({ ok: true, copy: cp.copy });
