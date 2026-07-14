@@ -15,6 +15,7 @@ import {
   PaymentValidityEditor,
   PhasesEditor,
   StepsEditor,
+  TestimonialEditor,
 } from "@/components/quote/QuoteContentEditors";
 
 export default function QuoteDefaultsPage() {
@@ -75,6 +76,7 @@ export default function QuoteDefaultsPage() {
       <BonusesEditor value={d.bonuses} onChange={(v) => patch({ bonuses: v })} />
       <StepsEditor value={d.next_steps} onChange={(v) => patch({ next_steps: v })} />
       <FaqEditor value={d.faq} onChange={(v) => patch({ faq: v })} />
+      <TestimonialEditor value={d.testimonial} onChange={(v) => patch({ testimonial: v })} />
       <LegalEditor value={d.legal} onChange={(v) => patch({ legal: v })} />
       <PaymentValidityEditor
         depositPct={d.payment?.deposit_pct ?? 50}

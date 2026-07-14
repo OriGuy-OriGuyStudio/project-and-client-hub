@@ -59,6 +59,10 @@ function rowToDefaults(row: QuoteDefaultsRow | null): QuoteDefaults {
     faq: (row.faq as QuoteDefaults["faq"]) ?? fb.faq,
     legal: (row.legal as string[]) ?? fb.legal,
     payment: (row.payment as QuoteDefaults["payment"]) ?? fb.payment,
+    testimonial: (() => {
+      const t = row.testimonial as { quote?: string; name?: string; role?: string } | null;
+      return t && t.quote ? { quote: t.quote, name: t.name ?? "", role: t.role } : fb.testimonial;
+    })(),
     validity_days: row.validity_days ?? fb.validity_days,
   };
 }
@@ -81,7 +85,7 @@ export function useSaveQuoteDefaults() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, defaults }: { id: string | null; defaults: QuoteDefaults }) => {
-      const payload = { ...defaults, updated_at: new Date().toISOString() };
+      const payload = { ...defaults, testimonial: defaults.testimonial ?? {}, updated_at: new Date().toISOString() };
       if (id) {
         const { error } = await supabase.from("quote_defaults").update(payload).eq("id", id);
         if (error) throw error;

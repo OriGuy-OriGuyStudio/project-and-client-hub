@@ -13,6 +13,7 @@ import {
   type QuoteFaq,
   type QuotePhase,
   type QuoteStep,
+  type QuoteTestimonial,
 } from "@/lib/quote";
 
 /* Shared list editors for the quote's premium sections. Used by both the quote
@@ -292,6 +293,49 @@ export function LegalEditor({ value, onChange, locked }: { value: string[]; onCh
       ))}
       {items.length === 0 && <Empty text="אין סעיפים." />}
     </EditorShell>
+  );
+}
+
+/* ---------- studio testimonial (single, optional) ---------- */
+export function TestimonialEditor({
+  value,
+  onChange,
+  locked,
+}: {
+  value: QuoteTestimonial | null | undefined;
+  onChange: (v: QuoteTestimonial | null) => void;
+  locked?: boolean;
+}) {
+  const on = !!(value && value.quote);
+  const t = value ?? { quote: "", name: "", role: "" };
+  return (
+    <Card className="p-4">
+      <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.checked ? { quote: t.quote || "", name: t.name || "", role: t.role || "" } : null)}
+          className="size-4 accent-primary"
+        />
+        המלצת לקוח קבועה (מוצגת בכל ההצעות)
+      </label>
+      {on && (
+        <div className="mt-3 space-y-2 ps-6">
+          <Textarea
+            value={t.quote}
+            onChange={(e) => onChange({ ...t, quote: e.target.value })}
+            placeholder="ציטוט ההמלצה (קצר, 2-3 שורות)"
+            rows={3}
+            disabled={locked}
+          />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Input value={t.name} onChange={(e) => onChange({ ...t, name: e.target.value })} placeholder="שם הממליץ" className="h-9" disabled={locked} />
+            <Input value={t.role ?? ""} onChange={(e) => onChange({ ...t, role: e.target.value })} placeholder="תפקיד / עסק (למשל: Moving Art)" className="h-9" disabled={locked} />
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

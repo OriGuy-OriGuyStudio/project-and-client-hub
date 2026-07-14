@@ -64,6 +64,7 @@ export type QuoteDefaults = {
   faq: QuoteFaq[];
   legal: string[];
   payment: QuotePayment;
+  testimonial: QuoteTestimonial | null;
   validity_days: number;
 };
 
@@ -155,6 +156,12 @@ export function fallbackQuoteDefaults(): QuoteDefaults {
       "הצעת המחיר בש״ח. אישורה על ידי הלקוח מהווה אישור רשמי בכתב בעל תוקף.",
     ],
     payment: { deposit_pct: 50, terms: "מקדמה לאישור ההצעה, והיתרה לפני העלייה לאוויר." },
+    testimonial: {
+      quote:
+        "הגעתי לסטודיו אורי גיא לבנות אתר וזו הייתה חוויה מעולה מהתחלה ועד הסוף. קשובים, סבלניים וסופר מקצועיים, והתוצאה יצאה פגז, הרבה מעבר למה שציפיתי. ממליץ בחום.",
+      name: "ליאור שדה",
+      role: "Moving Art · 5 כוכבים בגוגל",
+    },
     validity_days: 7,
   };
 }
@@ -173,6 +180,7 @@ export function newQuoteContent(defaults?: QuoteDefaults | null): QuoteContent {
     faq: d.faq ?? [],
     legal: d.legal ?? [],
     payment: d.payment ?? base.payment,
+    testimonial: d.testimonial ?? null,
     validity_days: d.validity_days ?? base.validity_days,
   };
 }

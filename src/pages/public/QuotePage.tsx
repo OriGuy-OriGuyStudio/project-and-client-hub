@@ -60,10 +60,34 @@ const STYLES = `
 @keyframes q-spin{to{transform:rotate(360deg)}}
 @keyframes q-pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
 @keyframes q-pulse{0%,100%{box-shadow:0 0 0 0 rgba(180,214,112,.35)}50%{box-shadow:0 0 0 12px rgba(180,214,112,0)}}
-.qp .rv{opacity:0;transform:translateY(18px);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1)}
+.qp .rv{opacity:0;transform:translateY(22px);transition:opacity .85s cubic-bezier(.22,1,.36,1),transform .85s cubic-bezier(.22,1,.36,1)}
 .qp .rv-in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){.qp .rv{opacity:1;transform:none;transition:none}}
-@media(max-width:640px){.qbar{display:flex}.qbar-pad{height:80px}.qp-wa{bottom:88px}}
+.qp-hero{padding:70px 0 44px}
+@keyframes q-rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.qp-hero>*{animation:q-rise .85s cubic-bezier(.22,1,.36,1) both}
+.qp-hero>*:nth-child(2){animation-delay:.09s}
+.qp-hero>*:nth-child(3){animation-delay:.18s}
+.qp-hero>*:nth-child(4){animation-delay:.27s}
+.qp .rv .qp-stag>*{opacity:0;transform:translateY(16px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
+.qp .rv-in .qp-stag>*{opacity:1;transform:none}
+.qp .rv-in .qp-stag>*:nth-child(2){transition-delay:.07s}
+.qp .rv-in .qp-stag>*:nth-child(3){transition-delay:.14s}
+.qp .rv-in .qp-stag>*:nth-child(4){transition-delay:.21s}
+.qp .rv-in .qp-stag>*:nth-child(5){transition-delay:.28s}
+.qp .rv-in .qp-stag>*:nth-child(6){transition-delay:.35s}
+.qp-lift:hover{transform:translateY(-3px) scale(1.012)}
+.qp-acc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.22,1,.36,1)}
+.qp-acc-body.open{grid-template-rows:1fr}
+.qp-acc-body>.in{overflow:hidden;min-height:0}
+@media(prefers-reduced-motion:reduce){.qp-hero>*{animation:none}.qp .rv .qp-stag>*{opacity:1;transform:none;transition:none}.qp-acc-body{transition:none}}
+@media(max-width:640px){
+  .qbar{display:flex}.qbar-pad{height:80px}.qp-wa{bottom:88px;width:52px;height:52px}
+  .qp main{padding:0 16px 88px}
+  .qp section{padding:26px 0}
+  .qp-hero{padding:44px 0 30px}
+  .qp-sticky>div{padding:12px 16px}
+}
 @media print{.qp-wa,.qbar,.qp-sticky{display:none!important}.qp *{box-shadow:none!important}}
 `;
 
@@ -319,7 +343,7 @@ export default function QuotePage() {
 
       <main>
         {/* HERO */}
-        <section style={{ padding: "70px 0 44px" }}>
+        <section className="qp-hero">
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
             {(quote.org_name || quote.client_name) && (
               <span style={{ display: "inline-flex", alignItems: "baseline", gap: 10, border: "1px solid var(--line)", background: "var(--card)", padding: "9px 18px", borderRadius: 12, position: "relative" }}>
@@ -353,7 +377,7 @@ export default function QuotePage() {
         {why.length > 0 && (
           <section>
             <SecHead num={numOf("why")} eyebrow="למה לעבוד איתי" title="לא רק אתר. שותף." />
-            <div style={{ borderTop: "1px solid var(--line-s)" }}>
+            <div className="qp-stag" style={{ borderTop: "1px solid var(--line-s)" }}>
               {why.map((w, i) => (
                 <div key={w.id} className="qp-whyrow" style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 20, padding: "28px 6px", borderBottom: "1px solid var(--line-s)", alignItems: "baseline" }}>
                   <span className="k3" style={{ fontSize: 32, color: "var(--green)" }}>{String(i + 1).padStart(2, "0")}</span>
@@ -377,7 +401,7 @@ export default function QuotePage() {
                 <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>עמודים ופיצ׳רים</div>
               </div>
             </div>
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
+            <div className="qp-stag" style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))" }}>
               {includes.map((nm, i) => (
                 <div key={i} className="qp-lift" style={{ display: "flex", alignItems: "center", gap: 14, background: "var(--card)", border: "1px solid var(--line-s)", borderRadius: 14, padding: "15px 18px" }}>
                   <span className="k" style={{ fontSize: 15, color: "var(--green)", opacity: 0.75, minWidth: 24 }}>{String(i + 1).padStart(2, "0")}</span>
@@ -395,7 +419,7 @@ export default function QuotePage() {
             <SecHead num={numOf("phases")} eyebrow="איך זה עובד" title="השלבים והלוח." mb={30} />
             <div style={{ position: "relative" }}>
               <div style={{ position: "absolute", top: 6, bottom: 6, right: 19, width: 2, background: "linear-gradient(var(--green),rgba(180,214,112,.08))" }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              <div className="qp-stag" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                 {phases.map((ph, i) => (
                   <div key={ph.id} style={{ display: "flex", gap: 20, alignItems: "flex-start", position: "relative" }}>
                     <div className="k" style={{ flex: "none", width: 40, height: 40, borderRadius: "50%", background: "var(--bg)", border: "2px solid var(--green)", color: "var(--green)", display: "grid", placeItems: "center", fontSize: 16, zIndex: 1 }}>{i + 1}</div>
@@ -417,7 +441,7 @@ export default function QuotePage() {
         {upgrades.length > 0 && (
           <section>
             <SecHead num={numOf("up")} eyebrow="רשות, לא חובה" title="שדרוגים לבחירתך." desc="כל שדרוג שתבחר מתעדכן מיד בסיכום המחיר למטה. אפשר לבחור כמה שרוצים, או להשאיר בדיוק כמו שזה." />
-            <div style={{ display: "grid", gap: 14 }}>
+            <div className="qp-stag" style={{ display: "grid", gap: 14 }}>
               {upgrades.map((u) => {
                 const sel = upsellIds.includes(u.id);
                 return (
@@ -444,7 +468,7 @@ export default function QuotePage() {
         {maintTiers.length > 0 && (
           <section>
             <SecHead num={numOf("maint")} eyebrow="אחרי ההשקה" title="תחזוקה שוטפת." desc="בחירה של חבילה אחת, או בכלל לא. זו הוצאה חודשית נפרדת מהפרויקט, וכל המחירים כאן כבר כוללים מע״מ." />
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
+            <div className="qp-stag" style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
               {maintTiers.map((t) => {
                 const cfg = config[t];
                 const sel = maintTier === t;
@@ -480,7 +504,7 @@ export default function QuotePage() {
         {bonuses.length > 0 && (
           <section>
             <SecHead num={numOf("bonus")} eyebrow="על חשבוני" title="בונוסים במתנה." />
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+            <div className="qp-stag" style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
               {bonuses.map((b) => (
                 <div key={b.id} style={{ background: "linear-gradient(150deg,rgba(180,214,112,.09),var(--card) 55%)", border: "1px solid rgba(180,214,112,.22)", borderRadius: 16, padding: 22, position: "relative" }}>
                   {b.value > 0 && <span className="k" style={{ position: "absolute", top: 16, left: 16, fontSize: 12, color: "var(--green)", background: "rgba(180,214,112,.12)", border: "1px solid rgba(180,214,112,.28)", padding: "4px 10px", borderRadius: 999 }}>שווי {money(b.value)}</span>}
@@ -562,7 +586,7 @@ export default function QuotePage() {
         {steps.length > 0 && (
           <section>
             <SecHead num={numOf("after")} eyebrow="מה קורה אחרי שתאשר" title="הצעדים הבאים." mb={22} />
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="qp-stag" style={{ display: "grid", gap: 12 }}>
               {steps.map((s, i) => (
                 <div key={s.id} style={{ display: "flex", gap: 15, alignItems: "center", background: "var(--card)", border: "1px solid var(--line-s)", borderRadius: 14, padding: "16px 18px" }}>
                   <span className="k" style={{ flex: "none", width: 30, height: 30, borderRadius: 9, background: "rgba(180,214,112,.1)", color: "var(--green)", display: "grid", placeItems: "center", fontSize: 15 }}>{i + 1}</span>
@@ -577,7 +601,7 @@ export default function QuotePage() {
         {faq.length > 0 && (
           <section>
             <SecHead num={numOf("faq")} eyebrow="שאלות נפוצות" title="כדאי לדעת." mb={22} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="qp-stag" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {faq.map((f, i) => {
                 const open = !!faqOpen[i];
                 return (
@@ -586,7 +610,9 @@ export default function QuotePage() {
                       {f.q}
                       <span style={{ flex: "none", fontSize: 24, lineHeight: 1, color: "var(--green)", transform: `rotate(${open ? 45 : 0}deg)`, transition: "transform .25s" }}>+</span>
                     </button>
-                    {open && <div style={{ padding: "0 20px 20px", color: "var(--muted)", fontSize: 15 }}>{f.a}</div>}
+                    <div className={`qp-acc-body${open ? " open" : ""}`}>
+                      <div className="in"><div style={{ padding: "0 20px 20px", color: "var(--muted)", fontSize: 15 }}>{f.a}</div></div>
+                    </div>
                   </div>
                 );
               })}
@@ -603,13 +629,13 @@ export default function QuotePage() {
                 לצפייה בכל הסעיפים
                 <span style={{ flex: "none", fontSize: 22, lineHeight: 1, color: "var(--green)", transform: `rotate(${legalOpen ? 45 : 0}deg)`, transition: "transform .25s" }}>+</span>
               </button>
-              {legalOpen && (
-                <ul style={{ margin: 0, padding: "0 20px 18px", color: "var(--muted)", fontSize: 14, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className={`qp-acc-body${legalOpen ? " open" : ""}`}>
+                <ul className="in" style={{ margin: 0, padding: "0 20px 18px", color: "var(--muted)", fontSize: 14, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
                   {legal.map((l, i) => (
                     <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}><span style={{ color: "var(--green)", flex: "none" }}>•</span>{l}</li>
                   ))}
                 </ul>
-              )}
+              </div>
             </div>
           </section>
         )}
@@ -733,7 +759,7 @@ function Root({ children }: { children: React.ReactNode }) {
 function SecHead({ num, eyebrow, title, desc, mb, noMargin }: { num: string; eyebrow: string; title: string; desc?: string; mb?: number; noMargin?: boolean }) {
   return (
     <div style={{ marginBottom: noMargin ? 0 : mb ?? 24 }}>
-      <p className="qp-eyb"><span className="n">{num}</span><span className="ln" />{eyebrow}</p>
+      <p className="qp-eyb"><span className="n">{num}</span>{eyebrow}</p>
       <h2 className="qp-h2">{title}</h2>
       {desc && <p style={{ color: "var(--muted)", margin: "12px 0 0", maxWidth: 560 }}>{desc}</p>}
     </div>

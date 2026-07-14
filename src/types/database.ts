@@ -1021,6 +1021,7 @@ export type QuoteDefaultsRow = {
   faq: unknown[];
   legal: unknown[];
   payment: Record<string, unknown>;
+  testimonial: Record<string, unknown>;
   validity_days: number;
   updated_at: string;
 };

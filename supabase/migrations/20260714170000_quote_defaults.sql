@@ -16,6 +16,7 @@ create table if not exists public.quote_defaults (
   faq             jsonb not null default '[]'::jsonb,
   legal           jsonb not null default '[]'::jsonb,
   payment         jsonb not null default '{"deposit_pct":50}'::jsonb,
+  testimonial     jsonb not null default '{}'::jsonb,
   validity_days   int   not null default 7,
   updated_at      timestamptz not null default now()
 );
@@ -26,7 +27,7 @@ create policy "quote_defaults_admin" on public.quote_defaults
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- Seed exactly one row (matches lib/quote.ts fallbackQuoteDefaults).
-insert into public.quote_defaults (differentiators, phases, bonuses, next_steps, faq, legal, payment, validity_days)
+insert into public.quote_defaults (differentiators, phases, bonuses, next_steps, faq, legal, payment, testimonial, validity_days)
 select
   '[
     {"id":"d1","title":"קוד מותאם אישית, בלי תבניות","desc":"אני כותב את האתר בהתאמה מלאה, כדי שיהיה מהיר, מאובטח ומדויק לעסק שלך, בלי תוספים מיותרים שמכבידים."},
@@ -68,5 +69,6 @@ select
     "הצעת המחיר בש״ח. אישורה על ידי הלקוח מהווה אישור רשמי בכתב בעל תוקף."
   ]'::jsonb,
   '{"deposit_pct":50,"terms":"מקדמה לאישור ההצעה, והיתרה לפני העלייה לאוויר."}'::jsonb,
+  '{"quote":"הגעתי לסטודיו אורי גיא לבנות אתר וזו הייתה חוויה מעולה מהתחלה ועד הסוף. קשובים, סבלניים וסופר מקצועיים, והתוצאה יצאה פגז, הרבה מעבר למה שציפיתי. ממליץ בחום.","name":"ליאור שדה","role":"Moving Art · 5 כוכבים בגוגל"}'::jsonb,
   7
 where not exists (select 1 from public.quote_defaults);
