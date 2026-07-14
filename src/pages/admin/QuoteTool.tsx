@@ -245,7 +245,7 @@ function BuilderForm({
     const have = new Set(c.upsells.map((u) => u.title.trim()));
     const add = catalog
       .filter((r) => r.kind === "upsell" && !have.has(r.label))
-      .map((r) => ({ id: uid(), title: r.label, desc: r.description ?? "", price: Number(r.base_price) || 0 }));
+      .map((r) => ({ id: uid(), title: r.label, desc: r.description ?? "", price: Number(r.base_price) || 0, recommended: r.recommended }));
     if (!add.length) return toast({ title: "אין אפסיילים חדשים להוסיף" });
     patch({ upsells: [...c.upsells, ...add] });
   }
@@ -423,15 +423,21 @@ function BuilderForm({
             </div>
             <div className="space-y-2">
               {c.upsells.map((u, i) => (
-                <div key={u.id} className="grid gap-2 rounded-xl border border-border bg-background/30 p-3 sm:grid-cols-[1fr,1fr,7rem,auto]">
-                  <Input value={u.title} onChange={(e) => patchUpsell(i, { title: e.target.value })} placeholder="שם" className="h-9" disabled={locked} />
-                  <Input value={u.desc ?? ""} onChange={(e) => patchUpsell(i, { desc: e.target.value })} placeholder="תיאור קצר" className="h-9" disabled={locked} />
-                  <NumberInput value={u.price} onChange={(v) => patchUpsell(i, { price: v })} disabled={locked} suffix="₪" />
-                  {!locked && (
-                    <Button variant="ghost" size="icon" className="size-9 text-destructive" onClick={() => removeUpsell(i)} aria-label="מחק">
-                      <Trash2 className="size-4" />
-                    </Button>
-                  )}
+                <div key={u.id} className="space-y-2 rounded-xl border border-border bg-background/30 p-3">
+                  <div className="grid gap-2 sm:grid-cols-[1fr,1fr,7rem,auto]">
+                    <Input value={u.title} onChange={(e) => patchUpsell(i, { title: e.target.value })} placeholder="שם" className="h-9" disabled={locked} />
+                    <Input value={u.desc ?? ""} onChange={(e) => patchUpsell(i, { desc: e.target.value })} placeholder="תיאור קצר" className="h-9" disabled={locked} />
+                    <NumberInput value={u.price} onChange={(v) => patchUpsell(i, { price: v })} disabled={locked} suffix="₪" />
+                    {!locked && (
+                      <Button variant="ghost" size="icon" className="size-9 text-destructive" onClick={() => removeUpsell(i)} aria-label="מחק">
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input type="checkbox" checked={!!u.recommended} disabled={locked} onChange={(e) => patchUpsell(i, { recommended: e.target.checked })} className="size-4 accent-primary" />
+                    מסומן ״מומלץ״ (בולט בדף הלקוח)
+                  </label>
                 </div>
               ))}
               {c.upsells.length === 0 && <p className="text-sm text-muted-foreground">אין אפסיילים. הוסף כדי להגדיל את העסקה.</p>}

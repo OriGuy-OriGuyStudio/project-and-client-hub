@@ -6,7 +6,7 @@ export const QUOTE_MULTS = [1, 1.5, 2] as const;
 /** One priced line (page or feature): price = base × mult. */
 export type QuoteLine = { id: string; name: string; mult: number };
 /** A fixed-price add-on the client can toggle on the quote page. */
-export type QuoteUpsell = { id: string; title: string; desc?: string; price: number };
+export type QuoteUpsell = { id: string; title: string; desc?: string; price: number; recommended?: boolean };
 
 /** A project stage on the timeline. `duration` is soft free text ("כשבוע") or empty. */
 export type QuotePhase = { id: string; name: string; desc?: string; duration?: string };
@@ -130,9 +130,12 @@ export function fallbackQuoteDefaults(): QuoteDefaults {
     bonuses: [
       { id: newId(), name: "גישה למערכת Orion למעקב הפרויקט", desc: "פורטל ניהול הפרויקט שלי, לעקוב אחרי כל שלב בראש שקט וליצור איתי קשר.", value: 600 },
       { id: newId(), name: "אופטימיזציית מהירות", desc: "שיפור זמני טעינה לציון גבוה ב-PageSpeed.", value: 800 },
+      { id: newId(), name: "SEO טכני בסיסי", desc: "תגי מטא, מפת אתר ו-schema מוטמעים, כדי שגוגל יבין את האתר.", value: 700 },
       { id: newId(), name: "הגדרת Google Analytics ו-Search Console", desc: "התקנה וחיבור מלא של כלי המדידה.", value: 400 },
       { id: newId(), name: "גיבוי ענן ראשוני", desc: "גיבוי מלא של האתר אחרי ההשקה.", value: 350 },
       { id: newId(), name: "30 ימי תמיכה אחרי ההשקה", desc: "מענה לשאלות ותיקוני באגים קלים ללא עלות.", value: 900 },
+      { id: newId(), name: "הדרכת ניהול תוכן", desc: "מפגש מוקלט לניהול האתר, ומסמך הדרכה מסודר בתוך Orion.", value: 500 },
+      { id: newId(), name: "פונט פרימיום", desc: "רישיון פונט בתשלום, כלול בפרויקט.", value: 300 },
     ],
     next_steps: [
       { id: newId(), text: "אישור וחתימה על ההצעה כאן בעמוד" },

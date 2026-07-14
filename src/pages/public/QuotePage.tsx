@@ -452,7 +452,12 @@ export default function QuotePage() {
                     </div>
                     <div style={{ flex: 1, textAlign: "right" }}>
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <h3 className="k" style={{ fontSize: 18, margin: 0, display: "inline" }}>{u.title}</h3>
+                        <span style={{ display: "inline-flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+                          <h3 className="k" style={{ fontSize: 18, margin: 0, display: "inline" }}>{u.title}</h3>
+                          {u.recommended && (
+                            <span className="k" style={{ fontSize: 11, color: "var(--green)", background: "rgba(180,214,112,.12)", border: "1px solid rgba(180,214,112,.3)", padding: "2px 9px", borderRadius: 999 }}>מומלץ</span>
+                          )}
+                        </span>
                         <span className="k" style={{ color: "var(--green)", whiteSpace: "nowrap" }}>+ {money(u.price)}</span>
                       </div>
                       {u.desc && <p style={{ color: "var(--muted)", fontSize: 14.5, margin: "6px 0 0" }}>{u.desc}</p>}

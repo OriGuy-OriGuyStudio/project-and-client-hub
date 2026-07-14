@@ -1007,6 +1007,7 @@ export type QuoteCatalogRow = {
   description: string | null;
   base_price: number | null;
   default_mult: number;
+  recommended: boolean;
   sort: number;
   created_at: string;
 };

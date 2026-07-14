@@ -37,6 +37,7 @@ create table if not exists public.quote_catalog (
   description  text,
   base_price   numeric,
   default_mult numeric not null default 1,
+  recommended  boolean not null default false,
   sort         int not null default 0,
   created_at   timestamptz not null default now()
 );
@@ -148,13 +149,12 @@ insert into public.quote_catalog (kind, site_type, label, base_price, default_mu
   ('feature',null,'אינטגרציית תשלום',   650, 1.5, 60),
   ('feature',null,'אנימציות מתקדמות',   650, 1.5, 70),
   ('feature',null,'SEO טכני מוטמע',     650, 1,   80),
-  ('feature',null,'אינטגרציית CRM/וואטסאפ',650, 1.5, 90),
-  -- upsells (universal, the money-makers)
-  ('upsell',null,'כתיבת תוכן מקצועית',      1200, 1, 10),
-  ('upsell',null,'חבילת SEO התחלתית',       1500, 1, 20),
-  ('upsell',null,'עיצוב לוגו ומיתוג',       1800, 1, 30),
-  ('upsell',null,'צילום עסק / מוצר',        1500, 1, 40),
-  ('upsell',null,'הקמת דיוור (ניוזלטר)',     900, 1, 50),
-  ('upsell',null,'קמפיין השקה (Google/Meta)',2500, 1, 60),
-  ('upsell',null,'דומיין + אחסון לשנה',      600, 1, 70)
+  ('feature',null,'אינטגרציית CRM/וואטסאפ',650, 1.5, 90)
+on conflict do nothing;
+
+-- upsells: real add-ons Ori offers (things beyond the agreed scope), 2 flagged "מומלץ".
+insert into public.quote_catalog (kind, site_type, label, description, base_price, default_mult, recommended, sort) values
+  ('upsell', null, 'אתר רב-לשוני',           'גרסה מלאה בשפה נוספת, כולל התאמת כיווניות מלאה.',                1800, 1, true,  10),
+  ('upsell', null, 'הקמת דיוור וסדרת מיילים', 'חיבור טופס הרשמה וסדרת מיילים אוטומטית שממשיכה למכור.',           900,  1, true,  20),
+  ('upsell', null, 'מערכת תיאום פגישות',      'לקוחות קובעים פגישה או תור ישירות מהאתר, בלי טלפונים.',           1500, 1, false, 30)
 on conflict do nothing;
