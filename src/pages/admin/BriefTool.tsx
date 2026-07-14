@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -448,18 +449,18 @@ function PageBriefCard({
                   options={KIND_OPTIONS}
                 />
               </div>
-              <Input
+              <Textarea
                 value={it.help}
                 onChange={(e) => onPatch(ii, { help: e.target.value })}
                 placeholder="הסבר קצר ללקוח (מה בדיוק לספק)"
-                className="h-9"
+                rows={2}
               />
               {it.kind === "text" && (
-                <Input
+                <Textarea
                   value={it.prefill}
                   onChange={(e) => onPatch(ii, { prefill: e.target.value })}
                   placeholder="מולא מראש מהאפיון (הלקוח יאשר או יתקן), אופציונלי"
-                  className="h-9"
+                  rows={2}
                 />
               )}
               <div className="flex items-center justify-between gap-2">

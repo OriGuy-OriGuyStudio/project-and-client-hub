@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -30,10 +30,14 @@ import {
   type QuoteContent,
   type QuoteSiteType,
 } from "@/lib/quote";
+import { CountUp } from "@/components/ui/count-up";
 import { cn } from "@/lib/utils";
 
+const Aurora = lazy(() => import("@/components/ui/aurora"));
 const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const EASE = [0.16, 1, 0.3, 1] as const;
+// Brand-green aurora stops (dark + green only, per the design brief).
+const AURORA_STOPS = ["#3a5a1e", "#B4D670", "#6f9438"];
 
 export default function QuotePage() {
   const { token } = useParams<{ token: string }>();
@@ -160,7 +164,17 @@ export default function QuotePage() {
 
       {/* hero */}
       <header className="relative -mx-4 overflow-hidden px-4 pb-14 pt-10 sm:pt-14">
-        <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-primary/12 via-primary/5 to-transparent" />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-50"
+          style={{
+            maskImage: "linear-gradient(to bottom, black 5%, transparent 95%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 5%, transparent 95%)",
+          }}
+        >
+          <Suspense fallback={null}>
+            <Aurora colorStops={AURORA_STOPS} amplitude={1.1} blend={0.6} speed={0.5} />
+          </Suspense>
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -369,7 +383,11 @@ export default function QuotePage() {
             <PriceRow label={`מע״מ (${vatPct}%)`} value={shekel(liveInclVat - totals!.netTotal)} />
             <div className="mt-2 flex items-baseline justify-between border-t border-border pt-3">
               <span className="font-heading text-lg font-bold text-foreground">סה״כ חד-פעמי כולל מע״מ</span>
-              <span className="font-heading text-5xl font-black tracking-tight text-primary sm:text-6xl">{shekel(liveInclVat)}</span>
+              <CountUp
+                to={liveInclVat}
+                format={shekel}
+                className="font-heading text-5xl font-black tracking-tight text-primary sm:text-6xl"
+              />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <div className="rounded-2xl bg-muted/50 p-4 text-center">
