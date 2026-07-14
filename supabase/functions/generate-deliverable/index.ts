@@ -793,9 +793,11 @@ async function generateSeo(
   let lastStatus = 0;
   let lastReason = "";
   for (const model of models) {
+    // SEO output is heavy (per-page meta + FAQs + a full JSON-LD string), so it
+    // needs a much larger token budget than the other modes or the JSON truncates.
     const generationConfig: Record<string, unknown> = {
       temperature: 0.7,
-      maxOutputTokens: 8000,
+      maxOutputTokens: 32000,
       responseMimeType: "application/json",
       responseSchema: SEO_SCHEMA,
     };
