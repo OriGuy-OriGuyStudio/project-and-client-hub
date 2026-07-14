@@ -664,34 +664,6 @@ export default function QuotePage() {
               <p style={{ color: "var(--muted)", margin: "12px 0 0" }}>חתימה כאן היא אישור ההצעה. אין חיוב בשלב הזה, אני חוזר אליך עם פרטי המקדמה.</p>
             </div>
             <div style={{ maxWidth: 520, margin: "0 auto" }}>
-              <div style={{ background: "var(--bg2)", border: "1px solid var(--line-s)", borderRadius: 16, padding: "20px 22px", marginBottom: 26 }}>
-                <div className="k" style={{ fontSize: 15, marginBottom: 12 }}>מה בחרת</div>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "7px 0", fontSize: 14.5 }}>
-                  <span>{quote.title} <span style={{ color: "var(--faint)", fontSize: 13 }}>({SITE_TYPE_LABEL[quote.site_type as QuoteSiteType]})</span></span>
-                  <span className="k" style={{ whiteSpace: "nowrap" }}>{money(totals!.oneTimeBase)}</span>
-                </div>
-                {selectedUpgrades.map((su) => (
-                  <div key={su.id} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "7px 0", fontSize: 14, color: "var(--muted)" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 9 }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", flex: "none" }} />{su.title}</span>
-                    <span className="k" style={{ whiteSpace: "nowrap" }}>+ {money(su.price)}</span>
-                  </div>
-                ))}
-                {totals!.discountAmount > 0 && (
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "7px 0", fontSize: 14, color: "var(--green)" }}>
-                    <span>{content.discount?.label?.trim() || "הנחה"}</span><span className="k" style={{ whiteSpace: "nowrap" }}>− {money(totals!.discountAmount)}</span>
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "10px 0 0", marginTop: 6, borderTop: "1px solid var(--line-s)" }}>
-                  <span style={{ fontSize: 14, color: "var(--muted)" }}>סה״כ חד פעמי כולל מע״מ</span>
-                  <span className="k" style={{ fontSize: 20, color: "var(--green)", whiteSpace: "nowrap" }}>{money(total)}</span>
-                </div>
-                {maintObj && (
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, padding: "8px 0 0", fontSize: 14, color: "var(--muted)" }}>
-                    <span>תחזוקה {maintObj.name} <span style={{ color: "var(--faint)", fontSize: 12.5 }}>(חודשי, כולל מע״מ)</span></span>
-                    <span className="k" style={{ whiteSpace: "nowrap" }}>{money(maintObj.price)} / חודש</span>
-                  </div>
-                )}
-              </div>
               <label style={{ display: "block", fontSize: 14, color: "var(--muted)", marginBottom: 8 }}>השם המלא שלך</label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ישראל ישראלי" className="qp-input" />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "20px 0 8px" }}>
