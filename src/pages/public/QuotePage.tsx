@@ -133,7 +133,7 @@ export default function QuotePage() {
               <PriceRow label="סה״כ חד-פעמי (כולל מע״מ)" value={shekel(inclVat)} big />
               <PriceRow label={`מקדמה (${split.depositPct}%)`} value={shekel(split.deposit)} />
               <PriceRow label="יתרה לפני העלייה לאוויר" value={shekel(split.rest)} />
-              {t.monthly > 0 && <PriceRow label="תחזוקה חודשית (כולל מע״מ)" value={`${shekel(withVat(t.monthly, vatPct))}/חודש`} />}
+              {t.monthly > 0 && <PriceRow label="תחזוקה חודשית (כולל מע״מ)" value={`${shekel(t.monthly)}/חודש`} />}
             </div>
           </Bezel>
         </div>
@@ -169,7 +169,9 @@ export default function QuotePage() {
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
             הצעת מחיר · Studio Ori Guy
           </span>
-          <h1 className="mt-5 font-heading text-4xl font-black leading-[1.05] text-foreground sm:text-6xl">{quote.title}</h1>
+          <h1 className="mt-5 bg-gradient-to-b from-foreground via-foreground to-foreground/55 bg-clip-text pb-1 font-heading text-5xl font-black leading-[1.08] tracking-tight text-transparent sm:text-7xl">
+            {quote.title}
+          </h1>
           {quote.client_name && <p className="mt-3 text-xl text-muted-foreground">עבור {quote.client_name}</p>}
           <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="rounded-full bg-muted px-3 py-1">{SITE_TYPE_LABEL[quote.site_type as QuoteSiteType]}</span>
@@ -196,12 +198,13 @@ export default function QuotePage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {diffs.map((d, i) => (
               <RevealItem key={d.id} i={i}>
-                <div className="h-full rounded-3xl border border-border bg-card p-5 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
-                  <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                <div className="group relative h-full overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_24px_60px_-24px_hsl(var(--primary)/0.35)]">
+                  <span className="pointer-events-none absolute -top-5 end-3 font-heading text-7xl font-black text-foreground/[0.04]">{i + 1}</span>
+                  <span className="relative flex size-11 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
                     <Sparkles className="size-5" />
                   </span>
-                  <p className="mt-3 font-heading text-lg font-bold text-foreground">{d.title}</p>
-                  {d.desc && <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>}
+                  <p className="relative mt-4 font-heading text-lg font-bold text-foreground">{d.title}</p>
+                  {d.desc && <p className="relative mt-1.5 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>}
                 </div>
               </RevealItem>
             ))}
@@ -354,7 +357,7 @@ export default function QuotePage() {
 
       {/* price + payment */}
       <Section title="מחיר ותשלום" eyebrow="השורה התחתונה">
-        <Bezel>
+        <Bezel glow>
           <div className="space-y-1 p-6">
             {bonusesSum > 0 && (
               <PriceRow label="שווי כולל של הפרויקט והבונוסים" value={shekel(totals!.oneTimeBase + bonusesSum)} strike />
@@ -366,7 +369,7 @@ export default function QuotePage() {
             <PriceRow label={`מע״מ (${vatPct}%)`} value={shekel(liveInclVat - totals!.netTotal)} />
             <div className="mt-2 flex items-baseline justify-between border-t border-border pt-3">
               <span className="font-heading text-lg font-bold text-foreground">סה״כ חד-פעמי כולל מע״מ</span>
-              <span className="font-heading text-4xl font-black text-primary sm:text-5xl">{shekel(liveInclVat)}</span>
+              <span className="font-heading text-5xl font-black tracking-tight text-primary sm:text-6xl">{shekel(liveInclVat)}</span>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <div className="rounded-2xl bg-muted/50 p-4 text-center">
@@ -381,7 +384,7 @@ export default function QuotePage() {
             {content.payment?.terms?.trim() && <p className="pt-2 text-center text-xs text-muted-foreground">{content.payment.terms}</p>}
             {totals!.monthly > 0 && (
               <p className="pt-1 text-center text-sm text-muted-foreground">
-                בנוסף, תחזוקה חודשית {shekel(withVat(totals!.monthly, vatPct))}/חודש (כולל מע״מ)
+                בנוסף, תחזוקה חודשית {shekel(totals!.monthly)}/חודש (כולל מע״מ)
               </p>
             )}
           </div>
@@ -394,8 +397,8 @@ export default function QuotePage() {
           <div className="grid gap-3 sm:grid-cols-4">
             {steps.map((s, i) => (
               <RevealItem key={s.id} i={i}>
-                <div className="h-full rounded-3xl border border-border bg-card p-5">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary">
+                <div className="relative h-full overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
+                  <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary ring-1 ring-primary/20">
                     {i + 1}
                   </span>
                   <p className="mt-3 text-sm leading-relaxed text-foreground">{s.text}</p>
@@ -441,7 +444,7 @@ export default function QuotePage() {
             <h2 className="mt-3 font-heading text-2xl font-bold text-foreground sm:text-3xl">אישור וחתימה</h2>
             <p className="text-sm text-muted-foreground">חתמו כאן ונתחיל.</p>
           </div>
-          <Bezel tinted>
+          <Bezel glow>
             <div className="space-y-4 p-6">
               <div className="space-y-1.5">
                 <label htmlFor="q-name" className="text-sm text-muted-foreground">שם מלא</label>
@@ -514,21 +517,57 @@ export default function QuotePage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="relative min-h-[100dvh] bg-background text-foreground">
-      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[40vh] bg-[radial-gradient(60%_100%_at_50%_0%,hsl(var(--primary)/0.08),transparent)]" />
-      <div className="mx-auto max-w-3xl space-y-14 px-4 py-6 sm:space-y-20 sm:py-12">{children}</div>
+    <div dir="rtl" className="relative min-h-[100dvh] overflow-hidden bg-background text-foreground">
+      <GrainOverlay />
+      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[55vh] bg-[radial-gradient(70%_100%_at_50%_0%,hsl(var(--primary)/0.10),transparent)]" />
+      <div className="pointer-events-none fixed -bottom-48 left-1/2 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
+      <div className="mx-auto max-w-3xl space-y-16 px-4 py-6 sm:space-y-24 sm:py-14">{children}</div>
     </div>
   );
 }
 
-/** Double-bezel panel: an outer machined shell around an inner content core. */
-function Bezel({ children, tinted, className }: { children: React.ReactNode; tinted?: boolean; className?: string }) {
+/** Fixed film-grain texture for cinematic depth (brand-neutral, very subtle). */
+function GrainOverlay() {
   return (
-    <div className={cn("rounded-[2rem] border border-border bg-foreground/[0.02] p-1.5", className)}>
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 -z-10 opacity-[0.035] mix-blend-soft-light"
+      style={{
+        backgroundImage:
+          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+      }}
+    />
+  );
+}
+
+/** Double-bezel panel: an outer machined shell around an inner content core.
+ *  `glow` adds a green halo for the page's climactic moments (price, signature). */
+function Bezel({
+  children,
+  tinted,
+  glow,
+  className,
+}: {
+  children: React.ReactNode;
+  tinted?: boolean;
+  glow?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative rounded-[2rem] border p-1.5",
+        glow ? "border-primary/25 bg-primary/[0.04]" : "border-border bg-foreground/[0.02]",
+        className
+      )}
+    >
+      {glow && (
+        <div className="pointer-events-none absolute -inset-x-8 -top-12 -z-0 h-36 bg-[radial-gradient(55%_100%_at_50%_0%,hsl(var(--primary)/0.22),transparent)]" />
+      )}
       <div
         className={cn(
-          "overflow-hidden rounded-[1.55rem] shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)]",
-          tinted ? "border border-primary/20 bg-primary/[0.06]" : "bg-card"
+          "relative overflow-hidden rounded-[1.55rem] shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]",
+          tinted ? "border border-primary/20 bg-primary/[0.06]" : glow ? "bg-card/80 backdrop-blur-sm" : "bg-card"
         )}
       >
         {children}
@@ -587,8 +626,8 @@ function Section({
               {eyebrow}
             </span>
           )}
-          <h2 className="font-heading text-2xl font-bold text-foreground sm:text-3xl">{title}</h2>
-          {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+          <h2 className="font-heading text-3xl font-black tracking-tight text-foreground sm:text-4xl">{title}</h2>
+          {subtitle && <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {children}
       </section>
@@ -599,7 +638,7 @@ function Section({
 function IncludedCard({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className="rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)]">
       <p className="mb-3 font-heading font-bold text-foreground">{title}</p>
       <ul className="space-y-2">
         {items.map((it, i) => (
