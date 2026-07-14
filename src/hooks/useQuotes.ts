@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
+import type { PriceQuote, QuoteCatalogRow, QuoteDefaultsRow } from "@/types/database";
+import { fallbackQuoteDefaults, type QuoteDefaults } from "@/lib/quote";
 
 /** Admin: all price quotes, newest first. */
 export function useQuotes() {
@@ -43,6 +44,53 @@ export function useQuoteCatalog() {
       if (error) throw error;
       return (data ?? []) as QuoteCatalogRow[];
     },
+  });
+}
+
+/** Coerce a DB defaults row into the typed QuoteDefaults shape (with fallbacks). */
+function rowToDefaults(row: QuoteDefaultsRow | null): QuoteDefaults {
+  const fb = fallbackQuoteDefaults();
+  if (!row) return fb;
+  return {
+    differentiators: (row.differentiators as QuoteDefaults["differentiators"]) ?? fb.differentiators,
+    phases: (row.phases as QuoteDefaults["phases"]) ?? fb.phases,
+    bonuses: (row.bonuses as QuoteDefaults["bonuses"]) ?? fb.bonuses,
+    next_steps: (row.next_steps as QuoteDefaults["next_steps"]) ?? fb.next_steps,
+    faq: (row.faq as QuoteDefaults["faq"]) ?? fb.faq,
+    legal: (row.legal as string[]) ?? fb.legal,
+    payment: (row.payment as QuoteDefaults["payment"]) ?? fb.payment,
+    validity_days: row.validity_days ?? fb.validity_days,
+  };
+}
+
+/** Admin: the one studio-wide defaults row (id + typed content). */
+export function useQuoteDefaults() {
+  return useQuery({
+    queryKey: ["quote-defaults"],
+    queryFn: async (): Promise<{ id: string | null; defaults: QuoteDefaults }> => {
+      const { data, error } = await supabase.from("quote_defaults").select("*").limit(1).maybeSingle();
+      if (error) throw error;
+      const row = (data as QuoteDefaultsRow | null) ?? null;
+      return { id: row?.id ?? null, defaults: rowToDefaults(row) };
+    },
+  });
+}
+
+/** Admin: save the studio-wide defaults (upsert the single row). */
+export function useSaveQuoteDefaults() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, defaults }: { id: string | null; defaults: QuoteDefaults }) => {
+      const payload = { ...defaults, updated_at: new Date().toISOString() };
+      if (id) {
+        const { error } = await supabase.from("quote_defaults").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("quote_defaults").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quote-defaults"] }),
   });
 }
 

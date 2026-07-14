@@ -8,7 +8,9 @@ import {
   ExternalLink,
   Loader2,
   Plus,
+  RefreshCw,
   Send,
+  Settings2,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -23,22 +25,35 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast, toastError } from "@/hooks/use-toast";
-import { useQuotes, useQuote, useQuoteCatalog } from "@/hooks/useQuotes";
+import { useQuotes, useQuote, useQuoteCatalog, useQuoteDefaults } from "@/hooks/useQuotes";
 import { usePlanConfig } from "@/lib/plan-config";
 import { TIER_ORDER, TIER_META, type ServiceTier } from "@/lib/service-plans";
 import {
+  bonusesTotal,
   computeQuote,
   emptyQuoteContent,
   linePrice,
+  newQuoteContent,
+  paymentSplit,
   shekel,
   withVat,
   QUOTE_MULTS,
   SITE_TYPE_LABEL,
   type QuoteContent,
+  type QuoteDefaults,
   type QuoteLine,
   type QuoteSiteType,
   type QuoteUpsell,
 } from "@/lib/quote";
+import {
+  BonusesEditor,
+  DiffsEditor,
+  FaqEditor,
+  LegalEditor,
+  PaymentValidityEditor,
+  PhasesEditor,
+  StepsEditor,
+} from "@/components/quote/QuoteContentEditors";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 
 const uid = () => crypto.randomUUID();
@@ -48,6 +63,7 @@ const STATUS_HE: Record<string, string> = { draft: "טיוטה", sent: "נשלח
 export default function QuoteTool() {
   const qc = useQueryClient();
   const { data: quotes } = useQuotes();
+  const { data: defaultsData } = useQuoteDefaults();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -58,7 +74,7 @@ export default function QuoteTool() {
       .insert({
         title: "הצעת מחיר",
         site_type: "portfolio",
-        content: emptyQuoteContent() as unknown as Record<string, unknown>,
+        content: newQuoteContent(defaultsData?.defaults) as unknown as Record<string, unknown>,
         status: "draft",
       })
       .select("id")
@@ -85,7 +101,12 @@ export default function QuoteTool() {
         />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button asChild variant="secondary">
+          <Link to="/admin/tools/quote/defaults">
+            <Settings2 className="size-4" /> ברירות מחדל
+          </Link>
+        </Button>
         <Button onClick={createQuote} disabled={creating}>
           {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
           הצעה חדשה
@@ -135,6 +156,7 @@ function QuoteBuilder({ id, onBack }: { id: string; onBack: () => void }) {
   const qc = useQueryClient();
   const { data: quote, isLoading } = useQuote(id);
   const { data: catalog } = useQuoteCatalog();
+  const { data: defaultsData } = useQuoteDefaults();
   const { config } = usePlanConfig();
 
   if (isLoading || !quote) {
@@ -149,6 +171,7 @@ function QuoteBuilder({ id, onBack }: { id: string; onBack: () => void }) {
       key={quote.id}
       quote={quote}
       catalog={catalog ?? []}
+      defaults={defaultsData?.defaults ?? null}
       tierPrice={(t) => config[t].price}
       onBack={onBack}
       invalidate={() => {
@@ -162,12 +185,14 @@ function QuoteBuilder({ id, onBack }: { id: string; onBack: () => void }) {
 function BuilderForm({
   quote,
   catalog,
+  defaults,
   tierPrice,
   onBack,
   invalidate,
 }: {
   quote: PriceQuote;
   catalog: QuoteCatalogRow[];
+  defaults: QuoteDefaults | null;
   tierPrice: (t: ServiceTier) => number;
   onBack: () => void;
   invalidate: () => void;
@@ -232,6 +257,22 @@ function BuilderForm({
         tiers: has ? c.maintenance.tiers.filter((x) => x !== t) : [...c.maintenance.tiers, t],
       },
     });
+  }
+
+  function loadFromDefaults() {
+    if (!defaults) return toastError("ברירות המחדל עדיין נטענות.");
+    if (!window.confirm("לטעון מחדש נרטיב/שלבים/בונוסים/שאלות/סעיפים מברירות המחדל? זה ידרוס את מה שערכת פה במקטעים האלה.")) return;
+    patch({
+      differentiators: defaults.differentiators,
+      phases: defaults.phases,
+      bonuses: defaults.bonuses,
+      next_steps: defaults.next_steps,
+      faq: defaults.faq,
+      legal: defaults.legal,
+      payment: defaults.payment,
+      validity_days: defaults.validity_days,
+    });
+    toast({ title: "נטען מברירות המחדל ✓", variant: "success" });
   }
 
   async function save(nextStatus?: PriceQuote["status"]) {
@@ -429,6 +470,48 @@ function BuilderForm({
               </div>
             )}
           </Card>
+
+          {/* premium content sections (seeded from defaults, editable per quote) */}
+          <Card className="flex flex-wrap items-center justify-between gap-2 border-dashed p-4">
+            <div>
+              <h3 className="font-heading text-base font-semibold text-foreground">תוכן ההצעה</h3>
+              <p className="text-xs text-muted-foreground">נרטיב, שלבים, בונוסים ומקטעי הסגירה. מגיע מברירות המחדל, אפשר לערוך פר לקוח.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin/tools/quote/defaults">
+                  <Settings2 className="size-4" /> ערוך ברירות מחדל
+                </Link>
+              </Button>
+              {!locked && (
+                <Button variant="secondary" size="sm" onClick={loadFromDefaults}>
+                  <RefreshCw className="size-4" /> טען מברירות מחדל
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          <PaymentValidityEditor
+            depositPct={c.payment?.deposit_pct ?? 50}
+            terms={c.payment?.terms ?? ""}
+            validityDays={c.validity_days ?? 7}
+            locked={locked}
+            onChange={(p) =>
+              patch({
+                payment: {
+                  deposit_pct: p.depositPct ?? c.payment?.deposit_pct ?? 50,
+                  terms: p.terms ?? c.payment?.terms ?? "",
+                },
+                validity_days: p.validityDays ?? c.validity_days ?? 7,
+              })
+            }
+          />
+          <PhasesEditor value={c.phases ?? []} onChange={(v) => patch({ phases: v })} locked={locked} />
+          <BonusesEditor value={c.bonuses ?? []} onChange={(v) => patch({ bonuses: v })} locked={locked} />
+          <DiffsEditor value={c.differentiators ?? []} onChange={(v) => patch({ differentiators: v })} locked={locked} />
+          <StepsEditor value={c.next_steps ?? []} onChange={(v) => patch({ next_steps: v })} locked={locked} />
+          <FaqEditor value={c.faq ?? []} onChange={(v) => patch({ faq: v })} locked={locked} />
+          <LegalEditor value={c.legal ?? []} onChange={(v) => patch({ legal: v })} locked={locked} />
         </div>
 
         {/* right: summary + actions */}
@@ -448,6 +531,18 @@ function BuilderForm({
                 </span>
               </div>
             </div>
+            {bonusesTotal(c) > 0 && (
+              <Row label="שווי בונוסים במתנה 🎁" value={shekel(bonusesTotal(c))} accent />
+            )}
+            {(() => {
+              const split = paymentSplit(withVat(totals.oneTimeBase, c.vat_pct), c);
+              return (
+                <div className="border-t border-border pt-2 text-xs">
+                  <Row label={`מקדמה (${split.depositPct}%)`} value={shekel(split.deposit)} />
+                  <Row label="יתרה לפני השקה" value={shekel(split.rest)} />
+                </div>
+              );
+            })()}
           </Card>
 
           <div className="flex flex-col gap-2">

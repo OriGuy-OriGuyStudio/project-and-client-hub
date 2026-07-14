@@ -1011,6 +1011,20 @@ export type QuoteCatalogRow = {
   created_at: string;
 };
 
+/** Studio-wide boilerplate row that seeds every new quote (one row). */
+export type QuoteDefaultsRow = {
+  id: string;
+  differentiators: unknown[];
+  phases: unknown[];
+  bonuses: unknown[];
+  next_steps: unknown[];
+  faq: unknown[];
+  legal: unknown[];
+  payment: Record<string, unknown>;
+  validity_days: number;
+  updated_at: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
@@ -1240,6 +1254,7 @@ export interface Database {
       brief_responses: TableShape<BriefResponse>;
       price_quotes: TableShape<PriceQuote>;
       quote_catalog: TableShape<QuoteCatalogRow>;
+      quote_defaults: TableShape<QuoteDefaultsRow>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
