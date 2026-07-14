@@ -4,7 +4,13 @@
       "Bash(npm --version)",
       "Bash(npx --version)",
       "Bash(git --version)",
-      "Bash(supabase --version)"
+      "Bash(supabase --version)",
+      "Bash(ls -la .design-sync)",
+      "Bash(ls -la design-sync.config.json)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

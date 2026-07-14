@@ -1,0 +1,8 @@
+{
+  "projectId": "9bf70358-dcd4-4034-a8ca-1aebe576ce6b",
+  "shape": "package",
+  "pkg": "studio-ori-guy-portal",
+  "globalName": "StudioOriGuyUI",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json"
+}

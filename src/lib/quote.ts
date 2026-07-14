@@ -22,6 +22,8 @@ export type QuoteFaq = { id: string; q: string; a: string };
 export type QuotePayment = { deposit_pct: number; terms?: string };
 /** A custom discount on the project total, by fixed amount (₪) or percentage. */
 export type QuoteDiscount = { mode: "amount" | "percent"; value: number; label?: string };
+/** A client testimonial shown on the quote page (trust). */
+export type QuoteTestimonial = { quote: string; name: string; role?: string };
 
 /** The full quote structure (source of truth for all pricing + copy). Stored as
  *  the `content` jsonb of a price_quotes row. New quotes are seeded from
@@ -47,6 +49,7 @@ export type QuoteContent = {
   legal?: string[]; // "סעיפים משפטיים"
   payment?: QuotePayment; // deposit split
   discount?: QuoteDiscount | null; // custom discount on the total
+  testimonial?: QuoteTestimonial | null; // trust quote
   validity_days?: number; // quote valid for N days from send
   version?: string; // "v1.0"
 };

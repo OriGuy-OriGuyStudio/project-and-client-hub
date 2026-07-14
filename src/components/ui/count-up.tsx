@@ -18,12 +18,14 @@ export function CountUp({
   duration = 1100,
   format,
   className,
+  style,
 }: {
   to: number;
   from?: number;
   duration?: number;
   format: (n: number) => string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const reduced = usePrefersReducedMotion();
@@ -84,7 +86,7 @@ export function CountUp({
   }, [to, reduced]);
 
   return (
-    <span ref={ref} className={className}>
+    <span ref={ref} className={className} style={style}>
       {format(to)}
     </span>
   );
