@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ClipboardList,
   Eye,
+  Search,
   EyeOff,
   Lightbulb,
   Loader2,
@@ -200,6 +201,11 @@ export default function SitemapTool() {
             <Button asChild variant="secondary" size="sm">
               <Link to="/admin/tools/brief">
                 <ClipboardList className="size-4" /> צור בריף תוכן
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/admin/tools/seo">
+                <Search className="size-4" /> צור בסיס SEO
               </Link>
             </Button>
           </div>

@@ -719,6 +719,129 @@ async function generateBrief(
   };
 }
 
+function seoPrompt(title: string, items: Item[], personasText: string, sitemap: any): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+  return [
+    "אתה מומחה SEO ו-AEO בכיר לאתרים בעברית (15+ שנים). המשימה: לכל עמוד במפת האתר, בנה את בסיס ה-SEO וה-AEO שהסטודיו ישתמש בו בבניית האתר.",
+    "עקרונות: התבסס על שיחת האפיון, הפרסונות ומפת האתר. עברית טבעית, בלי מקף ארוך, בלי באזזוורדס, בלי סימני קריאה. אל תמציא נתונים (טלפון, כתובת, מספרים) שלא עלו בשיחה, במקומם השאר פלייסהולדר בסוגריים מסולסלים (למשל {טלפון}, {כתובת}, {url}).",
+    "לכל עמוד מלא:",
+    "- slug: כתובת קצרה באנגלית, אותיות קטנות ומקפים (למשל 'about', 'services'). לדף הבית החזר '/' .",
+    "- meta_title: כותרת מטא עד 60 תווים, כוללת את מילת המפתח המרכזית ואת שם העסק כשמתאים.",
+    "- meta_description: תיאור מטא של 150 עד 160 תווים, עם הצעת ערך והזמנה עדינה לפעולה.",
+    "- h1: כותרת H1 לעמוד, שונה מ-meta_title, ממוקדת בכוונת החיפוש של הגולש.",
+    "- keywords: 4 עד 8 מילות או ביטויי מפתח בעברית שהקהל באמת מחפש (הצעות מבוססות שפת הקהל מהאפיון, לא נתוני נפח).",
+    "- aeo_answer: פסקה של 40 עד 60 מילים שעונה ישירות ובצורה עובדתית על השאלה המרכזית של העמוד, כך שמנוע תשובות או AI יוכל לצטט אותה. בלי שיווקיות ובלי סופרלטיבים.",
+    "- faqs: 3 עד 5 שאלות ותשובות אמיתיות שהקהל שואל, עם תשובות קצרות וברורות.",
+    "- json_ld: קטע JSON-LD תקין (כמחרוזת אחת) לעמוד, לפי schema.org, כולל FAQPage שנבנה מה-faqs, ואם רלוונטי גם Service או Article. השתמש בערכים אמיתיים מהאפיון ובפלייסהולדרים למה שחסר.",
+    "בנוסף, ברמת האתר: business_json_ld = קטע JSON-LD אחד לעסק (Organization, או LocalBusiness אם יש כתובת פיזית), עם שם העסק ופלייסהולדרים לטלפון, כתובת ו-URL אם אינם ידועים.",
+    personasText ? "קהל היעד (לכוונת חיפוש ולמילות מפתח):\n" + personasText : "",
+    "מבנה האתר (בנה SEO לכל עמוד, לפי אותם שמות עמודים):\n" + sitemapPagesText(sitemap),
+    "פרטי העסק: " + title,
+    "מתוך שיחת האפיון:",
+    data,
+    "בנוסף: title קצר (למשל 'בסיס SEO ו-AEO'), design_notes פנימי.",
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const SEO_PAGE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    slug: { type: "STRING" },
+    meta_title: { type: "STRING" },
+    meta_description: { type: "STRING" },
+    h1: { type: "STRING" },
+    keywords: { type: "ARRAY", items: { type: "STRING" } },
+    aeo_answer: { type: "STRING" },
+    faqs: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { q: { type: "STRING" }, a: { type: "STRING" } },
+        required: ["q", "a"],
+      },
+    },
+    json_ld: { type: "STRING" },
+  },
+  required: ["name", "slug", "meta_title", "meta_description", "h1", "keywords", "aeo_answer", "faqs", "json_ld"],
+};
+
+const SEO_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    business_json_ld: { type: "STRING" },
+    pages: { type: "ARRAY", items: SEO_PAGE_SCHEMA },
+    design_notes: { type: "STRING" },
+  },
+  required: ["title", "business_json_ld", "pages", "design_notes"],
+};
+
+async function generateSeo(
+  apiKey: string,
+  title: string,
+  items: Item[],
+  personasText: string,
+  sitemap: any,
+) {
+  const prompt = seoPrompt(title, items, personasText, sitemap);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.7,
+      maxOutputTokens: 8000,
+      responseMimeType: "application/json",
+      responseSchema: SEO_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let seo: any;
+      try {
+        seo = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!seo || !Array.isArray(seo.pages) || seo.pages.length === 0) {
+        return { ok: false, status: 502, error: "לא נוצר בסיס SEO. נסה שוב." };
+      }
+      return { ok: true, seo };
+    }
+    const detail = await res.text();
+    console.error("gemini seo error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 // Per-page AI helpers for the sitemap editor: task = "sections" | "reorder" | "subpages".
 async function generateAssist(
   apiKey: string,
@@ -883,7 +1006,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief"].includes(body?.mode)
+  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief", "seo"].includes(body?.mode)
     ? body.mode
     : "personas";
 
@@ -938,6 +1061,15 @@ Deno.serve(async (req) => {
     const br = await generateBrief(apiKey, title, items, personasToText(body?.personas), body.sitemap);
     if (!br.ok) return json({ ok: false, error: br.error }, br.status ?? 502);
     return json({ ok: true, brief: br.brief });
+  }
+
+  if (mode === "seo") {
+    if (!body?.sitemap?.pages?.length) {
+      return json({ ok: false, error: "צריך מפת אתר לפני יצירת בסיס SEO. צור מפת אתר קודם." }, 400);
+    }
+    const sr = await generateSeo(apiKey, title, items, personasToText(body?.personas), body.sitemap);
+    if (!sr.ok) return json({ ok: false, error: sr.error }, sr.status ?? 502);
+    return json({ ok: true, seo: sr.seo });
   }
 
   if (mode === "journey" || mode === "sitemap") {

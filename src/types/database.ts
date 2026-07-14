@@ -948,13 +948,43 @@ export type BriefResponse = {
   updated_at: string;
 };
 
+/** One FAQ pair (used for AEO answers + FAQPage schema). */
+export type SeoFaq = { q: string; a: string };
+
+/** SEO/AEO starter for one page (admin build material). */
+export type SeoPage = {
+  name: string;
+  /** URL slug (lowercase, hyphenated). */
+  slug: string;
+  meta_title: string;
+  meta_description: string;
+  h1: string;
+  keywords: string[];
+  /** A 40-60 word direct answer AI engines can quote (AEO). */
+  aeo_answer: string;
+  faqs: SeoFaq[];
+  /** Ready-to-paste JSON-LD snippet for the page (FAQPage/Service/etc.). */
+  json_ld: string;
+};
+
+/** Structured content of a `seo` deliverable: per-page SEO/AEO starter + a
+ *  site-level business JSON-LD block. Admin-only, never shown to the client. */
+export type SeoContent = {
+  title: string;
+  /** Site-level JSON-LD for the business (Organization/LocalBusiness). */
+  business_json_ld: string;
+  pages: SeoPage[];
+  /** Admin-only note. */
+  design_notes?: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
   id: string;
   project_id: string;
   org_id: string | null;
-  kind: "persona" | "journey" | "sitemap" | "copy" | "brief";
+  kind: "persona" | "journey" | "sitemap" | "copy" | "brief" | "seo";
   title: string | null;
   content: Record<string, unknown>;
   status: "draft" | "published";

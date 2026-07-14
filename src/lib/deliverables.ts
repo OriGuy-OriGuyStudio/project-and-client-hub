@@ -5,6 +5,7 @@ import type {
   CopyContent,
   JourneyContent,
   PersonaContent,
+  SeoContent,
   SitemapContent,
 } from "@/types/database";
 
@@ -38,6 +39,32 @@ export async function generateCopy(payload: {
     if (error) return { ok: false, error: await fnErrorMessage(error) };
     if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
     return { ok: true, copy: data?.copy as CopyContent };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Generate an SEO/AEO starter (per-page meta, keywords, AEO answer, FAQs, JSON-LD),
+ *  grounded in the discovery + personas + sitemap. Requires an existing sitemap. */
+export async function generateSeo(payload: {
+  title: string;
+  items: { question: string; answer: string }[];
+  personas?: JourneyPersonaHint[];
+  sitemap: SitemapContent;
+}): Promise<{ ok: boolean; seo?: SeoContent; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "seo",
+        title: payload.title,
+        items: payload.items,
+        personas: payload.personas ?? [],
+        sitemap: payload.sitemap,
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    return { ok: true, seo: data?.seo as SeoContent };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }

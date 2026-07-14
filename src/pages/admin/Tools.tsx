@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UsersRound, Route as RouteIcon, Network, PenLine, ClipboardList, Sparkles } from "lucide-react";
+import { UsersRound, Route as RouteIcon, Network, PenLine, ClipboardList, Search, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,13 @@ const TOOLS = [
     icon: ClipboardList,
     title: "בריף תוכן ותמונות",
     desc: "רשימת חומרים לאיסוף מהלקוח לכל עמוד. הלקוח ממלא ומעלה בפורטל, והחומרים נכנסים לקבצים.",
+    ready: true,
+  },
+  {
+    to: "/admin/tools/seo",
+    icon: Search,
+    title: "בסיס SEO ו-AEO",
+    desc: "לכל עמוד: מטא, מילות מפתח, פסקת AEO, שאלות נפוצות ו-JSON-LD. כלי פנימי לבנייה, לא מוצג ללקוח.",
     ready: true,
   },
 ];

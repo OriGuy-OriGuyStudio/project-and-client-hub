@@ -56,6 +56,7 @@ const JourneyTool = lazy(() => import("@/pages/admin/JourneyTool"));
 const SitemapTool = lazy(() => import("@/pages/admin/SitemapTool"));
 const CopyTool = lazy(() => import("@/pages/admin/CopyTool"));
 const BriefTool = lazy(() => import("@/pages/admin/BriefTool"));
+const SeoTool = lazy(() => import("@/pages/admin/SeoTool"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
@@ -133,6 +134,7 @@ function App() {
                   <Route path="/admin/tools/sitemap" element={<SitemapTool />} />
                   <Route path="/admin/tools/copy" element={<CopyTool />} />
                   <Route path="/admin/tools/brief" element={<BriefTool />} />
+                  <Route path="/admin/tools/seo" element={<SeoTool />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/businesses" element={<Businesses />} />
