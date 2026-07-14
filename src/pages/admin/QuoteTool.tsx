@@ -48,6 +48,7 @@ import {
 import {
   BonusesEditor,
   DiffsEditor,
+  DiscountEditor,
   FaqEditor,
   LegalEditor,
   PaymentValidityEditor,
@@ -491,6 +492,7 @@ function BuilderForm({
             </div>
           </Card>
 
+          <DiscountEditor value={c.discount} onChange={(v) => patch({ discount: v })} locked={locked} />
           <PaymentValidityEditor
             depositPct={c.payment?.deposit_pct ?? 50}
             terms={c.payment?.terms ?? ""}
@@ -523,11 +525,18 @@ function BuilderForm({
             <Row label="פיצ'רים" value={shekel(totals.featuresTotal)} />
             <Row label={`מרווח ביטחון (${c.margin_pct}%)`} value={shekel(totals.margin)} accent />
             <div className="border-t border-border pt-2">
-              <Row label="סה״כ לא כולל מע״מ" value={shekel(totals.oneTimeBase)} />
+              <Row label="סה״כ לפני מע״מ" value={shekel(totals.oneTimeBase)} />
+              {totals.discountAmount > 0 && (
+                <Row
+                  label={c.discount?.label?.trim() || "הנחה"}
+                  value={`- ${shekel(totals.discountAmount)}`}
+                  accent
+                />
+              )}
               <div className="mt-1 flex items-baseline justify-between">
                 <span className="text-sm text-muted-foreground">כולל מע״מ</span>
                 <span className="font-heading text-2xl font-black text-primary">
-                  {shekel(withVat(totals.oneTimeBase, c.vat_pct))}
+                  {shekel(withVat(totals.netTotal, c.vat_pct))}
                 </span>
               </div>
             </div>
@@ -535,7 +544,7 @@ function BuilderForm({
               <Row label="שווי בונוסים במתנה 🎁" value={shekel(bonusesTotal(c))} accent />
             )}
             {(() => {
-              const split = paymentSplit(withVat(totals.oneTimeBase, c.vat_pct), c);
+              const split = paymentSplit(withVat(totals.netTotal, c.vat_pct), c);
               return (
                 <div className="border-t border-border pt-2 text-xs">
                   <Row label={`מקדמה (${split.depositPct}%)`} value={shekel(split.deposit)} />

@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { newId, type QuoteBonus, type QuoteDiff, type QuoteFaq, type QuotePhase, type QuoteStep } from "@/lib/quote";
+import {
+  newId,
+  type QuoteBonus,
+  type QuoteDiff,
+  type QuoteDiscount,
+  type QuoteFaq,
+  type QuotePhase,
+  type QuoteStep,
+} from "@/lib/quote";
 
 /* Shared list editors for the quote's premium sections. Used by both the quote
  * builder (per-quote override) and the studio defaults page. Each editor takes a
@@ -284,6 +292,78 @@ export function LegalEditor({ value, onChange, locked }: { value: string[]; onCh
       ))}
       {items.length === 0 && <Empty text="אין סעיפים." />}
     </EditorShell>
+  );
+}
+
+/* ---------- discount (amount / percent, optional) ---------- */
+export function DiscountEditor({
+  value,
+  onChange,
+  locked,
+}: {
+  value: QuoteDiscount | null | undefined;
+  onChange: (v: QuoteDiscount | null) => void;
+  locked?: boolean;
+}) {
+  const on = !!value;
+  const d = value ?? { mode: "amount" as const, value: 0, label: "" };
+  return (
+    <Card className="p-4">
+      <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.checked ? { mode: "amount", value: 0, label: "" } : null)}
+          className="size-4 accent-primary"
+        />
+        הנחה מותאמת אישית (מוצגת ללקוח)
+      </label>
+      {on && (
+        <div className="mt-3 grid gap-3 ps-6 sm:grid-cols-[9rem,1fr]">
+          <div className="space-y-1">
+            <Label className="text-xs">סוג</Label>
+            <div className="flex overflow-hidden rounded-lg border border-border">
+              {(["amount", "percent"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => onChange({ ...d, mode: m })}
+                  className={cn(
+                    "flex-1 px-2.5 py-1.5 text-xs transition-colors",
+                    d.mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {m === "amount" ? "₪" : "%"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">{d.mode === "percent" ? "אחוז הנחה" : "סכום הנחה (₪)"}</Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={Number.isFinite(d.value) ? d.value : 0}
+              onChange={(e) => onChange({ ...d, value: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+              className="h-9"
+              disabled={locked}
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">כותרת ההנחה (אופציונלי, למשל ״הנחת השקה״)</Label>
+            <Input
+              value={d.label ?? ""}
+              onChange={(e) => onChange({ ...d, label: e.target.value })}
+              placeholder="הנחה"
+              className="h-9"
+              disabled={locked}
+            />
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 

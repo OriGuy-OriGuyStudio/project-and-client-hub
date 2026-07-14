@@ -20,6 +20,8 @@ export type QuoteStep = { id: string; text: string };
 export type QuoteFaq = { id: string; q: string; a: string };
 /** Payment split: a deposit on approval, the rest before launch. */
 export type QuotePayment = { deposit_pct: number; terms?: string };
+/** A custom discount on the project total, by fixed amount (₪) or percentage. */
+export type QuoteDiscount = { mode: "amount" | "percent"; value: number; label?: string };
 
 /** The full quote structure (source of truth for all pricing + copy). Stored as
  *  the `content` jsonb of a price_quotes row. New quotes are seeded from
@@ -44,6 +46,7 @@ export type QuoteContent = {
   faq?: QuoteFaq[]; // "שאלות נפוצות"
   legal?: string[]; // "סעיפים משפטיים"
   payment?: QuotePayment; // deposit split
+  discount?: QuoteDiscount | null; // custom discount on the total
   validity_days?: number; // quote valid for N days from send
   version?: string; // "v1.0"
 };
@@ -85,6 +88,7 @@ export function emptyQuoteContent(): QuoteContent {
     vat_pct: 18,
     intro: "",
     notes: "",
+    discount: null,
     differentiators: [],
     phases: [],
     bonuses: [],
@@ -197,9 +201,18 @@ export type QuoteTotals = {
   margin: number;
   oneTimeBase: number; // subtotal + margin, before upsells
   upsellsTotal: number;
-  oneTimeTotal: number; // oneTimeBase + selected upsells
+  oneTimeTotal: number; // oneTimeBase + selected upsells (before discount)
+  discountAmount: number; // resolved discount in ₪ (0 if none)
+  netTotal: number; // oneTimeTotal - discount, ex VAT (what VAT is applied to)
   monthly: number; // selected maintenance tier price / month (0 if none)
 };
+
+/** Resolve a discount to a ₪ amount against a pre-discount total. */
+export function discountAmountFor(total: number, d?: QuoteDiscount | null): number {
+  if (!d || !d.value) return 0;
+  const raw = d.mode === "percent" ? (total * Math.min(100, Math.max(0, d.value))) / 100 : d.value;
+  return Math.min(total, Math.max(0, Math.round(raw)));
+}
 
 /**
  * Compute all quote totals from the content + (optional) client selections.
@@ -225,6 +238,9 @@ export function computeQuote(
   const tier = selected?.maintenance_tier ?? null;
   const monthly = tier && monthlyForTier ? monthlyForTier(tier) : 0;
 
+  const oneTimeTotal = oneTimeBase + upsellsTotal;
+  const discountAmount = discountAmountFor(oneTimeTotal, c.discount);
+
   return {
     pagesTotal,
     featuresTotal,
@@ -232,7 +248,9 @@ export function computeQuote(
     margin,
     oneTimeBase,
     upsellsTotal,
-    oneTimeTotal: oneTimeBase + upsellsTotal,
+    oneTimeTotal,
+    discountAmount,
+    netTotal: Math.max(0, oneTimeTotal - discountAmount),
     monthly,
   };
 }
