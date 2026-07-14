@@ -36,8 +36,30 @@ import { cn } from "@/lib/utils";
 const Aurora = lazy(() => import("@/components/ui/aurora"));
 const WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 const EASE = [0.16, 1, 0.3, 1] as const;
-// Brand-green aurora stops (dark + green only, per the design brief).
-const AURORA_STOPS = ["#3a5a1e", "#B4D670", "#6f9438"];
+const AURORA_STOPS = ["#2f4a17", "#B4D670", "#7fae2b"];
+
+/* The theme tokens are hex vars with no <alpha-value>, so Tailwind's `/opacity`
+ * modifiers (bg-primary/10, text-primary/20, ...) silently render nothing. All
+ * green tints therefore go through color-mix inline styles, which DO resolve. */
+const tintBg = (pct: number): React.CSSProperties => ({ backgroundColor: `color-mix(in srgb, var(--primary) ${pct}%, transparent)` });
+const tintBorder = (pct: number): React.CSSProperties => ({ borderColor: `color-mix(in srgb, var(--primary) ${pct}%, transparent)` });
+const tintText = (pct: number): React.CSSProperties => ({ color: `color-mix(in srgb, var(--primary) ${pct}%, transparent)` });
+const glowBg = (shape: string, pct = 20): React.CSSProperties => ({
+  background: `radial-gradient(${shape}, color-mix(in srgb, var(--primary) ${pct}%, transparent), transparent)`,
+});
+const chipStyle: React.CSSProperties = {
+  backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
+  boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent)",
+};
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+  } catch {
+    return "";
+  }
+}
 
 export default function QuotePage() {
   const { token } = useParams<{ token: string }>();
@@ -103,6 +125,7 @@ export default function QuotePage() {
   const clientFirst = (quote.client_name || "").trim().split(/\s+/)[0] || "";
   const vatPct = content.vat_pct ?? 18;
   const bonusesSum = bonusesTotal(content);
+  const dateStr = formatDate(quote.created_at);
 
   if (alreadySigned) {
     const chosen = justSigned
@@ -122,7 +145,8 @@ export default function QuotePage() {
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="mx-auto flex size-20 items-center justify-center rounded-full bg-primary/15 text-primary ring-8 ring-primary/5"
+            className="mx-auto flex size-20 items-center justify-center rounded-full text-primary"
+            style={chipStyle}
           >
             <Check className="size-10" />
           </motion.div>
@@ -132,7 +156,7 @@ export default function QuotePage() {
           <p className="mt-2 text-muted-foreground">
             {quote.org_name ? `נתחיל לעבוד על ${quote.org_name}.` : "נתחיל לעבוד בקרוב."} אשלח לך את הצעדים הבאים.
           </p>
-          <Bezel className="mt-8 text-start">
+          <Bezel glow className="mt-8 text-start">
             <div className="space-y-1 p-6">
               <PriceRow label="סה״כ חד-פעמי (כולל מע״מ)" value={shekel(inclVat)} big />
               <PriceRow label={`מקדמה (${split.depositPct}%)`} value={shekel(split.deposit)} />
@@ -162,36 +186,44 @@ export default function QuotePage() {
     <Shell>
       <PrintStyles />
 
+      {/* masthead / letterhead */}
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <span className="font-heading text-sm font-bold tracking-tight text-foreground">Studio Ori Guy</span>
+        <span className="text-xs text-muted-foreground">
+          הצעת מחיר{content.version ? ` · ${content.version}` : ""}
+          {dateStr ? ` · ${dateStr}` : ""}
+        </span>
+      </div>
+
       {/* hero */}
-      <header className="relative -mx-4 overflow-hidden px-4 pb-14 pt-10 sm:pt-14">
+      <header className="relative -mt-4 overflow-hidden pb-8 pt-6">
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-50"
+          className="pointer-events-none absolute inset-x-0 -top-10 -z-10 h-72 opacity-70"
           style={{
-            maskImage: "linear-gradient(to bottom, black 5%, transparent 95%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 5%, transparent 95%)",
+            maskImage: "linear-gradient(to bottom, black 5%, transparent 92%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 5%, transparent 92%)",
           }}
         >
           <Suspense fallback={null}>
-            <Aurora colorStops={AURORA_STOPS} amplitude={1.1} blend={0.6} speed={0.5} />
+            <Aurora colorStops={AURORA_STOPS} amplitude={1.0} blend={0.55} speed={0.45} />
           </Suspense>
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: EASE }}
-        >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-            הצעת מחיר · Studio Ori Guy
+        <div className="pointer-events-none absolute -top-4 right-0 -z-10 h-64 w-2/3" style={glowBg("60% 70% at 70% 20%", 16)} />
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }}>
+          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <span className="h-px w-6 bg-primary" /> הצעה אישית
           </span>
-          <h1 className="mt-5 bg-gradient-to-b from-foreground via-foreground to-foreground/55 bg-clip-text pb-1 font-heading text-5xl font-black leading-[1.08] tracking-tight text-transparent sm:text-7xl">
+          <h1 className="mt-4 bg-gradient-to-b from-foreground via-foreground to-foreground/55 bg-clip-text pb-1 font-heading text-5xl font-black leading-[1.08] tracking-tight text-transparent sm:text-6xl">
             {quote.title}
           </h1>
-          {quote.client_name && <p className="mt-3 text-xl text-muted-foreground">עבור {quote.client_name}</p>}
+          <p className="mt-4 text-base text-muted-foreground">
+            {quote.client_name ? `מוגש עבור ${quote.client_name}` : "מוגש עבורך"}
+            {dateStr ? ` · ${dateStr}` : ""}
+          </p>
           <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-muted px-3 py-1">{SITE_TYPE_LABEL[quote.site_type as QuoteSiteType]}</span>
-            {content.version && <span className="rounded-full bg-muted px-3 py-1">{content.version}</span>}
+            <span className="rounded-full border border-border bg-card px-3 py-1">{SITE_TYPE_LABEL[quote.site_type as QuoteSiteType]}</span>
             {content.validity_days ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1">
                 <Clock className="size-3.5" /> תקפה ל-{content.validity_days} ימים
               </span>
             ) : null}
@@ -212,9 +244,11 @@ export default function QuotePage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {diffs.map((d, i) => (
               <RevealItem key={d.id} i={i}>
-                <div className="group relative h-full overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_24px_60px_-24px_hsl(var(--primary)/0.35)]">
-                  <span className="pointer-events-none absolute -top-5 end-3 font-heading text-7xl font-black text-foreground/[0.04]">{i + 1}</span>
-                  <span className="relative flex size-11 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
+                <div className="group relative h-full overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary">
+                  <span className="pointer-events-none absolute -top-6 end-3 select-none font-heading text-7xl font-black" style={tintText(12)}>
+                    {i + 1}
+                  </span>
+                  <span className="relative flex size-11 items-center justify-center rounded-xl text-primary" style={chipStyle}>
                     <Sparkles className="size-5" />
                   </span>
                   <p className="relative mt-4 font-heading text-lg font-bold text-foreground">{d.title}</p>
@@ -239,7 +273,7 @@ export default function QuotePage() {
       {/* timeline */}
       {phases.length > 0 && (
         <Section title="שלבים ולו״ז">
-          <ol className="relative space-y-5 border-s-2 border-primary/20 ps-7">
+          <ol className="relative space-y-5 border-s-2 ps-7" style={tintBorder(22)}>
             {phases.map((p, i) => (
               <RevealItem key={p.id} i={i}>
                 <li className="relative">
@@ -271,9 +305,10 @@ export default function QuotePage() {
                   <button
                     type="button"
                     onClick={() => setUpsellIds((ids) => (on ? ids.filter((x) => x !== u.id) : [...ids, u.id]))}
+                    style={on ? { ...tintBg(10), boxShadow: "0 16px 44px -16px rgba(180,214,112,0.45)" } : undefined}
                     className={cn(
-                      "flex w-full items-start gap-3 rounded-3xl border p-4 text-start transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 active:scale-[0.99]",
-                      on ? "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary)),0_12px_40px_-12px_hsl(var(--primary)/0.4)]" : "border-border bg-card hover:border-primary/40"
+                      "flex w-full items-start gap-3 rounded-2xl border p-4 text-start transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 active:scale-[0.99]",
+                      on ? "border-primary" : "border-border bg-card hover:border-primary"
                     )}
                   >
                     <span
@@ -311,9 +346,10 @@ export default function QuotePage() {
                   <button
                     type="button"
                     onClick={() => setMaintTier(on ? null : t)}
+                    style={on ? { ...tintBg(10), boxShadow: "0 16px 44px -16px rgba(180,214,112,0.4)" } : undefined}
                     className={cn(
-                      "w-full rounded-3xl border p-5 text-start transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 active:scale-[0.99]",
-                      on ? "border-primary bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary))]" : "border-border bg-card hover:border-primary/40"
+                      "w-full rounded-2xl border p-5 text-start transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 active:scale-[0.99]",
+                      on ? "border-primary" : "border-border bg-card hover:border-primary"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -345,7 +381,7 @@ export default function QuotePage() {
               <ul className="space-y-3.5">
                 {bonuses.map((b) => (
                   <li key={b.id} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl text-primary" style={chipStyle}>
                       <Gift className="size-4" />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -359,7 +395,7 @@ export default function QuotePage() {
                 ))}
               </ul>
               {bonusesSum > 0 && (
-                <div className="mt-5 flex items-baseline justify-between border-t border-primary/20 pt-4">
+                <div className="mt-5 flex items-baseline justify-between border-t pt-4" style={tintBorder(20)}>
                   <span className="font-heading font-bold text-foreground">שווי הבונוסים במתנה</span>
                   <span className="font-heading text-2xl font-black text-primary">{shekel(bonusesSum)}</span>
                 </div>
@@ -370,7 +406,7 @@ export default function QuotePage() {
       )}
 
       {/* price + payment */}
-      <Section title="מחיר ותשלום" eyebrow="השורה התחתונה">
+      <Section title="מחיר ותשלום">
         <Bezel glow>
           <div className="space-y-1 p-6">
             {bonusesSum > 0 && (
@@ -390,11 +426,11 @@ export default function QuotePage() {
               />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <div className="rounded-2xl bg-muted/50 p-4 text-center">
+              <div className="rounded-2xl border border-border bg-muted p-4 text-center">
                 <p className="text-xs text-muted-foreground">מקדמה לאישור ({split.depositPct}%)</p>
                 <p className="mt-0.5 font-heading text-xl font-black text-foreground">{shekel(split.deposit)}</p>
               </div>
-              <div className="rounded-2xl bg-muted/50 p-4 text-center">
+              <div className="rounded-2xl border border-border bg-muted p-4 text-center">
                 <p className="text-xs text-muted-foreground">יתרה לפני העלייה לאוויר</p>
                 <p className="mt-0.5 font-heading text-xl font-black text-foreground">{shekel(split.rest)}</p>
               </div>
@@ -415,8 +451,8 @@ export default function QuotePage() {
           <div className="grid gap-3 sm:grid-cols-4">
             {steps.map((s, i) => (
               <RevealItem key={s.id} i={i}>
-                <div className="relative h-full overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 font-heading font-bold text-primary ring-1 ring-primary/20">
+                <div className="relative h-full overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <span className="flex size-9 items-center justify-center rounded-full font-heading font-bold text-primary" style={chipStyle}>
                     {i + 1}
                   </span>
                   <p className="mt-3 text-sm leading-relaxed text-foreground">{s.text}</p>
@@ -430,7 +466,7 @@ export default function QuotePage() {
       {/* FAQ */}
       {faq.length > 0 && (
         <Section title="שאלות נפוצות">
-          <div className="divide-y divide-border overflow-hidden rounded-3xl border border-border bg-card">
+          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
             {faq.map((f) => (
               <FaqItem key={f.id} q={f.q} a={f.a} />
             ))}
@@ -455,13 +491,7 @@ export default function QuotePage() {
       {/* signature */}
       <section id="sign" className="scroll-mt-6">
         <Reveal>
-          <div className="mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-              יוצאים לדרך
-            </span>
-            <h2 className="mt-3 font-heading text-2xl font-bold text-foreground sm:text-3xl">אישור וחתימה</h2>
-            <p className="text-sm text-muted-foreground">חתמו כאן ונתחיל.</p>
-          </div>
+          <SectionHead title="אישור וחתימה" subtitle="חתמו כאן ונתחיל." />
           <Bezel glow>
             <div className="space-y-4 p-6">
               <div className="space-y-1.5">
@@ -489,7 +519,7 @@ export default function QuotePage() {
                 ) : (
                   <>
                     <span>אני מאשר את ההצעה · {shekel(liveInclVat)}</span>
-                    <span className="flex size-8 items-center justify-center rounded-full bg-primary-foreground/15">
+                    <span className="flex size-8 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.14)" }}>
                       <ArrowLeft className="size-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                     </span>
                   </>
@@ -503,8 +533,8 @@ export default function QuotePage() {
         </Reveal>
       </section>
 
-      {/* footer action */}
-      <div className="no-print flex justify-center pt-2">
+      {/* footer */}
+      <footer className="no-print flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
         <button
           type="button"
           onClick={() => window.print()}
@@ -512,7 +542,8 @@ export default function QuotePage() {
         >
           <FileText className="size-4" /> שמירה כ-PDF
         </button>
-      </div>
+        <p className="text-xs text-muted-foreground">Studio Ori Guy · עיצוב ובניית אתרים בהתאמה אישית</p>
+      </footer>
 
       {/* sticky mobile total + CTA */}
       <div className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 px-4 py-2.5 backdrop-blur-xl sm:hidden">
@@ -535,11 +566,11 @@ export default function QuotePage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="relative min-h-[100dvh] overflow-hidden bg-background text-foreground">
+    <div dir="rtl" className="dark relative min-h-[100dvh] overflow-hidden bg-background text-foreground">
       <GrainOverlay />
-      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[55vh] bg-[radial-gradient(70%_100%_at_50%_0%,hsl(var(--primary)/0.10),transparent)]" />
-      <div className="pointer-events-none fixed -bottom-48 left-1/2 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/[0.06] blur-[120px]" />
-      <div className="mx-auto max-w-3xl space-y-16 px-4 py-6 sm:space-y-24 sm:py-14">{children}</div>
+      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[55vh]" style={glowBg("70% 100% at 50% 0%", 12)} />
+      <div className="pointer-events-none fixed -bottom-48 left-1/2 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-primary opacity-[0.08] blur-[120px]" />
+      <div className="mx-auto max-w-3xl space-y-12 px-4 py-6 sm:space-y-16 sm:py-10">{children}</div>
     </div>
   );
 }
@@ -549,7 +580,7 @@ function GrainOverlay() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 opacity-[0.035] mix-blend-soft-light"
+      className="pointer-events-none fixed inset-0 -z-10 opacity-[0.04] mix-blend-soft-light"
       style={{
         backgroundImage:
           "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
@@ -573,20 +604,16 @@ function Bezel({
 }) {
   return (
     <div
-      className={cn(
-        "relative rounded-[2rem] border p-1.5",
-        glow ? "border-primary/25 bg-primary/[0.04]" : "border-border bg-foreground/[0.02]",
-        className
-      )}
+      className={cn("relative rounded-[1.75rem] border p-1.5", glow ? "border-transparent" : "border-border bg-card", className)}
+      style={glow ? { ...tintBg(5), ...tintBorder(30) } : undefined}
     >
-      {glow && (
-        <div className="pointer-events-none absolute -inset-x-8 -top-12 -z-0 h-36 bg-[radial-gradient(55%_100%_at_50%_0%,hsl(var(--primary)/0.22),transparent)]" />
-      )}
+      {glow && <div className="pointer-events-none absolute -inset-x-8 -top-12 -z-0 h-36" style={glowBg("55% 100% at 50% 0%", 22)} />}
       <div
         className={cn(
-          "relative overflow-hidden rounded-[1.55rem] shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]",
-          tinted ? "border border-primary/20 bg-primary/[0.06]" : glow ? "bg-card/80 backdrop-blur-sm" : "bg-card"
+          "relative overflow-hidden rounded-[1.4rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]",
+          tinted ? "border" : glow ? "bg-card/85 backdrop-blur-sm" : "bg-card"
         )}
+        style={tinted ? { ...tintBg(9), ...tintBorder(20) } : undefined}
       >
         {children}
       </div>
@@ -624,29 +651,22 @@ function RevealItem({ children, i }: { children: React.ReactNode; i: number }) {
   );
 }
 
-function Section({
-  title,
-  subtitle,
-  eyebrow,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  eyebrow?: string;
-  children: React.ReactNode;
-}) {
+/** Section heading with a short brand rule above it (formal document rhythm). */
+function SectionHead({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-4">
+      <span className="mb-3 block h-[3px] w-10 rounded-full bg-primary" />
+      <h2 className="font-heading text-2xl font-black tracking-tight text-foreground sm:text-3xl">{title}</h2>
+      {subtitle && <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
+    </div>
+  );
+}
+
+function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <Reveal>
-      <section className="space-y-4">
-        <div>
-          {eyebrow && (
-            <span className="mb-2 inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-              {eyebrow}
-            </span>
-          )}
-          <h2 className="font-heading text-3xl font-black tracking-tight text-foreground sm:text-4xl">{title}</h2>
-          {subtitle && <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
-        </div>
+      <section>
+        <SectionHead title={title} subtitle={subtitle} />
         {children}
       </section>
     </Reveal>
@@ -656,12 +676,12 @@ function Section({
 function IncludedCard({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="rounded-3xl border border-border bg-card p-5 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.05)]">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
       <p className="mb-3 font-heading font-bold text-foreground">{title}</p>
       <ul className="space-y-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full text-primary" style={chipStyle}>
               <Check className="size-3" />
             </span>
             {it}
@@ -735,7 +755,7 @@ function WhatsAppFab({ title }: { title: string }) {
       target="_blank"
       rel="noopener"
       aria-label="שאלה בוואטסאפ"
-      className="no-print fixed bottom-20 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 font-heading text-sm font-bold text-primary-foreground shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.6)] transition-transform duration-300 hover:scale-105 active:scale-95 sm:bottom-6"
+      className="no-print fixed bottom-20 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 font-heading text-sm font-bold text-primary-foreground shadow-[0_12px_40px_-12px_rgba(180,214,112,0.6)] transition-transform duration-300 hover:scale-105 active:scale-95 sm:bottom-6"
       style={{ insetInlineStart: "1rem" }}
     >
       <MessageCircle className="size-5" /> שאלה? דבר איתי

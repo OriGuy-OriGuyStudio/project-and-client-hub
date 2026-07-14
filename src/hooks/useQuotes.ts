@@ -104,6 +104,7 @@ export interface PublicQuote {
   selected: Record<string, unknown>;
   signed_name: string | null;
   signed_at: string | null;
+  created_at: string | null;
   org_name: string | null;
 }
 

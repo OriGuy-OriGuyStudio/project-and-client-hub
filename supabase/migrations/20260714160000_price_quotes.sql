@@ -67,6 +67,7 @@ returns jsonb language sql security definer set search_path to 'public' stable a
     'selected', q.selected,
     'signed_name', q.signed_name,
     'signed_at', q.signed_at,
+    'created_at', q.created_at,
     'org_name', o.name
   )
   from public.price_quotes q
