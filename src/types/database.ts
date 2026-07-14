@@ -978,6 +978,39 @@ export type SeoContent = {
   design_notes?: string;
 };
 
+/** A price quote (Phase A): admin-built, client-signed via share token. content
+ *  is the QuoteContent from lib/quote.ts. */
+export type PriceQuote = {
+  id: string;
+  org_id: string | null;
+  project_id: string | null;
+  title: string;
+  client_name: string | null;
+  site_type: "landing" | "portfolio" | "store" | "app" | "custom";
+  content: Record<string, unknown>;
+  status: "draft" | "sent" | "signed" | "declined";
+  share_token: string;
+  selected: Record<string, unknown>;
+  signed_name: string | null;
+  signature_image: string | null;
+  signed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A reusable "ready-made" catalog item for the quote builder (page/feature/upsell). */
+export type QuoteCatalogRow = {
+  id: string;
+  kind: "page" | "feature" | "upsell";
+  site_type: "landing" | "portfolio" | "store" | "app" | "custom" | null;
+  label: string;
+  description: string | null;
+  base_price: number | null;
+  default_mult: number;
+  sort: number;
+  created_at: string;
+};
+
 /** A tool-generated artifact attached to a project ("ארגז כלים"). MVP kind = persona;
  *  journey + sitemap reuse the same row shape later. Drafts are admin-only. */
 export type ProjectDeliverable = {
@@ -1205,6 +1238,8 @@ export interface Database {
       discovery_sessions: TableShape<DiscoverySession>;
       project_deliverables: TableShape<ProjectDeliverable>;
       brief_responses: TableShape<BriefResponse>;
+      price_quotes: TableShape<PriceQuote>;
+      quote_catalog: TableShape<QuoteCatalogRow>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
@@ -1217,6 +1252,17 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
+      get_quote_public: { Args: { p_token: string }; Returns: Record<string, unknown> | null };
+      sign_quote: {
+        Args: {
+          p_token: string;
+          p_name: string;
+          p_signature_image: string;
+          p_upsell_ids?: unknown;
+          p_maintenance_tier?: string | null;
+        };
+        Returns: { ok: boolean; error?: string };
+      };
       clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
       reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
       delete_organization: { Args: { p_org_id: string }; Returns: undefined };

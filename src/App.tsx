@@ -57,6 +57,8 @@ const SitemapTool = lazy(() => import("@/pages/admin/SitemapTool"));
 const CopyTool = lazy(() => import("@/pages/admin/CopyTool"));
 const BriefTool = lazy(() => import("@/pages/admin/BriefTool"));
 const SeoTool = lazy(() => import("@/pages/admin/SeoTool"));
+const QuoteTool = lazy(() => import("@/pages/admin/QuoteTool"));
+const QuotePage = lazy(() => import("@/pages/public/QuotePage"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
@@ -135,6 +137,7 @@ function App() {
                   <Route path="/admin/tools/copy" element={<CopyTool />} />
                   <Route path="/admin/tools/brief" element={<BriefTool />} />
                   <Route path="/admin/tools/seo" element={<SeoTool />} />
+                  <Route path="/admin/tools/quote" element={<QuoteTool />} />
                   <Route path="/admin/clients" element={<Clients />} />
                   <Route path="/admin/clients/:id" element={<ClientDetail />} />
                   <Route path="/admin/businesses" element={<Businesses />} />
@@ -193,6 +196,17 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <DiscoverySummary />
+                </Suspense>
+              }
+            />
+
+            {/* Public price-quote page (no auth, token-gated): client views, picks
+                upsells, and signs to accept. */}
+            <Route
+              path="/quote/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <QuotePage />
                 </Suspense>
               }
             />
