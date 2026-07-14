@@ -44,3 +44,7 @@ start-dev.bat
 public/raw/
 
 .superpowers/
+
+# Design-system sync tooling (local only)
+.ds-sync/
+.design-sync/
