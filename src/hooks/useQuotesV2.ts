@@ -54,7 +54,7 @@ export type QuoteMultiplierEntry = { fair: number; recommended: number; premium:
 export type QuoteMultipliersMap = Record<QuoteType, QuoteMultiplierEntry>;
 
 /** Sane fallbacks matching the seed row in migration 20260715120000_quote_v2_schema. */
-const DEFAULT_QUOTE_MULTIPLIERS: QuoteMultipliersMap = {
+export const DEFAULT_QUOTE_MULTIPLIERS: QuoteMultipliersMap = {
   website: { fair: 1, recommended: 1.25, premium: 1.5, floor: 4500 },
   system: { fair: 1, recommended: 1.25, premium: 1.5, floor: 12000 },
   automation: { fair: 1, recommended: 1.25, premium: 1.5, floor: 2500 },

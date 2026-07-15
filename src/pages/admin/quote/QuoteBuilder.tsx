@@ -20,11 +20,14 @@ import {
   useQuoteV2,
   useCreateQuoteV2,
   useUpdateQuoteContentV2,
+  useQuoteMultipliers,
+  DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
 import { emptyQuoteV2, type QuoteContentV2 } from "@/lib/quote-v2";
 import type { QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
+import { PricePanel } from "./PricePanel";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -92,6 +95,7 @@ export default function QuoteBuilder() {
 function QuoteBuilderShell({ id }: { id: string }) {
   const { data: quote, isLoading } = useQuoteV2(id);
   const { data: catalogRows } = useQuoteCatalog();
+  const { data: multipliers } = useQuoteMultipliers();
   const updateContent = useUpdateQuoteContentV2();
 
   const [content, setContent] = useState<QuoteContentV2 | null>(null);
@@ -112,6 +116,8 @@ function QuoteBuilderShell({ id }: { id: string }) {
     if (!content) return 0;
     return anchorValue({ type: content.type, items: content.scope });
   }, [content]);
+
+  const mult = content ? multipliers?.[content.type] ?? DEFAULT_QUOTE_MULTIPLIERS[content.type] : null;
 
   function setType(type: QuoteType) {
     if (locked || !content || type === content.type) return;
@@ -158,6 +164,11 @@ function QuoteBuilderShell({ id }: { id: string }) {
     setContent((prev) =>
       prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, value } : it)) } : prev
     );
+  }
+
+  function setFinalPrice(price: number) {
+    if (locked) return;
+    setContent((prev) => (prev ? { ...prev, final_price: price } : prev));
   }
 
   async function save() {
@@ -265,10 +276,22 @@ function QuoteBuilderShell({ id }: { id: string }) {
         />
       ))}
 
+      {mult && (
+        <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
+      )}
+
       <Card className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 border-primary/30 bg-card/95 p-5 shadow-lift backdrop-blur">
-        <div>
-          <p className="text-xs text-muted-foreground">עוגן מחיר (סכום ההיקף שנבחר)</p>
-          <p className="font-heading text-2xl font-bold text-primary">{shekel(anchor)}</p>
+        <div className="flex flex-wrap items-center gap-5">
+          <div>
+            <p className="text-xs text-muted-foreground">עוגן מחיר (סכום ההיקף שנבחר)</p>
+            <p className="font-heading text-2xl font-bold text-primary">{shekel(anchor)}</p>
+          </div>
+          {content.final_price > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground">מחיר סופי</p>
+              <p className="font-heading text-2xl font-bold text-foreground">{shekel(content.final_price)}</p>
+            </div>
+          )}
         </div>
         <Button onClick={save} disabled={locked || updateContent.isPending}>
           {updateContent.isPending && <Loader2 className="size-4 animate-spin" />}
