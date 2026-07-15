@@ -123,7 +123,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
     if (locked || !content || type === content.type) return;
     // Different types draw from entirely separate catalogs, so switching
     // clears the scope + subtype rather than carrying over stale items.
-    setContent({ ...content, type, subtype: undefined, scope: [] });
+    setContent({ ...content, type, subtype: undefined, scope: [], final_price: 0 });
   }
 
   function selectSubtype(row: QuoteCatalogRow) {

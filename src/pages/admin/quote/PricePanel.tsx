@@ -82,7 +82,7 @@ export function PricePanel({
           className="inline-flex h-10 shrink-0 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-primary/15 px-5 text-sm font-medium text-primary opacity-60"
         >
           <Sparkles className="size-4" />
-          עזרו לי לתמחר עם AI
+          עזור לי לתמחר עם AI
         </button>
         <p className="text-xs text-muted-foreground">בקרוב</p>
       </div>
