@@ -43,7 +43,7 @@ import {
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
-import { emptyQuoteV2, type QuoteContentV2 } from "@/lib/quote-v2";
+import { emptyQuoteV2, optionalExtras, type QuoteContentV2 } from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
@@ -321,6 +321,11 @@ function QuoteBuilderShell({ id }: { id: string }) {
     return anchorValue({ type: content.type, items: content.scope });
   }, [content]);
 
+  const extrasSubtotal = useMemo(() => {
+    if (!content) return 0;
+    return optionalExtras(content).subtotal;
+  }, [content]);
+
   const mult = content ? multipliers?.[content.type] ?? DEFAULT_QUOTE_MULTIPLIERS[content.type] : null;
 
   function setType(type: QuoteType) {
@@ -367,6 +372,13 @@ function QuoteBuilderShell({ id }: { id: string }) {
     if (locked) return;
     setContent((prev) =>
       prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, value } : it)) } : prev
+    );
+  }
+
+  function setScopeOptional(itemId: string, optional: boolean) {
+    if (locked) return;
+    setContent((prev) =>
+      prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, optional } : it)) } : prev
     );
   }
 
@@ -566,6 +578,10 @@ function QuoteBuilderShell({ id }: { id: string }) {
               disabled={locked}
               onToggle={(row) => toggleScopeItem(row, s.kind)}
               onValueChange={updateScopeValue}
+              onToggleOptional={(itemId) => {
+                const current = content.scope.find((it) => it.id === itemId);
+                setScopeOptional(itemId, !current?.optional);
+              }}
             />
           ))}
         </div>
@@ -589,6 +605,12 @@ function QuoteBuilderShell({ id }: { id: string }) {
             <p className="text-xs text-muted-foreground">עוגן מחיר (סכום ההיקף שנבחר)</p>
             <p className="font-heading text-2xl font-bold text-primary">{shekel(anchor)}</p>
           </div>
+          {extrasSubtotal > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground">תוספות אופציונליות (ללקוח לבחירה)</p>
+              <p className="font-heading text-2xl font-bold text-foreground">{shekel(extrasSubtotal)}</p>
+            </div>
+          )}
           {content.final_price > 0 && (
             <div>
               <p className="text-xs text-muted-foreground">מחיר סופי</p>

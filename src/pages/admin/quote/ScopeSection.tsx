@@ -16,6 +16,7 @@ export function ScopeSection({
   disabled,
   onToggle,
   onValueChange,
+  onToggleOptional,
 }: {
   title: string;
   rows: QuoteCatalogRow[];
@@ -23,6 +24,7 @@ export function ScopeSection({
   disabled?: boolean;
   onToggle: (row: QuoteCatalogRow) => void;
   onValueChange: (itemId: string, value: number) => void;
+  onToggleOptional: (itemId: string) => void;
 }) {
   if (rows.length === 0) return null;
 
@@ -33,42 +35,79 @@ export function ScopeSection({
         {rows.map((row) => {
           const item = scope.find((it) => it.id === row.id);
           const selected = !!item;
+          const isOptional = !!item?.optional;
           return (
             <div
               key={row.id}
               className={cn(
-                "flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors",
+                "flex flex-col gap-2 rounded-xl border px-3 py-2 transition-colors",
                 selected ? "border-primary/50 bg-primary/5" : "border-border bg-field"
               )}
             >
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onToggle(row)}
-                aria-pressed={selected}
-                className={cn(
-                  "flex flex-1 items-center justify-between gap-2 text-start text-sm",
-                  disabled && "cursor-not-allowed opacity-60"
-                )}
-              >
-                <span className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
-                  {row.label}
-                </span>
-                {!selected && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {shekel(Number(row.base_price ?? 0))}
-                  </span>
-                )}
-              </button>
-              {selected && item && (
-                <Input
-                  type="number"
-                  value={item.value}
-                  onChange={(e) => onValueChange(item.id, Number(e.target.value) || 0)}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
                   disabled={disabled}
-                  className="h-8 w-24 shrink-0 text-end text-sm"
-                  aria-label={`ערך עבור ${row.label}`}
-                />
+                  onClick={() => onToggle(row)}
+                  aria-pressed={selected}
+                  className={cn(
+                    "flex flex-1 items-center justify-between gap-2 text-start text-sm",
+                    disabled && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  <span className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
+                    {row.label}
+                  </span>
+                  {!selected && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {shekel(Number(row.base_price ?? 0))}
+                    </span>
+                  )}
+                </button>
+                {selected && item && (
+                  <Input
+                    type="number"
+                    value={item.value}
+                    onChange={(e) => onValueChange(item.id, Number(e.target.value) || 0)}
+                    disabled={disabled}
+                    className="h-8 w-24 shrink-0 text-end text-sm"
+                    aria-label={`ערך עבור ${row.label}`}
+                  />
+                )}
+              </div>
+              {selected && (
+                <div className="flex items-center gap-1 self-start rounded-lg border border-border bg-field p-0.5 text-xs">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => isOptional && onToggleOptional(row.id)}
+                    aria-pressed={!isOptional}
+                    className={cn(
+                      "rounded-md px-2 py-1 font-medium transition-colors",
+                      !isOptional
+                        ? "border border-primary bg-primary/15 text-primary"
+                        : "border border-transparent bg-field text-muted-foreground",
+                      disabled && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    כלול במחיר
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => !isOptional && onToggleOptional(row.id)}
+                    aria-pressed={isOptional}
+                    className={cn(
+                      "rounded-md px-2 py-1 font-medium transition-colors",
+                      isOptional
+                        ? "border border-primary bg-primary/15 text-primary"
+                        : "border border-transparent bg-field text-muted-foreground",
+                      disabled && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    תוספת אופציונלית
+                  </button>
+                </div>
               )}
             </div>
           );
