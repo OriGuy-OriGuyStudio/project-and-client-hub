@@ -19,6 +19,8 @@
 - Multipliers + floor are per-type (from `quote_type_multipliers`).
 - Keep `npm run build` and `npm test` green after every task.
 - The AI "help me price" button is a visible placeholder in this plan (disabled or a toast "בקרוב"); it is wired for real in Plan 4.
+- **Ownership (spec §13.1):** a quote belongs to the studio and targets a lead , identified by `client_name` / `client_business` free text, with optional `org_id` / `project_id` links (both nullable, from Plan 1). No org is required to create/send a quote.
+- **Immutability (spec §13.2):** enforced at THREE levels , (a) `content` is a per-quote snapshot; (b) the builder UI locks when `status='signed'`; (c) a DB trigger `guard_signed_quote` (added in Task 1) blocks direct edits to a signed quote's protected fields. UI locking alone is not the guarantee.
 
 ---
 
@@ -93,7 +95,7 @@ insert into public.quote_catalog (kind, type, site_type, label, base_price, defa
 ```
 
 - [ ] **Step 2:** Apply via MCP `apply_migration` (name `quote_catalog_v2`). Expect success.
-- [ ] **Step 3:** Verify via `execute_sql`: counts per (kind,type) match (website: 8 subtype + 14 page + 13 feature; system: 13 module; automation: 4 automation); `type` column exists; the 3 existing upsell rows untouched.
+- [ ] **Step 3:** Verify via `execute_sql`: counts per (kind,type) match (website: 8 subtype + 14 page + 12 feature; system: 13 module; automation: 4 automation); `type` column exists; the 3 existing upsell rows untouched. (Pre-check first: confirm `quote_catalog.site_type` is nullable and `quote_defaults` has no FK to the catalog , both true in the v1 schema.)
 - [ ] **Step 4:** Commit the migration file (`feat(quote): v2 catalog (type column + per-type seed)`).
 
 ---
