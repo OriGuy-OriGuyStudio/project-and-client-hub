@@ -266,3 +266,39 @@ export function useCreateQuoteV2() {
     },
   });
 }
+
+// ---- save (builder) --------------------------------------------------------
+
+/** Persists the builder's working `content` back to a `price_quotes` row,
+ *  keeping the denormalized top-level columns (type/subtype/anchor_value/
+ *  final_price) in sync for the future list/send views. Used by the quote
+ *  builder's "שמירה" action (see pages/admin/quote/QuoteBuilder.tsx). */
+export function useUpdateQuoteContentV2() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      type: QuoteType;
+      subtype: string | null;
+      content: QuoteContentV2;
+      anchor: number;
+    }): Promise<void> => {
+      const { error } = await supabase
+        .from("price_quotes")
+        .update({
+          type: input.type,
+          subtype: input.subtype,
+          content: input.content as unknown as Record<string, unknown>,
+          anchor_value: input.anchor,
+          final_price: input.content.final_price,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["quote-v2", vars.id] });
+      qc.invalidateQueries({ queryKey: ["quotes-v2"] });
+    },
+  });
+}

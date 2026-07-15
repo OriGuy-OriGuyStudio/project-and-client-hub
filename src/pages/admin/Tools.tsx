@@ -53,7 +53,7 @@ const TOOLS = [
     icon: Calculator,
     title: "מחשבון תמחור והצעות",
     desc: "בבנייה מחדש (v2): 3 סוגים (אתר/מערכת/אוטומציה), 3 מחירים עם נימוק, פירוט שקוף ו-AI.",
-    ready: false,
+    ready: true,
   },
 ];
 
