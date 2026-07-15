@@ -32,8 +32,8 @@ import {
   type QuoteTestimonial,
   type QuoteUpsell,
 } from "@/lib/quote-v2";
-import { TIER_META, TIER_ORDER, type ServiceTier } from "@/lib/service-plans";
-import type { QuoteCatalogRow } from "@/types/database";
+import { useMaintenanceTiers } from "@/hooks/useQuotesV2";
+import type { QuoteCatalogRow, QuoteMaintenanceTierRow } from "@/types/database";
 
 /* ---------- shared row-editor primitives (reused by QuoteDefaultsV2) ---------- */
 
@@ -379,33 +379,51 @@ export function UpsellsPicker({
   );
 }
 
-/* ---------- maintenance offer (toggle + tier multi-select) ----------
- * NOTE: this is the pre-catalog placeholder, still driven by the fixed
- * core/pro/ultra tiers from lib/service-plans, kept compiling against the
- * new MaintenanceTierSnapshot content shape. It writes real snapshots
- * (key/name/price) instead of bare tier keys. The admin-curated,
- * per-product-type picker (quote_maintenance_tiers / useMaintenanceTiers)
- * replaces this editor in a follow-up task , do not extend it further here. */
+/* ---------- maintenance (per-type tiers picked from the admin catalog) ----------
+ * Toggle-a-catalog-row picker, mirroring UpsellsPicker: each `quote_maintenance_tiers`
+ * row (scoped to the quote's product type via useMaintenanceTiers) toggles a
+ * MaintenanceTierSnapshot in/out of content.maintenance.tiers. Selecting a tier
+ * copies a SNAPSHOT of its name/price/description/recommended , a later catalog
+ * edit (or the row's deletion) never changes a quote that already picked it.
+ * "מומלץ" is inherited read-only from the catalog row; the only per-quote edit is
+ * price, which patches the snapshot and never the shared catalog row. */
 export function MaintenanceEditor({
+  tiers,
   value,
   onChange,
   disabled,
 }: {
+  tiers: QuoteMaintenanceTierRow[];
   value: { offer: boolean; tiers: MaintenanceTierSnapshot[] };
   onChange: (v: { offer: boolean; tiers: MaintenanceTierSnapshot[] }) => void;
   disabled?: boolean;
 }) {
-  const tiers = value?.tiers ?? [];
-  function toggleTier(t: ServiceTier) {
+  const selected = value?.tiers ?? [];
+
+  function toggle(row: QuoteMaintenanceTierRow) {
     if (disabled) return;
-    const selected = tiers.some((x) => x.key === t);
+    const exists = selected.some((it) => it.key === row.key);
     onChange({
       ...value,
-      tiers: selected
-        ? tiers.filter((x) => x.key !== t)
-        : [...tiers, { key: t, name: TIER_META[t].name, price: TIER_META[t].price }],
+      tiers: exists
+        ? selected.filter((it) => it.key !== row.key)
+        : [
+            ...selected,
+            {
+              key: row.key,
+              name: row.name,
+              price: Number(row.price ?? 0),
+              description: row.description ?? undefined,
+              recommended: row.recommended,
+            },
+          ],
     });
   }
+
+  function setPrice(key: string, price: number) {
+    onChange({ ...value, tiers: selected.map((it) => (it.key === key ? { ...it, price } : it)) });
+  }
+
   return (
     <Card className="space-y-3 p-5">
       <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -416,33 +434,79 @@ export function MaintenanceEditor({
           onChange={(e) => onChange({ ...value, offer: e.target.checked })}
           className="size-4 accent-primary"
         />
-        הצע שירות ותחזוקה בהצעת המחיר
+        הצע תחזוקה בהצעת המחיר
       </label>
-      {value?.offer && (
-        <div className="flex flex-wrap gap-2 ps-6">
-          {TIER_ORDER.map((t) => {
-            const selected = tiers.some((x) => x.key === t);
-            return (
-              <button
-                key={t}
-                type="button"
-                disabled={disabled}
-                aria-pressed={selected}
-                onClick={() => toggleTier(t)}
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                  selected
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  disabled && "cursor-not-allowed opacity-60"
-                )}
-              >
-                {TIER_META[t].name}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {value?.offer &&
+        (tiers.length === 0 ? (
+          <p className="text-sm text-muted-foreground ps-6">
+            עדיין אין רמות תחזוקה בקטלוג של הסוג הזה.{" "}
+            <Link to="/admin/tools/quote/defaults" className="text-primary underline underline-offset-2">
+              הוסף רמות תחזוקה בדף ברירות מחדל
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="grid gap-2 ps-6 sm:grid-cols-2">
+            {tiers.map((row) => {
+              const item = selected.find((it) => it.key === row.key);
+              const isSelected = !!item;
+              return (
+                <div
+                  key={row.key}
+                  className={cn(
+                    "flex flex-col gap-2 rounded-xl border px-3 py-2 transition-colors",
+                    isSelected ? "border-primary/50 bg-primary/5" : "border-border bg-field"
+                  )}
+                >
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => toggle(row)}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      "flex items-start justify-between gap-2 text-start text-sm",
+                      disabled && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className={cn("font-medium", isSelected ? "text-foreground" : "text-muted-foreground")}>
+                        {row.name}
+                      </span>
+                      {row.recommended && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          <Star className="size-2.5 fill-current" />
+                          מומלץ
+                        </span>
+                      )}
+                    </span>
+                    {!isSelected && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {shekel(Number(row.price ?? 0))} לחודש
+                      </span>
+                    )}
+                  </button>
+                  {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
+                  {isSelected && item && (
+                    <div className="relative w-32 self-end">
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={Number.isFinite(item.price) ? item.price : 0}
+                        onChange={(e) => setPrice(row.key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                        disabled={disabled}
+                        className="h-8 pe-8 text-end text-sm"
+                        aria-label={`מחיר חודשי עבור ${row.name}`}
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 end-2 flex items-center text-xs text-muted-foreground">
+                        ₪
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
     </Card>
   );
 }
@@ -815,6 +879,7 @@ export function AddonsEditors({
   disabled: boolean;
   upsellCatalog: QuoteCatalogRow[];
 }) {
+  const { data: maintenanceTiers } = useMaintenanceTiers(content.type);
   return (
     <div className="space-y-5">
       <UpsellsPicker
@@ -827,6 +892,7 @@ export function AddonsEditors({
       <BonusesEditor value={content.bonuses} onChange={(v) => onChange({ ...content, bonuses: v })} disabled={disabled} />
 
       <MaintenanceEditor
+        tiers={maintenanceTiers ?? []}
         value={content.maintenance}
         onChange={(v) => onChange({ ...content, maintenance: v })}
         disabled={disabled}

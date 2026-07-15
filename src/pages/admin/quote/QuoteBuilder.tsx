@@ -48,6 +48,7 @@ import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
+import { AutomationGuide } from "./AutomationGuide";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -584,6 +585,8 @@ function QuoteBuilderShell({ id }: { id: string }) {
               }}
             />
           ))}
+
+          {content.type === "automation" && <AutomationGuide />}
         </div>
       )}
 

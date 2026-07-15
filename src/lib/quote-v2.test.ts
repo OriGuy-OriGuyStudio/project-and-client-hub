@@ -185,10 +185,10 @@ describe("quoteTotals", () => {
     expect(r.net).toBe(6570);
   });
 
-  it("selecting a maintenance tier with no matching snapshot falls back to monthlyFor", () => {
+  it("selecting a maintenance tier with no matching snapshot resolves monthly to 0 (never falls back to a live catalog lookup)", () => {
     const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
     const r = quoteTotals(baseContent(), selected, mult, floor, monthlyFor);
-    expect(r.monthly).toBe(TIER_META.pro.price);
+    expect(r.monthly).toBe(0);
   });
 
   it("no maintenance tier selected means monthly is 0", () => {

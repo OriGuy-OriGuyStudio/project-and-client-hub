@@ -143,18 +143,19 @@ export type QuoteTotals = {
  *  selection (chosen upsells, chosen maintenance tier) into every derived
  *  number the quote UI needs to render. Ex-VAT amounts in, VAT-inclusive out.
  *
- *  `monthly` resolves from the quote's own `content.maintenance.tiers`
- *  snapshot first (a tier picked from the admin-curated catalog is copied in
- *  at pick time, so it survives later catalog edits) , the snapshot price
- *  always wins when a match is found. `monthlyFor` is kept for back-compat as
- *  a fallback for a selected key with no matching snapshot entry (e.g. a
- *  legacy quote); callers are free to pass a snapshot-aware resolver too. */
+ *  `monthly` resolves ONLY from the quote's own `content.maintenance.tiers`
+ *  snapshot (a tier picked from the admin-curated catalog is copied in at
+ *  pick time, so it survives later catalog edits). A selected key with no
+ *  matching snapshot resolves to 0 , it never falls back to a live catalog
+ *  lookup, which could silently change a sent quote's monthly price out from
+ *  under it. `monthlyFor` stays in the signature for back-compat call sites
+ *  but is intentionally unused; do not reintroduce it as a price fallback. */
 export function quoteTotals(
   content: QuoteContentV2,
   selected: QuoteSelected,
   mult: Multipliers,
   floor: number,
-  monthlyFor: (tier: string) => number,
+  _monthlyFor: (tier: string) => number,
 ): QuoteTotals {
   const anchor = anchorValue({
     type: content.type,
@@ -179,11 +180,7 @@ export function quoteTotals(
   const snapshotTier = selected.maintenance_tier
     ? (content.maintenance?.tiers ?? []).find((t) => t.key === selected.maintenance_tier)
     : undefined;
-  const monthly = !selected.maintenance_tier
-    ? 0
-    : snapshotTier
-      ? snapshotTier.price
-      : monthlyFor(selected.maintenance_tier);
+  const monthly = snapshotTier ? snapshotTier.price : 0;
 
   return { anchor, options, chosen, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
 }
