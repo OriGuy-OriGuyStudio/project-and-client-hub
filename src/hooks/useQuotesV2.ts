@@ -302,3 +302,42 @@ export function useUpdateQuoteContentV2() {
     },
   });
 }
+
+// ---- send / delete (list actions) ------------------------------------------
+
+/** Marks a draft quote as sent (only draft , sent is allowed; the DB row's
+ *  `status`/`sent_at` are the source of truth for "can this still be edited /
+ *  can it be deleted"). Used by the quotes list and the open builder's action
+ *  bar (see pages/admin/quote/QuoteBuilder.tsx). */
+export function useMarkQuoteSent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase
+        .from("price_quotes")
+        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("status", "draft");
+      if (error) throw error;
+    },
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["quote-v2", id] });
+      qc.invalidateQueries({ queryKey: ["quotes-v2"] });
+    },
+  });
+}
+
+/** Deletes a quote row outright. Callers must keep signed quotes out of reach
+ *  (binding record) , this hook itself does not re-check status. */
+export function useDeleteQuoteV2() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase.from("price_quotes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quotes-v2"] });
+    },
+  });
+}

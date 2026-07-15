@@ -7,25 +7,41 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calculator, Loader2, Lock, Plus, Settings2 } from "lucide-react";
+import {
+  ArrowRight,
+  Calculator,
+  Copy,
+  List,
+  Loader2,
+  Lock,
+  Plus,
+  Send,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { toast, toastError } from "@/hooks/use-toast";
 import {
   useQuoteCatalog,
   catalogFor,
+  useQuotesV2,
   useQuoteV2,
   useCreateQuoteV2,
   useUpdateQuoteContentV2,
+  useMarkQuoteSent,
+  useDeleteQuoteV2,
   useQuoteMultipliers,
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
 import { emptyQuoteV2, type QuoteContentV2 } from "@/lib/quote-v2";
-import type { QuoteCatalogRow } from "@/types/database";
+import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
 import { QuoteContentEditorsV2 } from "./QuoteContentEditorsV2";
@@ -35,6 +51,37 @@ const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "system", label: "מערכת" },
   { value: "automation", label: "אוטומציה" },
 ];
+
+const TYPE_LABEL: Record<QuoteType, string> = Object.fromEntries(
+  TYPE_TABS.map((t) => [t.value, t.label])
+) as Record<QuoteType, string>;
+
+const STATUS_BADGE: Record<PriceQuote["status"], { label: string; variant: BadgeProps["variant"] }> = {
+  draft: { label: "טיוטה", variant: "secondary" },
+  sent: { label: "נשלחה", variant: "cyan" },
+  signed: { label: "נחתמה", variant: "success" },
+  declined: { label: "נדחתה", variant: "destructive" },
+};
+
+/** Client-facing quote URL. The client page itself is a later plan; until
+ *  then this link 404s, which we tell whoever copies it. */
+function quoteShareUrl(token: string): string {
+  return `${window.location.origin}/quote/${token}`;
+}
+
+async function copyQuoteLink(token: string) {
+  const url = quoteShareUrl(token);
+  try {
+    await navigator.clipboard.writeText(url);
+    toast({
+      title: "הקישור הועתק",
+      description: "עמוד הלקוח עוד לא בנוי, אז הקישור יחזיר 404 בינתיים.",
+      variant: "success",
+    });
+  } catch {
+    toastError(url, "העתקה נכשלה, הנה הקישור");
+  }
+}
 
 /** Which scope sections (by catalog kind) show up for each quote type,
  *  separated per spec §8 , website splits pages vs features. */
@@ -70,9 +117,19 @@ export default function QuoteBuilder() {
         </Button>
         <PageHeader
           title="מחשבון תמחור והצעות"
-          subtitle="בונה הצעת מחיר: סוג, היקף מוצרים ועוגן מחיר. אפשרויות מחיר, ניסוח ושליחה מגיעים בהמשך."
+          subtitle={
+            activeId
+              ? "בונה הצעת מחיר: סוג, היקף מוצרים, עוגן מחיר, ניסוח ושליחה."
+              : "כל הצעות המחיר: פתיחה לעריכה, סימון כנשלחה, העתקת קישור למחיקה."
+          }
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              {activeId && (
+                <Button variant="ghost" onClick={() => setActiveId(null)}>
+                  <List className="size-4" />
+                  חזרה לרשימה
+                </Button>
+              )}
               <Button asChild variant="secondary">
                 <Link to="/admin/tools/quote/defaults">
                   <Settings2 className="size-4" />
@@ -88,16 +145,131 @@ export default function QuoteBuilder() {
         />
       </div>
 
-      {activeId ? (
-        <QuoteBuilderShell id={activeId} />
-      ) : (
-        <EmptyState
-          icon={Calculator}
-          title="אין הצעה פתוחה"
-          description="לחץ 'הצעה חדשה' כדי להתחיל: לבחור סוג, להרכיב היקף ולראות עוגן מחיר בזמן אמת."
-        />
-      )}
+      {activeId ? <QuoteBuilderShell id={activeId} /> : <QuotesList onOpen={setActiveId} />}
     </div>
+  );
+}
+
+/** The default (no quote open) view: every quote ever created, newest first,
+ *  with the row-level actions Ori needs to manage a growing pile of them. */
+function QuotesList({ onOpen }: { onOpen: (id: string) => void }) {
+  const { data: quotes, isLoading } = useQuotesV2();
+  const markSent = useMarkQuoteSent();
+  const deleteQuote = useDeleteQuoteV2();
+  const [deleteTarget, setDeleteTarget] = useState<PriceQuote | null>(null);
+
+  async function handleMarkSent(id: string) {
+    try {
+      await markSent.mutateAsync(id);
+      toast({ title: "ההצעה סומנה כנשלחה", variant: "success" });
+    } catch {
+      toastError("הסימון כנשלחה נכשל.");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    try {
+      await deleteQuote.mutateAsync(id);
+      toast({ title: "ההצעה נמחקה", variant: "success" });
+    } catch {
+      toastError("המחיקה נכשלה.");
+    } finally {
+      setDeleteTarget(null);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> טוען הצעות…
+      </Card>
+    );
+  }
+
+  if (!quotes || quotes.length === 0) {
+    return (
+      <EmptyState
+        icon={Calculator}
+        title="אין הצעה פתוחה"
+        description="לחץ 'הצעה חדשה' כדי להתחיל: לבחור סוג, להרכיב היקף ולראות עוגן מחיר בזמן אמת."
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-3">
+        {quotes.map((q) => {
+          const badge = STATUS_BADGE[q.status];
+          const name = q.title || q.client_business || "הצעה ללא שם";
+          return (
+            <Card key={q.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <button
+                type="button"
+                onClick={() => onOpen(q.id)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-start"
+              >
+                <Badge variant={badge.variant}>{badge.label}</Badge>
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {TYPE_LABEL[q.type]} · {shekel(q.final_price ?? 0)}
+                  </p>
+                </div>
+              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button size="sm" variant="secondary" onClick={() => onOpen(q.id)}>
+                  פתח
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => void copyQuoteLink(q.share_token)}>
+                  <Copy className="size-3.5" />
+                  העתק קישור
+                </Button>
+                {q.status === "draft" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={markSent.isPending}
+                    onClick={() => handleMarkSent(q.id)}
+                  >
+                    <Send className="size-3.5" />
+                    סמן כנשלח
+                  </Button>
+                )}
+                {q.status !== "signed" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteTarget(q)}
+                  >
+                    <Trash2 className="size-3.5" />
+                    מחק
+                  </Button>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="מחיקת הצעת מחיר"
+        confirmLabel="מחק"
+        description={
+          <>
+            הפעולה תמחק לצמיתות את ההצעה
+            {deleteTarget ? ` "${deleteTarget.title || deleteTarget.client_business || "ללא שם"}"` : ""}. אי אפשר
+            לשחזר.
+          </>
+        }
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }
 
@@ -106,6 +278,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const { data: catalogRows } = useQuoteCatalog();
   const { data: multipliers } = useQuoteMultipliers();
   const updateContent = useUpdateQuoteContentV2();
+  const markSent = useMarkQuoteSent();
 
   const [content, setContent] = useState<QuoteContentV2 | null>(null);
   const loadedIdRef = useRef<string | null>(null);
@@ -196,6 +369,16 @@ function QuoteBuilderShell({ id }: { id: string }) {
     }
   }
 
+  async function handleMarkSent() {
+    if (!quote) return;
+    try {
+      await markSent.mutateAsync(quote.id);
+      toast({ title: "ההצעה סומנה כנשלחה", variant: "success" });
+    } catch {
+      toastError("הסימון כנשלחה נכשל.");
+    }
+  }
+
   if (isLoading || !content) {
     return (
       <Card className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
@@ -209,6 +392,24 @@ function QuoteBuilderShell({ id }: { id: string }) {
 
   return (
     <div className="space-y-5 pb-24">
+      {quote && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <Badge variant={STATUS_BADGE[quote.status].variant}>{STATUS_BADGE[quote.status].label}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => void copyQuoteLink(quote.share_token)}>
+              <Copy className="size-3.5" />
+              העתק קישור ללקוח
+            </Button>
+            {quote.status === "draft" && (
+              <Button size="sm" variant="ghost" disabled={markSent.isPending} onClick={handleMarkSent}>
+                <Send className="size-3.5" />
+                סמן כנשלח
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       {locked && (
         <div className="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-warning">
           <Lock className="size-4 shrink-0" /> ההצעה נחתמה, אי אפשר לערוך אותה יותר.
