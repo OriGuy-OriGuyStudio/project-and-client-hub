@@ -48,6 +48,93 @@ export function catalogFor(
   return (rows ?? []).filter((r) => r.kind === kind && (r.type === null || r.type === type));
 }
 
+// ---- upsell catalog (admin-curated, picked by the builder) ----------------
+
+/** Upsell rows (`kind='upsell'`, universal `type=null`), sorted for display.
+ *  Selector over the same `["quote-catalog"]` query as `useQuoteCatalog`, so
+ *  edits made on the defaults page (useSaveUpsellCatalogItem) and picks made
+ *  in the builder always see the same cached list. */
+export function useUpsellCatalog() {
+  const query = useQuoteCatalog();
+  return { ...query, data: catalogFor(query.data, "upsell", "website") };
+}
+
+/** Admin input for creating/editing one upsell catalog row (the "ready-made"
+ *  upsell, not a per-quote snapshot , see QuoteUpsell in lib/quote-v2.ts). */
+export type UpsellCatalogInput = {
+  id?: string;
+  label: string;
+  description: string | null;
+  base_price: number;
+  recommended: boolean;
+};
+
+/** Admin: insert or update an upsell catalog row. New rows are appended after
+ *  the current highest `sort` (so newly-added upsells show up last). */
+export function useSaveUpsellCatalogItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpsellCatalogInput): Promise<string> => {
+      if (input.id) {
+        const { error } = await supabase
+          .from("quote_catalog")
+          .update({
+            label: input.label,
+            description: input.description,
+            base_price: input.base_price,
+            recommended: input.recommended,
+          })
+          .eq("id", input.id);
+        if (error) throw error;
+        return input.id;
+      }
+      const { data: maxRow, error: maxError } = await supabase
+        .from("quote_catalog")
+        .select("sort")
+        .eq("kind", "upsell")
+        .order("sort", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (maxError) throw maxError;
+      const nextSort = ((maxRow as { sort: number } | null)?.sort ?? 0) + 10;
+      const { data, error } = await supabase
+        .from("quote_catalog")
+        .insert({
+          kind: "upsell",
+          type: null,
+          label: input.label,
+          description: input.description,
+          base_price: input.base_price,
+          default_mult: 1,
+          recommended: input.recommended,
+          sort: nextSort,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-catalog"] });
+    },
+  });
+}
+
+/** Admin: delete an upsell catalog row. Quotes that already picked it keep
+ *  their own snapshot (QuoteUpsell copied into content.upsells), unaffected. */
+export function useDeleteUpsellCatalogItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase.from("quote_catalog").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-catalog"] });
+    },
+  });
+}
+
 // ---- per-type multipliers ---------------------------------------------------
 
 export type QuoteMultiplierEntry = { fair: number; recommended: number; premium: number; floor: number };

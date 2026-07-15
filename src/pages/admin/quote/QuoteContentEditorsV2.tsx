@@ -9,13 +9,15 @@
 // See .superpowers/sdd/task-6-brief.md and lib/quote-v2.ts.
 
 import type { ReactNode } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Star, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { shekel } from "@/lib/quote-pricing";
 import {
   newId,
   type QuoteBonus,
@@ -30,6 +32,7 @@ import {
   type QuoteUpsell,
 } from "@/lib/quote-v2";
 import { TIER_META, TIER_ORDER, type ServiceTier } from "@/lib/service-plans";
+import type { QuoteCatalogRow } from "@/types/database";
 
 /* ---------- shared row-editor primitives (reused by QuoteDefaultsV2) ---------- */
 
@@ -251,81 +254,127 @@ export function BonusesEditor({
   );
 }
 
-/* ---------- upsells (title + desc + price + recommended) ---------- */
-export function UpsellsEditor({
+/* ---------- upsells (picked from the admin-curated catalog) ---------- */
+/** Toggle-a-catalog-row picker, mirroring ScopeSection.tsx: each upsell
+ *  catalog row toggles a `QuoteUpsell` in/out of `value`. Selecting a row
+ *  copies a SNAPSHOT of its label/description/price into the quote content ,
+ *  a later edit to the catalog (or the row's deletion) never changes a quote
+ *  that already picked it. "מומלץ" is inherited read-only from the catalog;
+ *  there's no per-quote recommended toggle. The only per-quote edit is price,
+ *  which patches content.upsells[i] and never the shared catalog row. */
+export function UpsellsPicker({
+  catalog,
   value,
   onChange,
   disabled,
 }: {
+  catalog: QuoteCatalogRow[];
   value: QuoteUpsell[];
   onChange: (v: QuoteUpsell[]) => void;
   disabled?: boolean;
 }) {
   const items = value ?? [];
+
+  function toggle(row: QuoteCatalogRow) {
+    if (disabled) return;
+    const exists = items.some((it) => it.id === row.id);
+    if (exists) {
+      onChange(items.filter((it) => it.id !== row.id));
+      return;
+    }
+    onChange([
+      ...items,
+      {
+        id: row.id,
+        title: row.label,
+        desc: row.description ?? undefined,
+        price: Number(row.base_price ?? 0),
+        recommended: row.recommended,
+      },
+    ]);
+  }
+
+  function setPrice(itemId: string, price: number) {
+    onChange(items.map((it) => (it.id === itemId ? { ...it, price } : it)));
+  }
+
   return (
-    <EditorShell
-      title="תוספות (Upsells)"
-      subtitle="הצעות תוספת שהלקוח יכול לבחור בהצעת המחיר. סמן ״מומלץ״ להדגשה אחת."
-      disabled={disabled}
-      onAdd={() => onChange([...items, { id: newId("upsell"), title: "", desc: "", price: 0, recommended: false }])}
-    >
-      {items.map((it, i) => (
-        <div key={it.id} className="flex items-start gap-2 rounded-xl border border-border bg-background/30 p-3">
-          <div className="flex-1 space-y-2">
-            <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
-              <Input
-                value={it.title}
-                onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))}
-                placeholder="כותרת התוספת"
-                className="h-9"
-                disabled={disabled}
-              />
-              <div className="relative">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={Number.isFinite(it.price) ? it.price : 0}
-                  onChange={(e) =>
-                    onChange(
-                      items.map((x, j) =>
-                        j === i ? { ...x, price: Math.max(0, Math.round(Number(e.target.value) || 0)) } : x
-                      )
-                    )
-                  }
-                  placeholder="מחיר"
-                  className="h-9 pe-8"
+    <Card className="space-y-3 p-5">
+      <div>
+        <p className="text-sm font-semibold text-foreground">תוספות (Upsells)</p>
+        <p className="text-xs text-muted-foreground">הצעות תוספת מהקטלוג שהלקוח יכול לבחור בהצעת המחיר.</p>
+      </div>
+      {catalog.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          עדיין אין תוספות בקטלוג.{" "}
+          <Link to="/admin/tools/quote/defaults" className="text-primary underline underline-offset-2">
+            הוסף תוספות בדף ברירות מחדל
+          </Link>
+          .
+        </p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {catalog.map((row) => {
+            const item = items.find((it) => it.id === row.id);
+            const selected = !!item;
+            return (
+              <div
+                key={row.id}
+                className={cn(
+                  "flex flex-col gap-2 rounded-xl border px-3 py-2 transition-colors",
+                  selected ? "border-primary/50 bg-primary/5" : "border-border bg-field"
+                )}
+              >
+                <button
+                  type="button"
                   disabled={disabled}
-                />
-                <span className="pointer-events-none absolute inset-y-0 end-2 flex items-center text-xs text-muted-foreground">
-                  ₪
-                </span>
+                  onClick={() => toggle(row)}
+                  aria-pressed={selected}
+                  className={cn(
+                    "flex items-start justify-between gap-2 text-start text-sm",
+                    disabled && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
+                      {row.label}
+                    </span>
+                    {row.recommended && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                        <Star className="size-2.5 fill-current" />
+                        מומלץ
+                      </span>
+                    )}
+                  </span>
+                  {!selected && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {shekel(Number(row.base_price ?? 0))}
+                    </span>
+                  )}
+                </button>
+                {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
+                {selected && item && (
+                  <div className="relative w-32 self-end">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      value={Number.isFinite(item.price) ? item.price : 0}
+                      onChange={(e) => setPrice(row.id, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                      disabled={disabled}
+                      className="h-8 pe-8 text-end text-sm"
+                      aria-label={`מחיר עבור ${row.label}`}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 end-2 flex items-center text-xs text-muted-foreground">
+                      ₪
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-            <Textarea
-              value={it.desc ?? ""}
-              onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, desc: e.target.value } : x)))}
-              placeholder="תיאור קצר"
-              rows={2}
-              disabled={disabled}
-            />
-            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={!!it.recommended}
-                disabled={disabled}
-                onChange={(e) =>
-                  onChange(items.map((x, j) => (j === i ? { ...x, recommended: e.target.checked } : x)))
-                }
-                className="size-4 accent-primary"
-              />
-              מומלץ (הדגשה בהצעה)
-            </label>
-          </div>
-          <DelBtn disabled={disabled} onClick={() => onChange(items.filter((_, j) => j !== i))} />
+            );
+          })}
         </div>
-      ))}
-      {items.length === 0 && <EmptyRow text="אין תוספות." />}
-    </EditorShell>
+      )}
+    </Card>
   );
 }
 
@@ -703,10 +752,12 @@ export function QuoteContentEditorsV2({
   content,
   onChange,
   disabled,
+  upsellCatalog,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
   disabled: boolean;
+  upsellCatalog: QuoteCatalogRow[];
 }) {
   return (
     <div className="space-y-5">
@@ -734,7 +785,12 @@ export function QuoteContentEditorsV2({
 
       <BonusesEditor value={content.bonuses} onChange={(v) => onChange({ ...content, bonuses: v })} disabled={disabled} />
 
-      <UpsellsEditor value={content.upsells} onChange={(v) => onChange({ ...content, upsells: v })} disabled={disabled} />
+      <UpsellsPicker
+        catalog={upsellCatalog}
+        value={content.upsells}
+        onChange={(v) => onChange({ ...content, upsells: v })}
+        disabled={disabled}
+      />
 
       <MaintenanceEditor
         value={content.maintenance}

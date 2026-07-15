@@ -39,6 +39,7 @@ import {
   useMarkQuoteSent,
   useDeleteQuoteV2,
   useQuoteMultipliers,
+  useUpsellCatalog,
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
@@ -278,6 +279,7 @@ function QuotesList({ onOpen }: { onOpen: (id: string) => void }) {
 function QuoteBuilderShell({ id }: { id: string }) {
   const { data: quote, isLoading } = useQuoteV2(id);
   const { data: catalogRows } = useQuoteCatalog();
+  const { data: upsellCatalog } = useUpsellCatalog();
   const { data: multipliers } = useQuoteMultipliers();
   const updateContent = useUpdateQuoteContentV2();
   const markSent = useMarkQuoteSent();
@@ -538,7 +540,12 @@ function QuoteBuilderShell({ id }: { id: string }) {
         <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
       )}
 
-      <QuoteContentEditorsV2 content={content} onChange={setContent} disabled={locked} />
+      <QuoteContentEditorsV2
+        content={content}
+        onChange={setContent}
+        disabled={locked}
+        upsellCatalog={upsellCatalog ?? []}
+      />
 
       <Card className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 border-primary/30 bg-card/95 p-5 shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-5">
