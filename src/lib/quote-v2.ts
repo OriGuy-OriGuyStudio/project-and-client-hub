@@ -13,6 +13,7 @@ import {
   type ScopeItem,
   type Multipliers,
   type PriceOption,
+  type PriceOptionKey,
   type BreakdownLine,
 } from "./quote-pricing";
 import type { ServiceTier } from "./service-plans";
@@ -30,6 +31,7 @@ export type QuotePayment = { deposit_pct: number; terms?: string };
 export type QuoteContentV2 = {
   type: QuoteType;
   subtype?: string;
+  narrative: string;
   scope: ScopeItem[];
   final_price: number;
   vat_pct: number;
@@ -62,6 +64,7 @@ export function emptyQuoteV2(type: QuoteType): QuoteContentV2 {
   return {
     type,
     subtype: undefined,
+    narrative: "",
     scope: [],
     final_price: 0,
     vat_pct: 18,
@@ -95,6 +98,7 @@ export type QuoteSelected = { upsell_ids: string[]; maintenance_tier: ServiceTie
 export type QuoteTotals = {
   anchor: number;
   options: PriceOption[];
+  chosen: PriceOptionKey | null;
   upsellsTotal: number;
   discount: number;
   net: number;
@@ -121,6 +125,7 @@ export function quoteTotals(
     items: content.scope,
   });
   const options = priceOptions(anchor, mult, floor);
+  const chosen = options.find((o) => o.price === content.final_price)?.key ?? null;
 
   const selectedIds = new Set(selected.upsell_ids ?? []);
   const upsellsTotal = (content.upsells ?? [])
@@ -136,5 +141,5 @@ export function quoteTotals(
   const breakdown = breakdownForFinal(content.scope, content.final_price);
   const monthly = selected.maintenance_tier ? monthlyFor(selected.maintenance_tier) : 0;
 
-  return { anchor, options, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
+  return { anchor, options, chosen, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
 }

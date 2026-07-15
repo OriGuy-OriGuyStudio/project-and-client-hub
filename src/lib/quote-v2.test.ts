@@ -47,6 +47,10 @@ describe("emptyQuoteV2", () => {
     expect(c.discount).toBeNull();
     expect(c.version).toBe("v1.0");
   });
+
+  it("defaults narrative to an empty string", () => {
+    expect(emptyQuoteV2("website").narrative).toBe("");
+  });
 });
 
 describe("newId", () => {
@@ -162,5 +166,19 @@ describe("quoteTotals", () => {
     const r = quoteTotals(baseContent(), noneSelected, mult, floor, monthlyFor);
     expect(r.split).toEqual(paymentSplit(r.total, 50));
     expect(r.split.deposit + r.split.rest).toBe(r.total);
+  });
+
+  it("chosen is 'recommended' when final_price matches the recommended option's price", () => {
+    // anchor 6500 * recommended mult 1.25 = 8125
+    const r = quoteTotals(baseContent({ final_price: 8125 }), noneSelected, mult, floor, monthlyFor);
+    const recommended = r.options.find((o) => o.key === "recommended");
+    expect(recommended?.price).toBe(8125);
+    expect(r.chosen).toBe("recommended");
+  });
+
+  it("chosen is null when final_price matches none of the suggested prices (manual override)", () => {
+    const r = quoteTotals(baseContent({ final_price: 7000 }), noneSelected, mult, floor, monthlyFor);
+    expect(r.options.some((o) => o.price === 7000)).toBe(false);
+    expect(r.chosen).toBeNull();
   });
 });
