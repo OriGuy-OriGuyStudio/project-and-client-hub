@@ -261,18 +261,21 @@ function isEmptyRecord(v: unknown): boolean {
   return !v || typeof v !== "object" || Object.keys(v as Record<string, unknown>).length === 0;
 }
 
-/** Reads the single `quote_defaults` row (there should be at most one) and
+/** Reads the `quote_defaults` row for one quote `type` (unique per type) and
  *  maps it to the v2 content-defaults shape. Falls back to
- *  FALLBACK_QUOTE_DEFAULTS (id: null) when the table is empty. Shared by the
- *  hook below and by `createQuoteV2`, which needs the same data outside a
- *  component. */
-async function fetchQuoteDefaultsContent(): Promise<QuoteDefaultsContent & { id: string | null }> {
-  const { data, error } = await supabase.from("quote_defaults").select("*").limit(1).maybeSingle();
+ *  FALLBACK_QUOTE_DEFAULTS (id: null) when that type has no row yet. Shared
+ *  by the hook below and by `createQuoteV2`, which needs the same data
+ *  outside a component. */
+async function fetchQuoteDefaultsContent(
+  type: QuoteType
+): Promise<QuoteDefaultsContent & { id: string | null; type: QuoteType }> {
+  const { data, error } = await supabase.from("quote_defaults").select("*").eq("type", type).maybeSingle();
   if (error) throw error;
   const row = data as QuoteDefaultsRow | null;
-  if (!row) return { id: null, ...FALLBACK_QUOTE_DEFAULTS };
+  if (!row) return { id: null, type, ...FALLBACK_QUOTE_DEFAULTS };
   return {
     id: row.id,
+    type: row.type,
     differentiators: (row.differentiators as QuoteDiff[]) ?? [],
     phases: (row.phases as QuotePhase[]) ?? [],
     bonuses: (row.bonuses as QuoteBonus[]) ?? [],
@@ -285,23 +288,29 @@ async function fetchQuoteDefaultsContent(): Promise<QuoteDefaultsContent & { id:
   };
 }
 
-/** The studio-wide quote boilerplate (differentiators/phases/bonuses/next
- *  steps/FAQ/legal/payment/testimonial/validity), admin-edited once and reused
- *  by every new quote via `createQuoteV2`. */
-export function useQuoteDefaultsV2() {
+/** The studio-wide quote boilerplate for one quote `type`
+ *  (differentiators/phases/bonuses/next steps/FAQ/legal/payment/testimonial/
+ *  validity), admin-edited once per type and reused by every new quote of
+ *  that type via `createQuoteV2`. */
+export function useQuoteDefaultsV2(type: QuoteType) {
   return useQuery({
-    queryKey: ["quote-defaults-v2"],
-    queryFn: fetchQuoteDefaultsContent,
+    queryKey: ["quote-defaults-v2", type],
+    queryFn: () => fetchQuoteDefaultsContent(type),
   });
 }
 
-/** Admin: upsert the single `quote_defaults` row. Pass `id: null` (or
- *  omitted) to insert the first-ever row; pass the existing id to update it. */
+/** Admin: upsert the `quote_defaults` row for one type. `type` is unique on
+ *  the table, so this always writes (and only ever writes) the row for
+ *  `input.type` , inserting it the first time that type is edited, updating
+ *  it every time after. */
 export function useSaveQuoteDefaultsV2() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: QuoteDefaultsContent & { id?: string | null }): Promise<string> => {
+    mutationFn: async (
+      input: QuoteDefaultsContent & { type: QuoteType; id?: string | null }
+    ): Promise<string> => {
       const payload = {
+        type: input.type,
         differentiators: input.differentiators,
         phases: input.phases,
         bonuses: input.bonuses,
@@ -313,17 +322,16 @@ export function useSaveQuoteDefaultsV2() {
         validity_days: input.validity_days,
         updated_at: new Date().toISOString(),
       };
-      if (input.id) {
-        const { error } = await supabase.from("quote_defaults").update(payload).eq("id", input.id);
-        if (error) throw error;
-        return input.id;
-      }
-      const { data, error } = await supabase.from("quote_defaults").insert(payload).select("id").single();
+      const { data, error } = await supabase
+        .from("quote_defaults")
+        .upsert(payload, { onConflict: "type" })
+        .select("id")
+        .single();
       if (error) throw error;
       return (data as { id: string }).id;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["quote-defaults-v2"] });
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["quote-defaults-v2", vars.type] });
     },
   });
 }
@@ -354,7 +362,7 @@ export function newQuoteContentFromDefaults(type: QuoteType, defaults: QuoteDefa
  *  event handler / "new quote" nav action; callers should invalidate
  *  `["quotes-v2"]` (see `useCreateQuoteV2` for a ready-made mutation form). */
 export async function createQuoteV2(type: QuoteType): Promise<string> {
-  const defaults = await fetchQuoteDefaultsContent();
+  const defaults = await fetchQuoteDefaultsContent(type);
   const content = newQuoteContentFromDefaults(type, defaults);
   const { data, error } = await supabase
     .from("price_quotes")

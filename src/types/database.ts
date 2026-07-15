@@ -1049,9 +1049,11 @@ export type QuoteMaintenanceTierRow = {
   created_at: string;
 };
 
-/** Studio-wide boilerplate row that seeds every new quote (one row). */
+/** Studio-wide boilerplate row that seeds every new quote (one row per
+ *  quote type: website/system/automation, unique on `type`). */
 export type QuoteDefaultsRow = {
   id: string;
+  type: "website" | "system" | "automation";
   differentiators: unknown[];
   phases: unknown[];
   bonuses: unknown[];

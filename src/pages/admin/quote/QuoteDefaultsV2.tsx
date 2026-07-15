@@ -215,7 +215,8 @@ function UpsellCatalogSection() {
 }
 
 export default function QuoteDefaultsV2() {
-  const { data, isLoading } = useQuoteDefaultsV2();
+  // TODO(Task 3): replace this hardcoded type with the real type switcher.
+  const { data, isLoading } = useQuoteDefaultsV2("website");
   const save = useSaveQuoteDefaultsV2();
 
   const [content, setContent] = useState<(QuoteDefaultsContent & { id: string | null }) | null>(null);
@@ -228,7 +229,7 @@ export default function QuoteDefaultsV2() {
   async function handleSave() {
     if (!content) return;
     try {
-      const id = await save.mutateAsync(content);
+      const id = await save.mutateAsync({ ...content, type: "website" });
       setContent((prev) => (prev ? { ...prev, id } : prev));
       toast({ title: "ברירות המחדל נשמרו", variant: "success" });
     } catch {
