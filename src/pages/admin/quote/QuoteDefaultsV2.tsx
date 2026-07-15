@@ -25,6 +25,8 @@ import {
   type QuoteDefaultsContent,
 } from "@/hooks/useQuotesV2";
 import { newId } from "@/lib/quote-v2";
+import { cn } from "@/lib/utils";
+import type { QuoteType } from "@/lib/quote-pricing";
 import {
   BonusesEditor,
   DelBtn,
@@ -38,6 +40,12 @@ import {
   StepsEditor,
   TestimonialEditor,
 } from "./QuoteContentEditorsV2";
+
+const TYPE_TABS: { value: QuoteType; label: string }[] = [
+  { value: "website", label: "אתר" },
+  { value: "system", label: "מערכת" },
+  { value: "automation", label: "אוטומציה" },
+];
 
 /** One editable draft row for the upsell catalog CRUD below. `id` is undefined
  *  until the row is first saved (insert); `key` is the stable React key so a
@@ -215,21 +223,31 @@ function UpsellCatalogSection() {
 }
 
 export default function QuoteDefaultsV2() {
-  // TODO(Task 3): replace this hardcoded type with the real type switcher.
-  const { data, isLoading } = useQuoteDefaultsV2("website");
+  const [type, setType] = useState<QuoteType>("website");
+  const { data, isLoading } = useQuoteDefaultsV2(type);
   const save = useSaveQuoteDefaultsV2();
 
-  const [content, setContent] = useState<(QuoteDefaultsContent & { id: string | null }) | null>(null);
+  const [content, setContent] = useState<(QuoteDefaultsContent & { id: string | null; type: QuoteType }) | null>(
+    null
+  );
 
-  // Load once (background refetches after save shouldn't stomp in-progress edits).
+  // Load the selected type's row once it's fetched (background refetches after
+  // save shouldn't stomp in-progress edits). Re-fires on type switch because
+  // content.type no longer matches the newly selected type.
   useEffect(() => {
-    if (data && !content) setContent(data);
-  }, [data, content]);
+    if (data && data.type === type && content?.type !== type) setContent(data);
+  }, [data, type, content]);
+
+  // Gate rendering on the *selected* type's content, not just "some content is
+  // loaded": switching tabs must not flash the previous type's data while the
+  // new type's row is fetching. Holding the narrowed value (rather than a
+  // plain boolean) lets TypeScript know `content` is non-null below.
+  const ready = !isLoading && content && content.type === type ? content : null;
 
   async function handleSave() {
-    if (!content) return;
+    if (!content || content.type !== type) return;
     try {
-      const id = await save.mutateAsync({ ...content, type: "website" });
+      const id = await save.mutateAsync({ ...content, type });
       setContent((prev) => (prev ? { ...prev, id } : prev));
       toast({ title: "ברירות המחדל נשמרו", variant: "success" });
     } catch {
@@ -247,37 +265,58 @@ export default function QuoteDefaultsV2() {
         </Button>
         <PageHeader
           title="ברירות מחדל להצעות מחיר"
-          subtitle="הבידולים, השלבים, הבונוסים, הצעדים הבאים, השאלות הנפוצות, הסעיפים המשפטיים, ההמלצה ותנאי התשלום שמופיעים אוטומטית בכל הצעה חדשה."
+          subtitle="הבידולים, השלבים, הבונוסים, הצעדים הבאים, השאלות הנפוצות, הסעיפים המשפטיים, ההמלצה ותנאי התשלום שמופיעים אוטומטית בכל הצעה חדשה, לפי סוג ההצעה."
         />
       </div>
 
-      {isLoading || !content ? (
+      <Card className="space-y-3 p-5">
+        <p className="text-sm font-semibold text-foreground">סוג ההצעה</p>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="סוג ההצעה">
+          {TYPE_TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              aria-selected={type === t.value}
+              onClick={() => setType(t.value)}
+              className={cn(
+                "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                type === t.value
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {!ready ? (
         <Card className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> טוען ברירות מחדל…
         </Card>
       ) : (
         <div className="space-y-5">
-          <DiffsEditor value={content.differentiators} onChange={(v) => setContent({ ...content, differentiators: v })} />
+          <DiffsEditor value={ready.differentiators} onChange={(v) => setContent({ ...ready, differentiators: v })} />
 
-          <PhasesEditor value={content.phases} onChange={(v) => setContent({ ...content, phases: v })} />
+          <PhasesEditor value={ready.phases} onChange={(v) => setContent({ ...ready, phases: v })} />
 
-          <BonusesEditor value={content.bonuses} onChange={(v) => setContent({ ...content, bonuses: v })} />
+          <BonusesEditor value={ready.bonuses} onChange={(v) => setContent({ ...ready, bonuses: v })} />
 
-          <UpsellCatalogSection />
+          <StepsEditor value={ready.next_steps} onChange={(v) => setContent({ ...ready, next_steps: v })} />
 
-          <StepsEditor value={content.next_steps} onChange={(v) => setContent({ ...content, next_steps: v })} />
+          <FaqEditor value={ready.faq} onChange={(v) => setContent({ ...ready, faq: v })} />
 
-          <FaqEditor value={content.faq} onChange={(v) => setContent({ ...content, faq: v })} />
+          <LegalEditor value={ready.legal} onChange={(v) => setContent({ ...ready, legal: v })} />
 
-          <LegalEditor value={content.legal} onChange={(v) => setContent({ ...content, legal: v })} />
-
-          <TestimonialEditor value={content.testimonial} onChange={(v) => setContent({ ...content, testimonial: v })} />
+          <TestimonialEditor value={ready.testimonial} onChange={(v) => setContent({ ...ready, testimonial: v })} />
 
           <PaymentValidityEditor
-            payment={content.payment}
-            validityDays={content.validity_days}
-            onChangePayment={(p) => setContent({ ...content, payment: p })}
-            onChangeValidity={(days) => setContent({ ...content, validity_days: days })}
+            payment={ready.payment}
+            validityDays={ready.validity_days}
+            onChangePayment={(p) => setContent({ ...ready, payment: p })}
+            onChangeValidity={(days) => setContent({ ...ready, validity_days: days })}
           />
 
           <Card className="sticky bottom-4 z-10 flex items-center justify-end gap-3 border-primary/30 bg-card/95 p-5 shadow-lift backdrop-blur">
@@ -288,6 +327,16 @@ export default function QuoteDefaultsV2() {
           </Card>
         </div>
       )}
+
+      <div className="flex items-center gap-3 pt-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+          תוספות משותפות לכל סוגי ההצעות (לא תלוי בטאב שנבחר למעלה)
+        </span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <UpsellCatalogSection />
     </div>
   );
 }
