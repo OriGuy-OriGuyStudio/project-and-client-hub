@@ -6,6 +6,7 @@ import {
   newId,
   discountAmount,
   quoteTotals,
+  optionalExtras,
   type QuoteContentV2,
   type QuoteSelected,
 } from "./quote-v2";
@@ -82,6 +83,22 @@ describe("discountAmount", () => {
   });
 });
 
+describe("optionalExtras", () => {
+  it("sums optional scope + upsells", () => {
+    const c = {
+      ...emptyQuoteV2("website"),
+      scope: [
+        { id: "a", kind: "page", label: "בית", value: 2500 },
+        { id: "b", kind: "feature", label: "בלוג", value: 1800, optional: true },
+      ],
+      upsells: [{ id: "u1", title: "רב-לשוני", price: 1800 }],
+    } as QuoteContentV2;
+    const r = optionalExtras(c);
+    expect(r.subtotal).toBe(3600);
+    expect(r.items.map((i) => i.id).sort()).toEqual(["b", "u1"]);
+  });
+});
+
 describe("quoteTotals", () => {
   const mult = DEFAULT_MULTIPLIERS;
   const floor = 4500;
@@ -123,6 +140,22 @@ describe("quoteTotals", () => {
   it("breakdown sums exactly to final_price, even with rounding", () => {
     const r = quoteTotals(baseContent({ final_price: 7123 }), noneSelected, mult, floor, monthlyFor);
     expect(r.breakdown.reduce((s, l) => s + l.price, 0)).toBe(7123);
+  });
+
+  it("breakdown excludes optional scope items", () => {
+    const optionalScope: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "opt1", kind: "feature", label: "בלוג", value: 1800, optional: true },
+    ];
+    const r = quoteTotals(
+      baseContent({ scope: optionalScope, final_price: 2500 }),
+      noneSelected,
+      mult,
+      floor,
+      monthlyFor,
+    );
+    expect(r.breakdown.length).toBe(1);
+    expect(r.breakdown.reduce((s, l) => s + l.price, 0)).toBe(2500);
   });
 
   it("a percent discount reduces net (applied on final_price + upsells)", () => {

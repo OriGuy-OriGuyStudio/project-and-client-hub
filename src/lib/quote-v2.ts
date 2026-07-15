@@ -85,6 +85,26 @@ export function emptyQuoteV2(type: QuoteType): QuoteContentV2 {
   };
 }
 
+/** The client-selectable extras pool: optional scope items + upsells, normalized
+ *  to a common shape with their summed subtotal. Used by the builder to show a
+ *  reference subtotal and, later, the client pick-list. */
+export function optionalExtras(content: QuoteContentV2): {
+  items: { id: string; label: string; value: number }[];
+  subtotal: number;
+} {
+  const optionalScope = (content.scope ?? [])
+    .filter((it) => it.optional)
+    .map((it) => ({ id: it.id, label: it.label, value: Number(it.value) || 0 }));
+  const upsells = (content.upsells ?? []).map((u) => ({
+    id: u.id,
+    label: u.title,
+    value: Number(u.price) || 0,
+  }));
+  const items = [...optionalScope, ...upsells];
+  const subtotal = items.reduce((sum, i) => sum + i.value, 0);
+  return { items, subtotal };
+}
+
 /** Discount amount (₪) for a given pre-discount net, clamped to [0, net]. */
 export function discountAmount(net: number, d: QuoteDiscount | null): number {
   if (!d) return 0;
@@ -138,7 +158,7 @@ export function quoteTotals(
   const total = withVat(net, content.vat_pct);
   const vat = total - net;
   const split = paymentSplit(total, content.payment.deposit_pct);
-  const breakdown = breakdownForFinal(content.scope, content.final_price);
+  const breakdown = breakdownForFinal(content.scope.filter((i) => !i.optional), content.final_price);
   const monthly = selected.maintenance_tier ? monthlyFor(selected.maintenance_tier) : 0;
 
   return { anchor, options, chosen, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
