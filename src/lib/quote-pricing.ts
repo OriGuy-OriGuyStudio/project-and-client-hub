@@ -53,3 +53,21 @@ export function breakdownForFinal(items: ScopeItem[], finalPrice: number): Break
     return { ...it, price };
   });
 }
+
+export function withVat(net: number, pct: number): number {
+  return Math.round((net || 0) * (1 + (pct || 0) / 100));
+}
+
+export function vatOf(net: number, pct: number): number {
+  return withVat(net, pct) - Math.round(net || 0);
+}
+
+export function paymentSplit(total: number, depositPct: number): { deposit: number; rest: number; depositPct: number } {
+  const pct = Math.min(100, Math.max(0, depositPct ?? 50));
+  const deposit = Math.round((total * pct) / 100);
+  return { deposit, rest: Math.max(0, Math.round(total) - deposit), depositPct: pct };
+}
+
+export function shekel(n: number): string {
+  return "₪" + Math.round(n || 0).toLocaleString("he-IL");
+}

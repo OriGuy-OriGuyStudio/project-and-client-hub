@@ -66,3 +66,17 @@ describe("breakdownForFinal", () => {
     expect(b[0].price).toBe(5000);
   });
 });
+
+import { withVat, vatOf, paymentSplit, shekel } from "./quote-pricing";
+
+describe("vat + payment", () => {
+  it("adds VAT", () => { expect(withVat(10000, 18)).toBe(11800); });
+  it("returns VAT amount", () => { expect(vatOf(10000, 18)).toBe(1800); });
+  it("splits by deposit pct, rest = total - deposit", () => {
+    const s = paymentSplit(11800, 50);
+    expect(s.deposit).toBe(5900);
+    expect(s.rest).toBe(5900);
+    expect(s.deposit + s.rest).toBe(11800);
+  });
+  it("formats shekels he-IL", () => { expect(shekel(11800)).toBe("₪11,800"); });
+});
