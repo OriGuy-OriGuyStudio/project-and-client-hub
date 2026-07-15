@@ -47,7 +47,7 @@ import { emptyQuoteV2, type QuoteContentV2 } from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
-import { QuoteContentEditorsV2 } from "./QuoteContentEditorsV2";
+import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -58,6 +58,16 @@ const TYPE_TABS: { value: QuoteType; label: string }[] = [
 const TYPE_LABEL: Record<QuoteType, string> = Object.fromEntries(
   TYPE_TABS.map((t) => [t.value, t.label])
 ) as Record<QuoteType, string>;
+
+type BuilderTab = "setup" | "price" | "proposal" | "addons" | "terms";
+
+const BUILDER_TABS: { value: BuilderTab; label: string }[] = [
+  { value: "setup", label: "הגדרה" },
+  { value: "price", label: "מחיר" },
+  { value: "proposal", label: "הצעה" },
+  { value: "addons", label: "תוספות" },
+  { value: "terms", label: "תנאים" },
+];
 
 const STATUS_BADGE: Record<PriceQuote["status"], { label: string; variant: BadgeProps["variant"] }> = {
   draft: { label: "טיוטה", variant: "secondary" },
@@ -288,6 +298,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientBusiness, setClientBusiness] = useState("");
+  const [tab, setTab] = useState<BuilderTab>("setup");
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -430,122 +441,147 @@ function QuoteBuilderShell({ id }: { id: string }) {
         </div>
       )}
 
-      <Card className="space-y-3 p-5">
-        <p className="text-sm font-semibold text-foreground">פרטי לקוח</p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="quote-title">כותרת ההצעה</Label>
-            <Input
-              id="quote-title"
-              value={title}
-              disabled={locked}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="הצעת מחיר"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="quote-client-name">שם הלקוח</Label>
-            <Input
-              id="quote-client-name"
-              value={clientName}
-              disabled={locked}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="לדוגמה: דנה כהן"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="quote-client-business">שם העסק</Label>
-            <Input
-              id="quote-client-business"
-              value={clientBusiness}
-              disabled={locked}
-              onChange={(e) => setClientBusiness(e.target.value)}
-              placeholder="לדוגמה: סטודיו דנה"
-            />
-          </div>
-        </div>
-      </Card>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="קטגוריית עריכה">
+        {BUILDER_TABS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.value}
+            onClick={() => setTab(t.value)}
+            className={cn(
+              "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+              tab === t.value
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <Card className="space-y-3 p-5">
-        <p className="text-sm font-semibold text-foreground">סוג ההצעה</p>
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="סוג ההצעה">
-          {TYPE_TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={content.type === t.value}
-              disabled={locked}
-              onClick={() => setType(t.value)}
-              className={cn(
-                "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
-                content.type === t.value
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                locked && "cursor-not-allowed opacity-60"
+      {tab === "setup" && (
+        <div className="space-y-5">
+          <Card className="space-y-3 p-5">
+            <p className="text-sm font-semibold text-foreground">פרטי לקוח</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-title">כותרת ההצעה</Label>
+                <Input
+                  id="quote-title"
+                  value={title}
+                  disabled={locked}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="הצעת מחיר"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-client-name">שם הלקוח</Label>
+                <Input
+                  id="quote-client-name"
+                  value={clientName}
+                  disabled={locked}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="לדוגמה: דנה כהן"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-client-business">שם העסק</Label>
+                <Input
+                  id="quote-client-business"
+                  value={clientBusiness}
+                  disabled={locked}
+                  onChange={(e) => setClientBusiness(e.target.value)}
+                  placeholder="לדוגמה: סטודיו דנה"
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="space-y-3 p-5">
+            <p className="text-sm font-semibold text-foreground">סוג ההצעה</p>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="סוג ההצעה">
+              {TYPE_TABS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={content.type === t.value}
+                  disabled={locked}
+                  onClick={() => setType(t.value)}
+                  className={cn(
+                    "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                    content.type === t.value
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                    locked && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          {content.type === "website" && (
+            <Card className="space-y-3 p-5">
+              <p className="text-sm font-semibold text-foreground">תת-סוג</p>
+              {subtypeRows.length === 0 ? (
+                <p className="text-xs text-muted-foreground">אין עדיין תתי-סוג בקטלוג.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {subtypeRows.map((row) => {
+                    const selected = content.scope.some((it) => it.id === row.id && it.kind === "subtype");
+                    return (
+                      <button
+                        key={row.id}
+                        type="button"
+                        disabled={locked}
+                        aria-pressed={selected}
+                        onClick={() => selectSubtype(row)}
+                        className={cn(
+                          "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                          selected
+                            ? "border-primary bg-primary/15 text-primary"
+                            : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                          locked && "cursor-not-allowed opacity-60"
+                        )}
+                      >
+                        {row.label}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            >
-              {t.label}
-            </button>
+            </Card>
+          )}
+
+          {sections.map((s) => (
+            <ScopeSection
+              key={s.kind}
+              title={s.title}
+              rows={catalogFor(catalogRows, s.kind, content.type)}
+              scope={content.scope}
+              disabled={locked}
+              onToggle={(row) => toggleScopeItem(row, s.kind)}
+              onValueChange={updateScopeValue}
+            />
           ))}
         </div>
-      </Card>
-
-      {content.type === "website" && (
-        <Card className="space-y-3 p-5">
-          <p className="text-sm font-semibold text-foreground">תת-סוג</p>
-          {subtypeRows.length === 0 ? (
-            <p className="text-xs text-muted-foreground">אין עדיין תתי-סוג בקטלוג.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {subtypeRows.map((row) => {
-                const selected = content.scope.some((it) => it.id === row.id && it.kind === "subtype");
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    disabled={locked}
-                    aria-pressed={selected}
-                    onClick={() => selectSubtype(row)}
-                    className={cn(
-                      "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                      selected
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                      locked && "cursor-not-allowed opacity-60"
-                    )}
-                  >
-                    {row.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </Card>
       )}
 
-      {sections.map((s) => (
-        <ScopeSection
-          key={s.kind}
-          title={s.title}
-          rows={catalogFor(catalogRows, s.kind, content.type)}
-          scope={content.scope}
-          disabled={locked}
-          onToggle={(row) => toggleScopeItem(row, s.kind)}
-          onValueChange={updateScopeValue}
-        />
-      ))}
-
-      {mult && (
+      {tab === "price" && mult && (
         <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
       )}
 
-      <QuoteContentEditorsV2
-        content={content}
-        onChange={setContent}
-        disabled={locked}
-        upsellCatalog={upsellCatalog ?? []}
-      />
+      {tab === "proposal" && <ProposalEditors content={content} onChange={setContent} disabled={locked} />}
+
+      {tab === "addons" && (
+        <AddonsEditors content={content} onChange={setContent} disabled={locked} upsellCatalog={upsellCatalog ?? []} />
+      )}
+
+      {tab === "terms" && <TermsEditors content={content} onChange={setContent} disabled={locked} />}
 
       <Card className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 border-primary/30 bg-card/95 p-5 shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-5">

@@ -743,21 +743,22 @@ export function PaymentValidityEditor({
 }
 
 /* ============================================================================
- * Full per-quote content editor , everything in QuoteContentV2 that isn't
+ * Grouped per-quote content editors , everything in QuoteContentV2 that isn't
  * already covered by the shell (type/subtype/scope, Task 4) or the price
- * panel (final_price/options, Task 5).
+ * panel (final_price/options, Task 5), split into 3 workflow-tab groups for
+ * QuoteBuilderShell (Task 7: tabbed layout). Each editor + primitive above
+ * is unchanged; this just regroups which wrapper renders which.
  * ========================================================================== */
 
-export function QuoteContentEditorsV2({
+/** Tab "הצעה": narrative + differentiators + phases + testimonial. */
+export function ProposalEditors({
   content,
   onChange,
   disabled,
-  upsellCatalog,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
   disabled: boolean;
-  upsellCatalog: QuoteCatalogRow[];
 }) {
   return (
     <div className="space-y-5">
@@ -783,8 +784,29 @@ export function QuoteContentEditorsV2({
 
       <PhasesEditor value={content.phases} onChange={(v) => onChange({ ...content, phases: v })} disabled={disabled} />
 
-      <BonusesEditor value={content.bonuses} onChange={(v) => onChange({ ...content, bonuses: v })} disabled={disabled} />
+      <TestimonialEditor
+        value={content.testimonial}
+        onChange={(v) => onChange({ ...content, testimonial: v })}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
 
+/** Tab "תוספות": upsells picker + bonuses + maintenance + discount. */
+export function AddonsEditors({
+  content,
+  onChange,
+  disabled,
+  upsellCatalog,
+}: {
+  content: QuoteContentV2;
+  onChange: (next: QuoteContentV2) => void;
+  disabled: boolean;
+  upsellCatalog: QuoteCatalogRow[];
+}) {
+  return (
+    <div className="space-y-5">
       <UpsellsPicker
         catalog={upsellCatalog}
         value={content.upsells}
@@ -792,26 +814,31 @@ export function QuoteContentEditorsV2({
         disabled={disabled}
       />
 
+      <BonusesEditor value={content.bonuses} onChange={(v) => onChange({ ...content, bonuses: v })} disabled={disabled} />
+
       <MaintenanceEditor
         value={content.maintenance}
         onChange={(v) => onChange({ ...content, maintenance: v })}
         disabled={disabled}
       />
 
-      <StepsEditor value={content.next_steps} onChange={(v) => onChange({ ...content, next_steps: v })} disabled={disabled} />
-
-      <FaqEditor value={content.faq} onChange={(v) => onChange({ ...content, faq: v })} disabled={disabled} />
-
-      <LegalEditor value={content.legal} onChange={(v) => onChange({ ...content, legal: v })} disabled={disabled} />
-
-      <TestimonialEditor
-        value={content.testimonial}
-        onChange={(v) => onChange({ ...content, testimonial: v })}
-        disabled={disabled}
-      />
-
       <DiscountEditor value={content.discount} onChange={(v) => onChange({ ...content, discount: v })} disabled={disabled} />
+    </div>
+  );
+}
 
+/** Tab "תנאים": payment + validity + legal + faq + next_steps + vat + show_breakdown. */
+export function TermsEditors({
+  content,
+  onChange,
+  disabled,
+}: {
+  content: QuoteContentV2;
+  onChange: (next: QuoteContentV2) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="space-y-5">
       <PaymentValidityEditor
         payment={content.payment}
         validityDays={content.validity_days}
@@ -819,6 +846,12 @@ export function QuoteContentEditorsV2({
         onChangeValidity={(days) => onChange({ ...content, validity_days: days })}
         disabled={disabled}
       />
+
+      <LegalEditor value={content.legal} onChange={(v) => onChange({ ...content, legal: v })} disabled={disabled} />
+
+      <FaqEditor value={content.faq} onChange={(v) => onChange({ ...content, faq: v })} disabled={disabled} />
+
+      <StepsEditor value={content.next_steps} onChange={(v) => onChange({ ...content, next_steps: v })} disabled={disabled} />
 
       <Card className="grid gap-3 p-5 sm:grid-cols-2">
         <p className="text-sm font-semibold text-foreground sm:col-span-2">מע״מ והצגת פירוט</p>
