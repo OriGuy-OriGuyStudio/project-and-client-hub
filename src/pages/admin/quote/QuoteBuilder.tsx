@@ -122,7 +122,7 @@ export default function QuoteBuilder() {
           subtitle={
             activeId
               ? "בונה הצעת מחיר: סוג, היקף מוצרים, עוגן מחיר, ניסוח ושליחה."
-              : "כל הצעות המחיר: פתיחה לעריכה, סימון כנשלחה, העתקת קישור למחיקה."
+              : "כל הצעות המחיר: פתיחה לעריכה, סימון כנשלחה, העתקת קישור ומחיקה."
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
