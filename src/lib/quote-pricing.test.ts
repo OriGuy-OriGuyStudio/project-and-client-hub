@@ -16,6 +16,17 @@ describe("anchorValue", () => {
   it("is 0 for empty scope", () => {
     expect(anchorValue({ type: "website", items: [] })).toBe(0);
   });
+  it("excludes optional items", () => {
+    const items = [
+      { id: "a", kind: "page", label: "בית", value: 2500 },
+      { id: "b", kind: "feature", label: "בלוג", value: 1800, optional: true },
+    ] as const;
+    expect(anchorValue({ type: "website", items: [...items] })).toBe(2500);
+  });
+  it("with all included unchanged", () => {
+    const items = [{ id: "a", kind: "page", label: "בית", value: 2500 }] as const;
+    expect(anchorValue({ type: "website", items: [...items] })).toBe(2500);
+  });
 });
 
 import { priceOptions, belowFloor, DEFAULT_MULTIPLIERS } from "./quote-pricing";
