@@ -16,7 +16,17 @@ import {
   type PriceOptionKey,
   type BreakdownLine,
 } from "./quote-pricing";
-import type { ServiceTier } from "./service-plans";
+
+/** A snapshot of one admin-curated maintenance tier (quote_maintenance_tiers),
+ *  copied into the quote's content at pick time so later edits to the catalog
+ *  never change a quote already built/sent (same pattern as QuoteUpsell). */
+export type MaintenanceTierSnapshot = {
+  key: string;
+  name: string;
+  price: number;
+  description?: string;
+  recommended?: boolean;
+};
 
 export type QuoteUpsell = { id: string; title: string; desc?: string; price: number; recommended?: boolean };
 export type QuoteBonus = { id: string; name: string; desc?: string; value: number };
@@ -37,7 +47,7 @@ export type QuoteContentV2 = {
   vat_pct: number;
   show_breakdown: boolean;
   upsells: QuoteUpsell[];
-  maintenance: { offer: boolean; tiers: ServiceTier[] };
+  maintenance: { offer: boolean; tiers: MaintenanceTierSnapshot[] };
   bonuses: QuoteBonus[];
   differentiators: QuoteDiff[];
   phases: QuotePhase[];
@@ -70,7 +80,7 @@ export function emptyQuoteV2(type: QuoteType): QuoteContentV2 {
     vat_pct: 18,
     show_breakdown: false,
     upsells: [],
-    maintenance: { offer: true, tiers: ["core", "pro", "ultra"] },
+    maintenance: { offer: true, tiers: [] },
     bonuses: [],
     differentiators: [],
     phases: [],
@@ -113,7 +123,7 @@ export function discountAmount(net: number, d: QuoteDiscount | null): number {
   return Math.min(Math.max(Math.round(raw), 0), Math.round(base));
 }
 
-export type QuoteSelected = { upsell_ids: string[]; maintenance_tier: ServiceTier | null };
+export type QuoteSelected = { upsell_ids: string[]; maintenance_tier: string | null };
 
 export type QuoteTotals = {
   anchor: number;
@@ -131,13 +141,20 @@ export type QuoteTotals = {
 
 /** Composes the pricing engine with a v2 content object + the client's live
  *  selection (chosen upsells, chosen maintenance tier) into every derived
- *  number the quote UI needs to render. Ex-VAT amounts in, VAT-inclusive out. */
+ *  number the quote UI needs to render. Ex-VAT amounts in, VAT-inclusive out.
+ *
+ *  `monthly` resolves from the quote's own `content.maintenance.tiers`
+ *  snapshot first (a tier picked from the admin-curated catalog is copied in
+ *  at pick time, so it survives later catalog edits) , the snapshot price
+ *  always wins when a match is found. `monthlyFor` is kept for back-compat as
+ *  a fallback for a selected key with no matching snapshot entry (e.g. a
+ *  legacy quote); callers are free to pass a snapshot-aware resolver too. */
 export function quoteTotals(
   content: QuoteContentV2,
   selected: QuoteSelected,
   mult: Multipliers,
   floor: number,
-  monthlyFor: (tier: ServiceTier) => number,
+  monthlyFor: (tier: string) => number,
 ): QuoteTotals {
   const anchor = anchorValue({
     type: content.type,
@@ -159,7 +176,14 @@ export function quoteTotals(
   const vat = total - net;
   const split = paymentSplit(total, content.payment.deposit_pct);
   const breakdown = breakdownForFinal(content.scope.filter((i) => !i.optional), content.final_price);
-  const monthly = selected.maintenance_tier ? monthlyFor(selected.maintenance_tier) : 0;
+  const snapshotTier = selected.maintenance_tier
+    ? (content.maintenance?.tiers ?? []).find((t) => t.key === selected.maintenance_tier)
+    : undefined;
+  const monthly = !selected.maintenance_tier
+    ? 0
+    : snapshotTier
+      ? snapshotTier.price
+      : monthlyFor(selected.maintenance_tier);
 
   return { anchor, options, chosen, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
 }

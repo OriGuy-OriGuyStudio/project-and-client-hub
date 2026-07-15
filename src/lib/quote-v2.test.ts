@@ -9,6 +9,7 @@ import {
   optionalExtras,
   type QuoteContentV2,
   type QuoteSelected,
+  type MaintenanceTierSnapshot,
 } from "./quote-v2";
 
 const scope: ScopeItem[] = [
@@ -41,7 +42,7 @@ describe("emptyQuoteV2", () => {
     expect(c.show_breakdown).toBe(false);
     expect(c.scope).toEqual([]);
     expect(c.upsells).toEqual([]);
-    expect(c.maintenance).toEqual({ offer: true, tiers: ["core", "pro", "ultra"] });
+    expect(c.maintenance).toEqual({ offer: true, tiers: [] });
     expect(c.payment).toEqual({ deposit_pct: 50 });
     expect(c.validity_days).toBe(7);
     expect(c.final_price).toBe(0);
@@ -102,7 +103,7 @@ describe("optionalExtras", () => {
 describe("quoteTotals", () => {
   const mult = DEFAULT_MULTIPLIERS;
   const floor = 4500;
-  const monthlyFor = (t: ServiceTier) => TIER_META[t].price;
+  const monthlyFor = (t: string) => TIER_META[t as ServiceTier].price;
 
   it("computes the anchor from the scope items", () => {
     const r = quoteTotals(baseContent(), noneSelected, mult, floor, monthlyFor);
@@ -184,7 +185,7 @@ describe("quoteTotals", () => {
     expect(r.net).toBe(6570);
   });
 
-  it("selecting a maintenance tier reports its monthly value", () => {
+  it("selecting a maintenance tier with no matching snapshot falls back to monthlyFor", () => {
     const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
     const r = quoteTotals(baseContent(), selected, mult, floor, monthlyFor);
     expect(r.monthly).toBe(TIER_META.pro.price);
@@ -193,6 +194,23 @@ describe("quoteTotals", () => {
   it("no maintenance tier selected means monthly is 0", () => {
     const r = quoteTotals(baseContent(), noneSelected, mult, floor, monthlyFor);
     expect(r.monthly).toBe(0);
+  });
+
+  it("selecting a maintenance tier resolves its price from the content snapshot", () => {
+    const tiers: MaintenanceTierSnapshot[] = [{ key: "pro", name: "Pro", price: 850 }];
+    const content = baseContent({ maintenance: { offer: true, tiers } });
+    const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
+    const r = quoteTotals(content, selected, mult, floor, monthlyFor);
+    expect(r.monthly).toBe(850);
+  });
+
+  it("the snapshot price wins over monthlyFor when both could resolve the key", () => {
+    const tiers: MaintenanceTierSnapshot[] = [{ key: "pro", name: "Pro", price: 850 }];
+    const content = baseContent({ maintenance: { offer: true, tiers } });
+    const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
+    const r = quoteTotals(content, selected, mult, floor, monthlyFor);
+    expect(r.monthly).not.toBe(TIER_META.pro.price);
+    expect(r.monthly).toBe(850);
   });
 
   it("split reconciles exactly to total", () => {

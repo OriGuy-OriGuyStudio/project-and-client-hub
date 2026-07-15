@@ -17,7 +17,13 @@ import {
   type QuoteStep,
   type QuoteTestimonial,
 } from "@/lib/quote-v2";
-import type { PriceQuote, QuoteCatalogRow, QuoteDefaultsRow, QuoteTypeMultipliersRow } from "@/types/database";
+import type {
+  PriceQuote,
+  QuoteCatalogRow,
+  QuoteDefaultsRow,
+  QuoteMaintenanceTierRow,
+  QuoteTypeMultipliersRow,
+} from "@/types/database";
 
 // ---- catalog ---------------------------------------------------------------
 
@@ -165,6 +171,28 @@ export function useQuoteMultipliers() {
         map[row.type] = { fair: row.fair, recommended: row.recommended, premium: row.premium, floor: row.floor };
       }
       return map;
+    },
+  });
+}
+
+// ---- maintenance tier catalog (admin-curated, per product type) -----------
+
+/** Admin-curated maintenance/retainer tiers for one quote `type`
+ *  (`quote_maintenance_tiers`), ordered for display. The builder snapshots the
+ *  tiers it offers into `content.maintenance.tiers` (see lib/quote-v2.ts
+ *  MaintenanceTierSnapshot) so later catalog edits never change a quote
+ *  already built/sent. */
+export function useMaintenanceTiers(type: QuoteType) {
+  return useQuery({
+    queryKey: ["quote-maintenance-tiers", type],
+    queryFn: async (): Promise<QuoteMaintenanceTierRow[]> => {
+      const { data, error } = await supabase
+        .from("quote_maintenance_tiers")
+        .select("*")
+        .eq("type", type)
+        .order("sort", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as QuoteMaintenanceTierRow[];
     },
   });
 }

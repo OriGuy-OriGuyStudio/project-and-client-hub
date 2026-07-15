@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { shekel } from "@/lib/quote-pricing";
 import {
   newId,
+  type MaintenanceTierSnapshot,
   type QuoteBonus,
   type QuoteContentV2,
   type QuoteDiff,
@@ -378,22 +379,31 @@ export function UpsellsPicker({
   );
 }
 
-/* ---------- maintenance offer (toggle + tier multi-select) ---------- */
+/* ---------- maintenance offer (toggle + tier multi-select) ----------
+ * NOTE: this is the pre-catalog placeholder, still driven by the fixed
+ * core/pro/ultra tiers from lib/service-plans, kept compiling against the
+ * new MaintenanceTierSnapshot content shape. It writes real snapshots
+ * (key/name/price) instead of bare tier keys. The admin-curated,
+ * per-product-type picker (quote_maintenance_tiers / useMaintenanceTiers)
+ * replaces this editor in a follow-up task , do not extend it further here. */
 export function MaintenanceEditor({
   value,
   onChange,
   disabled,
 }: {
-  value: { offer: boolean; tiers: ServiceTier[] };
-  onChange: (v: { offer: boolean; tiers: ServiceTier[] }) => void;
+  value: { offer: boolean; tiers: MaintenanceTierSnapshot[] };
+  onChange: (v: { offer: boolean; tiers: MaintenanceTierSnapshot[] }) => void;
   disabled?: boolean;
 }) {
   const tiers = value?.tiers ?? [];
   function toggleTier(t: ServiceTier) {
     if (disabled) return;
+    const selected = tiers.some((x) => x.key === t);
     onChange({
       ...value,
-      tiers: tiers.includes(t) ? tiers.filter((x) => x !== t) : [...tiers, t],
+      tiers: selected
+        ? tiers.filter((x) => x.key !== t)
+        : [...tiers, { key: t, name: TIER_META[t].name, price: TIER_META[t].price }],
     });
   }
   return (
@@ -411,7 +421,7 @@ export function MaintenanceEditor({
       {value?.offer && (
         <div className="flex flex-wrap gap-2 ps-6">
           {TIER_ORDER.map((t) => {
-            const selected = tiers.includes(t);
+            const selected = tiers.some((x) => x.key === t);
             return (
               <button
                 key={t}
