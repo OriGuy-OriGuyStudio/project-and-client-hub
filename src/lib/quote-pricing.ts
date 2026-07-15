@@ -34,3 +34,22 @@ export function priceOptions(anchor: number, mult: Multipliers, floor: number): 
 export function belowFloor(price: number, floor: number): boolean {
   return (price || 0) < (floor || 0);
 }
+
+export type BreakdownLine = ScopeItem & { price: number };
+
+export function breakdownForFinal(items: ScopeItem[], finalPrice: number): BreakdownLine[] {
+  const list = items ?? [];
+  if (list.length === 0) return [];
+  const total = list.reduce((s, i) => s + (Number(i.value) || 0), 0);
+  if (total <= 0) {
+    return list.map((it, i) => ({ ...it, price: i === 0 ? Math.round(finalPrice) : 0 }));
+  }
+  let acc = 0;
+  return list.map((it, i) => {
+    const price = i === list.length - 1
+      ? Math.round(finalPrice) - acc
+      : Math.round(((Number(it.value) || 0) / total) * finalPrice);
+    acc += price;
+    return { ...it, price };
+  });
+}

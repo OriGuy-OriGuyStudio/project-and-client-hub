@@ -43,3 +43,26 @@ describe("belowFloor", () => {
     expect(belowFloor(5000, 4500)).toBe(false);
   });
 });
+
+import { breakdownForFinal } from "./quote-pricing";
+
+const items = [
+  { id: "a", kind: "page" as const, label: "בית", value: 4500 },
+  { id: "b", kind: "page" as const, label: "אודות", value: 3000 },
+  { id: "c", kind: "feature" as const, label: "CMS", value: 2500 },
+];
+
+describe("breakdownForFinal", () => {
+  it("returns raw values when final equals the sum", () => {
+    const b = breakdownForFinal(items, 10000);
+    expect(b.map((x) => x.price)).toEqual([4500, 3000, 2500]);
+  });
+  it("scales proportionally and sums EXACTLY to final", () => {
+    const b = breakdownForFinal(items, 13333);
+    expect(b.reduce((s, x) => s + x.price, 0)).toBe(13333);
+  });
+  it("handles zero total without dividing by zero", () => {
+    const b = breakdownForFinal([{ id: "z", kind: "page", label: "x", value: 0 }], 5000);
+    expect(b[0].price).toBe(5000);
+  });
+});
