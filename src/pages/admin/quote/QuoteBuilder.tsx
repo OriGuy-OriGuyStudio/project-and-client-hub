@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calculator, Loader2, Lock, Plus } from "lucide-react";
+import { ArrowRight, Calculator, Loader2, Lock, Plus, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import { emptyQuoteV2, type QuoteContentV2 } from "@/lib/quote-v2";
 import type { QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
+import { QuoteContentEditorsV2 } from "./QuoteContentEditorsV2";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -71,10 +72,18 @@ export default function QuoteBuilder() {
           title="מחשבון תמחור והצעות"
           subtitle="בונה הצעת מחיר: סוג, היקף מוצרים ועוגן מחיר. אפשרויות מחיר, ניסוח ושליחה מגיעים בהמשך."
           actions={
-            <Button onClick={newQuote} disabled={createQuote.isPending}>
-              {createQuote.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-              הצעה חדשה
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild variant="secondary">
+                <Link to="/admin/tools/quote/defaults">
+                  <Settings2 className="size-4" />
+                  ברירות מחדל
+                </Link>
+              </Button>
+              <Button onClick={newQuote} disabled={createQuote.isPending}>
+                {createQuote.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                הצעה חדשה
+              </Button>
+            </div>
           }
         />
       </div>
@@ -279,6 +288,8 @@ function QuoteBuilderShell({ id }: { id: string }) {
       {mult && (
         <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
       )}
+
+      <QuoteContentEditorsV2 content={content} onChange={setContent} disabled={locked} />
 
       <Card className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 border-primary/30 bg-card/95 p-5 shadow-lift backdrop-blur">
         <div className="flex flex-wrap items-center gap-5">
