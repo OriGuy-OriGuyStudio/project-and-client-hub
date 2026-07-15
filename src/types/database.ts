@@ -1035,6 +1035,20 @@ export type QuoteTypeMultipliersRow = {
   floor: number;
 };
 
+/** Per-product maintenance retainer tier (admin-curated). A quote snapshots the
+ *  chosen tiers into its content, so later edits here never change sent quotes. */
+export type QuoteMaintenanceTierRow = {
+  id: string;
+  type: "website" | "system" | "automation";
+  key: string;
+  name: string;
+  price: number;
+  description: string | null;
+  recommended: boolean;
+  sort: number;
+  created_at: string;
+};
+
 /** Studio-wide boilerplate row that seeds every new quote (one row). */
 export type QuoteDefaultsRow = {
   id: string;
@@ -1281,6 +1295,7 @@ export interface Database {
       quote_catalog: TableShape<QuoteCatalogRow>;
       quote_defaults: TableShape<QuoteDefaultsRow>;
       quote_type_multipliers: TableShape<QuoteTypeMultipliersRow>;
+      quote_maintenance_tiers: TableShape<QuoteMaintenanceTierRow>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
