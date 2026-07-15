@@ -22,6 +22,8 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -281,6 +283,9 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const markSent = useMarkQuoteSent();
 
   const [content, setContent] = useState<QuoteContentV2 | null>(null);
+  const [title, setTitle] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientBusiness, setClientBusiness] = useState("");
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -290,6 +295,10 @@ function QuoteBuilderShell({ id }: { id: string }) {
     loadedIdRef.current = quote.id;
     const raw = (quote.content ?? {}) as Partial<QuoteContentV2>;
     setContent({ ...emptyQuoteV2(quote.type), ...raw, type: quote.type });
+    // Identity fields are top-level DB columns, not part of `content`.
+    setTitle(quote.title ?? "");
+    setClientName(quote.client_name ?? "");
+    setClientBusiness(quote.client_business ?? "");
   }, [quote]);
 
   const locked = quote?.status === "signed";
@@ -362,6 +371,9 @@ function QuoteBuilderShell({ id }: { id: string }) {
         subtype: content.subtype ?? null,
         content,
         anchor,
+        title: title.trim() || "הצעת מחיר",
+        client_name: clientName.trim() || null,
+        client_business: clientBusiness.trim() || null,
       });
       toast({ title: "ההצעה נשמרה", variant: "success" });
     } catch {
@@ -415,6 +427,42 @@ function QuoteBuilderShell({ id }: { id: string }) {
           <Lock className="size-4 shrink-0" /> ההצעה נחתמה, אי אפשר לערוך אותה יותר.
         </div>
       )}
+
+      <Card className="space-y-3 p-5">
+        <p className="text-sm font-semibold text-foreground">פרטי לקוח</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="quote-title">כותרת ההצעה</Label>
+            <Input
+              id="quote-title"
+              value={title}
+              disabled={locked}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="הצעת מחיר"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="quote-client-name">שם הלקוח</Label>
+            <Input
+              id="quote-client-name"
+              value={clientName}
+              disabled={locked}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="לדוגמה: דנה כהן"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="quote-client-business">שם העסק</Label>
+            <Input
+              id="quote-client-business"
+              value={clientBusiness}
+              disabled={locked}
+              onChange={(e) => setClientBusiness(e.target.value)}
+              placeholder="לדוגמה: סטודיו דנה"
+            />
+          </div>
+        </div>
+      </Card>
 
       <Card className="space-y-3 p-5">
         <p className="text-sm font-semibold text-foreground">סוג ההצעה</p>

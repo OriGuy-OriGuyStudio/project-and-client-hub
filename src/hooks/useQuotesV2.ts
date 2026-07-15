@@ -282,18 +282,22 @@ export function useUpdateQuoteContentV2() {
       subtype: string | null;
       content: QuoteContentV2;
       anchor: number;
+      title?: string;
+      client_name?: string | null;
+      client_business?: string | null;
     }): Promise<void> => {
-      const { error } = await supabase
-        .from("price_quotes")
-        .update({
-          type: input.type,
-          subtype: input.subtype,
-          content: input.content as unknown as Record<string, unknown>,
-          anchor_value: input.anchor,
-          final_price: input.content.final_price,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.id);
+      const payload: Partial<PriceQuote> = {
+        type: input.type,
+        subtype: input.subtype,
+        content: input.content as unknown as Record<string, unknown>,
+        anchor_value: input.anchor,
+        final_price: input.content.final_price,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.title !== undefined) payload.title = input.title;
+      if (input.client_name !== undefined) payload.client_name = input.client_name;
+      if (input.client_business !== undefined) payload.client_business = input.client_business;
+      const { error } = await supabase.from("price_quotes").update(payload).eq("id", input.id);
       if (error) throw error;
     },
     onSuccess: (_data, vars) => {

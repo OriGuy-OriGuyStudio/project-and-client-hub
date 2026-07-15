@@ -35,7 +35,7 @@ export function PricePanel({
     () => 0,
   );
 
-  const under = belowFloor(content.final_price, multipliers.floor);
+  const under = content.final_price > 0 && belowFloor(content.final_price, multipliers.floor);
 
   return (
     <Card className="space-y-4 p-5">
