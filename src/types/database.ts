@@ -978,8 +978,8 @@ export type SeoContent = {
   design_notes?: string;
 };
 
-/** A price quote (Phase A): admin-built, client-signed via share token. content
- *  is the QuoteContent from lib/quote.ts. */
+/** A price quote (v2): admin-built, client-signed via share token. content
+ *  is the QuoteContentV2 from lib/quote-v2.ts. */
 export type PriceQuote = {
   id: string;
   org_id: string | null;
@@ -987,6 +987,15 @@ export type PriceQuote = {
   title: string;
   client_name: string | null;
   site_type: "landing" | "portfolio" | "store" | "app" | "custom";
+  /** v2 top-level fields (migration 20260715120000_quote_v2_schema). */
+  type: "website" | "system" | "automation";
+  subtype: string | null;
+  final_price: number | null;
+  anchor_value: number | null;
+  client_business: string | null;
+  sent_at: string | null;
+  viewed_at: string | null;
+  signed_ip: string | null;
   content: Record<string, unknown>;
   status: "draft" | "sent" | "signed" | "declined";
   share_token: string;
@@ -998,10 +1007,14 @@ export type PriceQuote = {
   updated_at: string;
 };
 
-/** A reusable "ready-made" catalog item for the quote builder (page/feature/upsell). */
+/** A reusable "ready-made" catalog item for the quote builder
+ *  (subtype/page/feature/module/automation/upsell). */
 export type QuoteCatalogRow = {
   id: string;
-  kind: "page" | "feature" | "upsell";
+  kind: "subtype" | "page" | "feature" | "module" | "automation" | "upsell";
+  /** v2: scopes page/feature/module/automation rows to a quote type. Universal
+   *  upsells keep this null. (migration 20260715140000_quote_catalog_v2) */
+  type: "website" | "system" | "automation" | null;
   site_type: "landing" | "portfolio" | "store" | "app" | "custom" | null;
   label: string;
   description: string | null;
@@ -1010,6 +1023,16 @@ export type QuoteCatalogRow = {
   recommended: boolean;
   sort: number;
   created_at: string;
+};
+
+/** Per-type pricing multipliers + premium floor for the quote engine.
+ *  (migration 20260715120000_quote_v2_schema) */
+export type QuoteTypeMultipliersRow = {
+  type: "website" | "system" | "automation";
+  fair: number;
+  recommended: number;
+  premium: number;
+  floor: number;
 };
 
 /** Studio-wide boilerplate row that seeds every new quote (one row). */
@@ -1257,6 +1280,7 @@ export interface Database {
       price_quotes: TableShape<PriceQuote>;
       quote_catalog: TableShape<QuoteCatalogRow>;
       quote_defaults: TableShape<QuoteDefaultsRow>;
+      quote_type_multipliers: TableShape<QuoteTypeMultipliersRow>;
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
@@ -1270,13 +1294,15 @@ export interface Database {
     Functions: {
       claim_easter_egg: { Args: Record<string, never>; Returns: EasterEggClaimResult };
       get_quote_public: { Args: { p_token: string }; Returns: Record<string, unknown> | null };
+      /** Stamps viewed_at once, the first time a client opens a sent/draft quote. */
+      mark_quote_viewed: { Args: { p_token: string }; Returns: undefined };
       sign_quote: {
         Args: {
           p_token: string;
           p_name: string;
           p_signature_image: string;
-          p_upsell_ids?: unknown;
-          p_maintenance_tier?: string | null;
+          p_selected?: unknown;
+          p_ip?: string | null;
         };
         Returns: { ok: boolean; error?: string };
       };
