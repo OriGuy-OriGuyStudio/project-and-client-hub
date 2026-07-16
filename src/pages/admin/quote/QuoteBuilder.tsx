@@ -1057,10 +1057,12 @@ function PriceSummaryCard({
 
             {totals.discount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
+                {/* Brand green, matching the client receipt , a discount is a
+                   positive, not a warning. */}
+                <span className="font-medium text-primary">
                   הנחה{content.discount?.label ? ` (${content.discount.label})` : ""}
                 </span>
-                <span className="font-medium text-warning">- {shekel(totals.discount)}</span>
+                <span className="font-semibold text-primary">- {shekel(totals.discount)}</span>
               </div>
             )}
 

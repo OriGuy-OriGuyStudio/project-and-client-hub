@@ -120,16 +120,30 @@ function SummaryRow({
   value,
   bold,
   muted,
+  accent,
 }: {
   label: string;
   value: string;
   bold?: boolean;
   muted?: boolean;
+  /** Brand-green row , used for the discount line so the saving pops as a
+   *  positive (per Ori), not as just another muted receipt line. */
+  accent?: boolean;
 }) {
   return (
     <div className={cn("flex items-center justify-between gap-3", muted ? "text-xs text-muted-foreground" : "text-sm")}>
-      <span className={cn(muted ? "text-muted-foreground" : "text-foreground")}>{label}</span>
-      <span className={cn(bold ? "font-semibold text-foreground" : muted ? "text-muted-foreground" : "font-medium text-foreground")}>
+      <span className={cn(accent ? "font-medium text-primary" : muted ? "text-muted-foreground" : "text-foreground")}>{label}</span>
+      <span
+        className={cn(
+          accent
+            ? "font-semibold text-primary"
+            : bold
+            ? "font-semibold text-foreground"
+            : muted
+            ? "text-muted-foreground"
+            : "font-medium text-foreground"
+        )}
+      >
         {value}
       </span>
     </div>
@@ -315,6 +329,7 @@ export function PricingSection({
                   ))}
                   {totals.discount > 0 && (
                     <SummaryRow
+                      accent
                       label={`- הנחה${content.discount?.label ? ` (${content.discount.label})` : ""}`}
                       value={`-${shekel(totals.discount)}`}
                     />
