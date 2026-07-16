@@ -36,6 +36,10 @@ export function SignSection({
   const [name, setName] = useState("");
   const [approved, setApproved] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
+  // Stays true from a successful sign until the refetch flips the page to the
+  // signed view , closes the double-submit window (a second click would get an
+  // English "already signed" RPC error right after a successful sign).
+  const [justSigned, setJustSigned] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -116,9 +120,11 @@ export function SignSection({
     setHasDrawn(false);
   }
 
-  const canSubmit = name.trim().length > 0 && hasDrawn && approved && !signQuote.isPending;
+  const busy = signQuote.isPending || justSigned;
+  const canSubmit = name.trim().length > 0 && hasDrawn && approved && !busy;
 
   function handleSubmit() {
+    if (busy) return;
     if (!name.trim()) return toastError("נא למלא שם מלא.");
     if (!hasDrawn) return toastError("נא לחתום בתיבת החתימה.");
     if (!approved) return toastError("צריך לאשר את ההצעה והתנאים לפני חתימה.");
@@ -130,11 +136,17 @@ export function SignSection({
       { token, name: name.trim(), signatureImage, selected },
       {
         onSuccess: () => {
+          setJustSigned(true);
           celebrate();
           qc.invalidateQueries({ queryKey: ["quote-public", token] });
         },
         onError: (err) => {
-          toastError(err instanceof Error ? err.message : "החתימה נכשלה, נסו שוב.");
+          const raw = err instanceof Error ? err.message : "";
+          toastError(
+            raw.includes("already signed") || raw.includes("not found")
+              ? "ההצעה כבר נחתמה או שאינה זמינה יותר."
+              : "החתימה נכשלה, נסו שוב."
+          );
         },
       },
     );
@@ -164,7 +176,7 @@ export function SignSection({
             onChange={(e) => setName(e.target.value.slice(0, MAX_NAME_LEN))}
             maxLength={MAX_NAME_LEN}
             placeholder="ישראל ישראלי"
-            disabled={signQuote.isPending}
+            disabled={busy}
           />
         </div>
 
@@ -174,7 +186,7 @@ export function SignSection({
             <button
               type="button"
               onClick={clearSignature}
-              disabled={signQuote.isPending}
+              disabled={busy}
               className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
             >
               נקה
@@ -187,7 +199,7 @@ export function SignSection({
             onPointerUp={onPointerUp}
             onPointerLeave={onPointerUp}
             className="h-[150px] w-full touch-none rounded-xl border border-dashed border-border bg-field"
-            style={{ cursor: signQuote.isPending ? "default" : "crosshair" }}
+            style={{ cursor: busy ? "default" : "crosshair" }}
           />
         </div>
 
@@ -195,7 +207,7 @@ export function SignSection({
           type="button"
           aria-pressed={approved}
           onClick={() => setApproved((v) => !v)}
-          disabled={signQuote.isPending}
+          disabled={busy}
           className={cn(
             "flex w-full items-start gap-3 rounded-xl border p-3.5 text-start transition-colors",
             approved ? "border-primary/50 bg-primary/10" : "border-border bg-card hover:border-primary/30",
@@ -214,7 +226,7 @@ export function SignSection({
         </button>
 
         <Button type="button" size="lg" className="w-full" onClick={handleSubmit} disabled={!canSubmit}>
-          {signQuote.isPending ? "רגע…" : "מאשר וחותם על ההצעה"}
+          {signQuote.isPending ? "רגע…" : justSigned ? "נחתם ✓" : "מאשר וחותם על ההצעה"}
         </Button>
       </div>
     </QuoteSection>
