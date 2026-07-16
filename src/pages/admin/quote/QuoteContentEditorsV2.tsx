@@ -873,6 +873,9 @@ export function ProposalEditors({
   async function handleAiCopy() {
     setAiPending(true);
     try {
+      // Captured before the await: a type switch mid-flight re-seeds the whole
+      // content, and a narrative written for the old type must not land in it.
+      const typeAtCall = content.type;
       const scope_labels = content.scope.filter((it) => !it.optional && !it.free).map((it) => it.label);
       const result = await quoteAiCopy({
         type: content.type,
@@ -884,7 +887,7 @@ export function ProposalEditors({
       });
       // Functional apply , only overwrites `narrative` against whatever the
       // content is NOW, so any edit made elsewhere while this awaited is kept.
-      onChangeFn((prev) => ({ ...prev, narrative: result.narrative }));
+      onChangeFn((prev) => (prev.type === typeAtCall ? { ...prev, narrative: result.narrative } : prev));
     } catch (e) {
       toastError(e instanceof Error ? e.message : "ה-AI לא הצליח לנסח את הטקסט, נסה שוב.");
     } finally {

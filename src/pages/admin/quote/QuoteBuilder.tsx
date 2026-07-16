@@ -494,7 +494,9 @@ function QuoteBuilderShell({ id }: { id: string }) {
     setSwitchingType(true);
     try {
       const defaults = await fetchQuoteDefaultsContent(type);
-      setContent(newQuoteContentFromDefaults(type, defaults));
+      // The discovery summary (notes) is type-agnostic admin input, often a
+      // long paste , carry it over instead of wiping it with the reseed.
+      setContent((prev) => ({ ...newQuoteContentFromDefaults(type, defaults), notes: prev?.notes }));
     } catch {
       toastError("החלפת סוג ההצעה נכשלה.");
     } finally {
@@ -688,6 +690,11 @@ function QuoteBuilderShell({ id }: { id: string }) {
           if (scope.some((it) => it.id === id)) continue;
           const found = entries.find((e) => e.row.id === id);
           if (!found) continue;
+          // Subtypes are applied ONLY via result.subtype_id above; a model that
+          // slips a subtype id into item_ids would otherwise append a raw
+          // second kind-"subtype" scope item (double-counting the anchor) or
+          // desync scope from content.subtype.
+          if (found.kind === "subtype") continue;
           const item: ScopeItem = {
             id: found.row.id,
             kind: found.kind,
