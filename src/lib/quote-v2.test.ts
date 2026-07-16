@@ -7,6 +7,8 @@ import {
   discountAmount,
   quoteTotals,
   optionalExtras,
+  applyPlatformClause,
+  PLATFORM_CLAUSES,
   type QuoteContentV2,
   type QuoteSelected,
   type MaintenanceTierSnapshot,
@@ -52,6 +54,34 @@ describe("emptyQuoteV2", () => {
 
   it("defaults narrative to an empty string", () => {
     expect(emptyQuoteV2("website").narrative).toBe("");
+  });
+});
+
+describe("applyPlatformClause", () => {
+  const wordpressLegal = [
+    "אחריות של 30 יום.",
+    PLATFORM_CLAUSES.wordpress,
+    "התשלום מתבצע לפי לוח התשלומים.",
+  ];
+
+  it("swaps the wordpress clause for the custom clause, leaving other clauses and length untouched", () => {
+    const result = applyPlatformClause(wordpressLegal, "custom");
+    expect(result).toHaveLength(wordpressLegal.length);
+    expect(result[1]).toBe(PLATFORM_CLAUSES.custom);
+    expect(result[0]).toBe(wordpressLegal[0]);
+    expect(result[2]).toBe(wordpressLegal[2]);
+  });
+
+  it("swaps back from custom to wordpress", () => {
+    const customLegal = applyPlatformClause(wordpressLegal, "custom");
+    const backToWordpress = applyPlatformClause(customLegal, "wordpress");
+    expect(backToWordpress[1]).toBe(PLATFORM_CLAUSES.wordpress);
+  });
+
+  it("returns the array unchanged when no clause matches either platform", () => {
+    const legal = ["אחריות של 30 יום.", "התשלום מתבצע לפי לוח התשלומים."];
+    const result = applyPlatformClause(legal, "custom");
+    expect(result).toEqual(legal);
   });
 });
 

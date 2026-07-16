@@ -43,7 +43,7 @@ import {
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
-import { emptyQuoteV2, optionalExtras, type QuoteContentV2 } from "@/lib/quote-v2";
+import { applyPlatformClause, emptyQuoteV2, optionalExtras, type QuoteContentV2 } from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
@@ -54,6 +54,11 @@ const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
   { value: "system", label: "מערכת" },
   { value: "automation", label: "אוטומציה" },
+];
+
+const PLATFORM_TABS: { value: "custom" | "wordpress"; label: string }[] = [
+  { value: "custom", label: "קוד מותאם" },
+  { value: "wordpress", label: "וורדפרס" },
 ];
 
 const TYPE_LABEL: Record<QuoteType, string> = Object.fromEntries(
@@ -333,7 +338,18 @@ function QuoteBuilderShell({ id }: { id: string }) {
     if (locked || !content || type === content.type) return;
     // Different types draw from entirely separate catalogs, so switching
     // clears the scope + subtype rather than carrying over stale items.
-    setContent({ ...content, type, subtype: undefined, scope: [], final_price: 0 });
+    // `platform` is website-only; entering website defaults it to wordpress
+    // (swapping the legal clause to match), leaving it clears it.
+    const platform = type === "website" ? "wordpress" : undefined;
+    const legal = type === "website" ? applyPlatformClause(content.legal, "wordpress") : content.legal;
+    setContent({ ...content, type, subtype: undefined, scope: [], final_price: 0, platform, legal });
+  }
+
+  function setPlatform(platform: "custom" | "wordpress") {
+    if (locked) return;
+    setContent((prev) =>
+      prev ? { ...prev, platform, legal: applyPlatformClause(prev.legal, platform) } : prev
+    );
   }
 
   function selectSubtype(row: QuoteCatalogRow) {
@@ -536,6 +552,36 @@ function QuoteBuilderShell({ id }: { id: string }) {
               ))}
             </div>
           </Card>
+
+          {content.type === "website" && (
+            <Card className="space-y-3 p-5">
+              <p className="text-sm font-semibold text-foreground">פלטפורמה</p>
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="פלטפורמה">
+                {PLATFORM_TABS.map((p) => {
+                  const active = (content.platform ?? "wordpress") === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      disabled={locked}
+                      onClick={() => setPlatform(p.value)}
+                      className={cn(
+                        "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                        active
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                        locked && "cursor-not-allowed opacity-60"
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
           {content.type === "website" && (
             <Card className="space-y-3 p-5">

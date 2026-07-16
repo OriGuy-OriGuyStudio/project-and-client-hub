@@ -41,6 +41,9 @@ export type QuotePayment = { deposit_pct: number; terms?: string };
 export type QuoteContentV2 = {
   type: QuoteType;
   subtype?: string;
+  /** Website-only: which platform the project is built on. Drives the legal
+   *  clause swap in `applyPlatformClause`. Undefined for non-website quotes. */
+  platform?: "custom" | "wordpress";
   narrative: string;
   scope: ScopeItem[];
   final_price: number;
@@ -74,6 +77,7 @@ export function emptyQuoteV2(type: QuoteType): QuoteContentV2 {
   return {
     type,
     subtype: undefined,
+    platform: type === "website" ? "wordpress" : undefined,
     narrative: "",
     scope: [],
     final_price: 0,
@@ -93,6 +97,29 @@ export function emptyQuoteV2(type: QuoteType): QuoteContentV2 {
     validity_days: 7,
     version: "v1.0",
   };
+}
+
+/** Website legal-clause text per platform choice. `applyPlatformClause` swaps
+ *  whichever clause is currently in a quote's `legal` snapshot for the one
+ *  matching the selected platform, so the client never sees a "platform"
+ *  line item , it's baked into the legal wording only. */
+export const PLATFORM_CLAUSES: Record<"custom" | "wordpress", string> = {
+  wordpress:
+    "הפרויקט מתבצע במסגרת וורדפרס + אלמנטור. מערכות נוספות שיידרשו מעבר למוסכם יתומחרו בנפרד. הפלטפורמה המדויקת תיקבע לאחר שיחת האפיון.",
+  custom:
+    "הפרויקט מפותח בקוד מותאם אישית. מערכות או ספריות נוספות מעבר למוסכם יתומחרו בנפרד. הסטאק המדויק ייקבע לאחר שיחת האפיון.",
+};
+
+/** Replaces the first legal clause that mentions WordPress or custom-code
+ *  with the clause matching `platform`, leaving every other clause and the
+ *  array length untouched. If no clause matches either platform's wording,
+ *  the array is returned unchanged (never appended to). Pure function. */
+export function applyPlatformClause(legal: string[], platform: "custom" | "wordpress"): string[] {
+  const idx = legal.findIndex((c) => c.includes("וורדפרס") || c.includes("קוד מותאם"));
+  if (idx === -1) return legal;
+  const next = [...legal];
+  next[idx] = PLATFORM_CLAUSES[platform];
+  return next;
 }
 
 /** The client-selectable extras pool: optional scope items + upsells, normalized
