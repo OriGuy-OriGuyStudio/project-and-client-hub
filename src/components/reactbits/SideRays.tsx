@@ -81,6 +81,15 @@ const SideRays = ({
     };
   }, []);
 
+  // If IntersectionObserver never reports an entry (some throttled in-app
+  // webviews never fire IO callbacks at all), mount the backdrop anyway
+  // after a short delay rather than leave it stuck unmounted forever. The
+  // IO above keeps driving visibility toggling for as long as it works.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsVisible(true), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
 

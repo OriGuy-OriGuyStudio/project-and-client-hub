@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, useInView, type Transition } from "framer-motion";
 import "./blur-highlight.css";
 
@@ -116,7 +116,20 @@ export const BlurHighlight = React.forwardRef<
       margin: "-20%",
     });
 
-    const isActive = manualTrigger || inViewport;
+    // If IntersectionObserver never reports an entry (some throttled
+    // in-app webviews never fire IO callbacks at all), un-blur the
+    // paragraph anyway after a short delay rather than leave it stuck
+    // blurred forever , this is a signing document, the text must always
+    // become readable. The inner highlight-wipe animations stay purely
+    // IO-driven since the text is legible without them.
+    const [forceActive, setForceActive] = useState(false);
+    useEffect(() => {
+      if (inViewport) return;
+      const timer = window.setTimeout(() => setForceActive(true), 1200);
+      return () => window.clearTimeout(timer);
+    }, [inViewport]);
+
+    const isActive = manualTrigger || inViewport || forceActive;
 
     React.useImperativeHandle(ref, () => ({
       trigger: () => setManualTrigger(true),

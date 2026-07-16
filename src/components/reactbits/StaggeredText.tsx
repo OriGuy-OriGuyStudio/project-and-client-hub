@@ -139,6 +139,19 @@ const StaggeredText = forwardRef<StaggeredTextHandle, StaggeredTextProps>(
       return () => observer.disconnect();
     }, [threshold, rootMargin, exitOnScrollOut, hasEnteredView]);
 
+    // If IntersectionObserver never reports an entry (some throttled
+    // in-app webviews, e.g. WhatsApp's, never fire IO callbacks at all),
+    // force the text visible anyway after a short delay rather than leave
+    // it stuck at `opacity: 0; filter: blur(10px)` forever. The normal
+    // reveal animation still plays , this only changes *when* it starts,
+    // not what it looks like.
+    useEffect(() => {
+      const timer = window.setTimeout(() => {
+        setHasEnteredView(true);
+      }, 1200);
+      return () => window.clearTimeout(timer);
+    }, []);
+
     const defaultFrom = useMemo<MotionStyle>(() => {
       const base: MotionStyle = {
         opacity: 0,
