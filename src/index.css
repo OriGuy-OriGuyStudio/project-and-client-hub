@@ -19,6 +19,9 @@
     font-feature-settings: "kern", "liga", "calt";
     text-rendering: optimizeLegibility;
     min-height: 100vh;
+    /* Inherited by EVERY text element (spans, list items, labels, buttons...),
+       so no orphan last words anywhere; h1-h3 override with `balance` below. */
+    text-wrap: pretty;
   }
 
   h1,
