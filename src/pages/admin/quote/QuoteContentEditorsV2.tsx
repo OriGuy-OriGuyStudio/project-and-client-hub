@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { shekel } from "@/lib/quote-pricing";
+import { shekel, type QuoteType } from "@/lib/quote-pricing";
 import {
   newId,
   type MaintenanceTierSnapshot,
@@ -262,19 +262,28 @@ export function BonusesEditor({
  *  a later edit to the catalog (or the row's deletion) never changes a quote
  *  that already picked it. "מומלץ" is inherited read-only from the catalog;
  *  there's no per-quote recommended toggle. The only per-quote edit is price,
- *  which patches content.upsells[i] and never the shared catalog row. */
+ *  which patches content.upsells[i] and never the shared catalog row.
+ *
+ *  `catalog` is the FULL upsell list (every type, from useUpsellCatalog); this
+ *  component scopes it to the quote's own `type` , a row matches when its
+ *  `type` equals the quote's type, or is `null` (universal, shown for every
+ *  type). See hooks/useQuotesV2.ts `catalogFor` for the same rule used
+ *  elsewhere in the builder. */
 export function UpsellsPicker({
   catalog,
+  type,
   value,
   onChange,
   disabled,
 }: {
   catalog: QuoteCatalogRow[];
+  type: QuoteType;
   value: QuoteUpsell[];
   onChange: (v: QuoteUpsell[]) => void;
   disabled?: boolean;
 }) {
   const items = value ?? [];
+  const scoped = catalog.filter((row) => row.type === null || row.type === type);
 
   function toggle(row: QuoteCatalogRow) {
     if (disabled) return;
@@ -313,9 +322,17 @@ export function UpsellsPicker({
           </Link>
           .
         </p>
+      ) : scoped.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          אין תוספות לסוג הזה.{" "}
+          <Link to="/admin/tools/quote/defaults" className="text-primary underline underline-offset-2">
+            אפשר להוסיף בדף ברירות מחדל
+          </Link>
+          .
+        </p>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
-          {catalog.map((row) => {
+          {scoped.map((row) => {
             const item = items.find((it) => it.id === row.id);
             const selected = !!item;
             return (
@@ -884,6 +901,7 @@ export function AddonsEditors({
     <div className="space-y-5">
       <UpsellsPicker
         catalog={upsellCatalog}
+        type={content.type}
         value={content.upsells}
         onChange={(v) => onChange({ ...content, upsells: v })}
         disabled={disabled}

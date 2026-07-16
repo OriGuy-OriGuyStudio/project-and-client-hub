@@ -56,27 +56,36 @@ export function catalogFor(
 
 // ---- upsell catalog (admin-curated, picked by the builder) ----------------
 
-/** Upsell rows (`kind='upsell'`, universal `type=null`), sorted for display.
- *  Selector over the same `["quote-catalog"]` query as `useQuoteCatalog`, so
- *  edits made on the defaults page (useSaveUpsellCatalogItem) and picks made
- *  in the builder always see the same cached list. */
+/** All upsell rows (`kind='upsell'`), sorted for display, across every quote
+ *  type , this is the admin-management view (QuoteDefaultsV2's CRUD section),
+ *  which needs to see and edit every upsell regardless of its `type`. The
+ *  builder's picker (UpsellsPicker) does its own type-scoped filtering over
+ *  this same list (row.type === quote.type || row.type === null , null =
+ *  universal). Selector over the same `["quote-catalog"]` query as
+ *  `useQuoteCatalog`, so edits made on the defaults page
+ *  (useSaveUpsellCatalogItem) and picks made in the builder always see the
+ *  same cached list. */
 export function useUpsellCatalog() {
   const query = useQuoteCatalog();
-  return { ...query, data: catalogFor(query.data, "upsell", "website") };
+  return { ...query, data: (query.data ?? []).filter((r) => r.kind === "upsell") };
 }
 
 /** Admin input for creating/editing one upsell catalog row (the "ready-made"
- *  upsell, not a per-quote snapshot , see QuoteUpsell in lib/quote-v2.ts). */
+ *  upsell, not a per-quote snapshot , see QuoteUpsell in lib/quote-v2.ts).
+ *  `type` scopes the upsell to one quote type; `null` = universal (shown for
+ *  every type). */
 export type UpsellCatalogInput = {
   id?: string;
   label: string;
   description: string | null;
   base_price: number;
   recommended: boolean;
+  type: QuoteType | null;
 };
 
 /** Admin: insert or update an upsell catalog row. New rows are appended after
- *  the current highest `sort` (so newly-added upsells show up last). */
+ *  the current highest `sort` (so newly-added upsells show up last). New rows
+ *  default to `type: "website"` when the caller doesn't set one. */
 export function useSaveUpsellCatalogItem() {
   const qc = useQueryClient();
   return useMutation({
@@ -89,6 +98,7 @@ export function useSaveUpsellCatalogItem() {
             description: input.description,
             base_price: input.base_price,
             recommended: input.recommended,
+            type: input.type,
           })
           .eq("id", input.id);
         if (error) throw error;
@@ -107,7 +117,7 @@ export function useSaveUpsellCatalogItem() {
         .from("quote_catalog")
         .insert({
           kind: "upsell",
-          type: null,
+          type: input.type ?? "website",
           label: input.label,
           description: input.description,
           base_price: input.base_price,

@@ -49,7 +49,9 @@ const TYPE_TABS: { value: QuoteType; label: string }[] = [
 
 /** One editable draft row for the upsell catalog CRUD below. `id` is undefined
  *  until the row is first saved (insert); `key` is the stable React key so a
- *  not-yet-saved row keeps its identity across re-renders. */
+ *  not-yet-saved row keeps its identity across re-renders. `type` scopes the
+ *  upsell to one quote type in the builder's picker; `null` = כללי (universal,
+ *  shown for every type). */
 type UpsellDraft = {
   id?: string;
   key: string;
@@ -57,7 +59,15 @@ type UpsellDraft = {
   description: string;
   base_price: number;
   recommended: boolean;
+  type: QuoteType | null;
 };
+
+const UPSELL_TYPE_OPTIONS: { value: QuoteType | null; label: string }[] = [
+  { value: "website", label: "אתר" },
+  { value: "system", label: "מערכת" },
+  { value: "automation", label: "אוטומציה" },
+  { value: null, label: "כללי" },
+];
 
 /** CRUD over the `quote_catalog` upsell rows (kind='upsell'): the same
  *  catalog the builder's UpsellsPicker reads from (QuoteContentEditorsV2.tsx).
@@ -82,6 +92,7 @@ function UpsellCatalogSection() {
         description: row.description ?? "",
         base_price: Number(row.base_price ?? 0),
         recommended: row.recommended,
+        type: row.type,
       }))
     );
   }, [catalog]);
@@ -93,7 +104,7 @@ function UpsellCatalogSection() {
   function addDraft() {
     setDrafts((prev) => [
       ...(prev ?? []),
-      { key: newId("upsell-draft"), label: "", description: "", base_price: 0, recommended: false },
+      { key: newId("upsell-draft"), label: "", description: "", base_price: 0, recommended: false, type: "website" },
     ]);
   }
 
@@ -109,6 +120,7 @@ function UpsellCatalogSection() {
         description: draft.description.trim() || null,
         base_price: Math.max(0, Math.round(Number(draft.base_price) || 0)),
         recommended: draft.recommended,
+        type: draft.type,
       });
       setDrafts((prev) => (prev ? prev.map((d) => (d.key === draft.key ? { ...d, id } : d)) : prev));
       toast({ title: "התוספת נשמרה", variant: "success" });
@@ -136,7 +148,7 @@ function UpsellCatalogSection() {
     <>
       <EditorShell
         title="ניהול תוספות (Upsells)"
-        subtitle="הקטלוג שממנו אורי בוחר תוספות בכל הצעת מחיר. עריכה כאן לא משנה הצעות שכבר נשלחו."
+        subtitle="הקטלוג שממנו אורי בוחר תוספות בכל הצעת מחיר. כל תוספת משויכת לסוג הצעה (או כללי, לכל הסוגים). עריכה כאן לא משנה הצעות שכבר נשלחו."
         onAdd={addDraft}
       >
         {isLoading || !drafts ? (
@@ -176,6 +188,28 @@ function UpsellCatalogSection() {
                   placeholder="תיאור קצר (מוצג ללקוח)"
                   rows={2}
                 />
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    סוג הצעה (איפה התוספת תופיע)
+                  </span>
+                  <div className="flex flex-wrap overflow-hidden rounded-lg border border-border w-fit">
+                    {UPSELL_TYPE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => updateDraft(d.key, { type: opt.value })}
+                        className={cn(
+                          "px-2.5 py-1.5 text-xs transition-colors",
+                          d.type === opt.value
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <input
@@ -331,7 +365,7 @@ export default function QuoteDefaultsV2() {
       <div className="flex items-center gap-3 pt-2">
         <div className="h-px flex-1 bg-border" />
         <span className="shrink-0 text-xs font-medium text-muted-foreground">
-          תוספות משותפות לכל סוגי ההצעות (לא תלוי בטאב שנבחר למעלה)
+          קטלוג התוספות (לא תלוי בטאב שנבחר למעלה; הסוג של כל תוספת נקבע בשורה שלה)
         </span>
         <div className="h-px flex-1 bg-border" />
       </div>
