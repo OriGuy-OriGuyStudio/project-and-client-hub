@@ -13,17 +13,19 @@ export function BonusesSection({ bonuses }: { bonuses: QuoteBonus[] }) {
   if (!bonuses || bonuses.length === 0) return null;
   return (
     <QuoteSection id="bonuses" title="מתנות" intro="כמה דברים שאני מוסיף בלי חיוב נוסף.">
-      <RevealStagger className="grid gap-3 sm:grid-cols-2">
+      <RevealStagger className="grid gap-4 sm:grid-cols-2">
         {bonuses.map((b) => (
           <RevealItem key={b.id}>
-            <div className="flex h-full flex-col rounded-2xl border border-border bg-card p-5">
-              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
-                <Gift className="size-4" />
-              </span>
-              <p className="mt-3 text-base font-semibold text-foreground">{b.name}</p>
-              {b.desc && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{b.desc}</p>}
+            <div className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
+              <div className="flex items-center gap-3">
+                <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
+                  <Gift className="size-5" />
+                </span>
+                <p className="text-lg font-semibold leading-snug text-foreground">{b.name}</p>
+              </div>
+              {b.desc && <p className="text-base leading-relaxed text-muted-foreground">{b.desc}</p>}
               {b.value > 0 && (
-                <span className="mt-auto inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                <span className="mt-auto inline-flex w-fit items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
                   שווי {shekel(b.value)}
                 </span>
               )}

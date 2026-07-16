@@ -126,11 +126,11 @@ export function QuoteSection({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-24 py-10 sm:py-14">
+    <section id={id} className="scroll-mt-24 py-16 sm:py-24">
       <Reveal>
-        <div className="mb-6 text-center">
-          <h2 className="font-heading text-2xl font-black sm:text-3xl">{title}</h2>
-          {intro && <p className="mt-2 text-base text-muted-foreground">{intro}</p>}
+        <div className="mb-8 text-center sm:mb-10">
+          <h2 className="font-heading text-3xl font-black sm:text-4xl">{title}</h2>
+          {intro && <p className="mt-3 text-base text-muted-foreground sm:text-lg">{intro}</p>}
         </div>
         {children}
       </Reveal>

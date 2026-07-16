@@ -40,20 +40,13 @@ export function QuoteHero({
         <Sparkles aria-hidden="true" className="size-3.5" /> הצעת מחיר
       </span>
 
+      {/* The greeting is deliberately static (no word-stagger) , the owner
+         found the animated client name distracting on a signing document. */}
       {clientName &&
         (showTitleLine ? (
           <p className="mt-4 break-words font-heading text-3xl font-black sm:text-4xl">שלום {clientName},</p>
         ) : (
-          <StaggeredText
-            as="h1"
-            text={`שלום ${clientName},`}
-            segmentBy="words"
-            direction="top"
-            blur
-            delay={70}
-            exitOnScrollOut={false}
-            className="mt-4 justify-center break-words font-heading text-3xl font-black sm:text-4xl"
-          />
+          <h1 className="mt-4 break-words font-heading text-3xl font-black sm:text-4xl">שלום {clientName},</h1>
         ))}
       {/* The page's single h1: the custom title when there is one, or (when
          the title is the generic default) the greeting above takes the h1
