@@ -20,7 +20,7 @@ function modeOf(item: ScopeItem | undefined): ScopeItemMode {
   return "included";
 }
 
-const MODE_OPTIONS: { value: ScopeItemMode; label: string }[] = [
+export const MODE_OPTIONS: { value: ScopeItemMode; label: string }[] = [
   { value: "included", label: "כלול במחיר" },
   { value: "free", label: "כלול ללא עלות" },
   { value: "optional", label: "תוספת אופציונלית" },

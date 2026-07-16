@@ -65,6 +65,7 @@ import {
 } from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection, type ScopeItemMode } from "./ScopeSection";
+import { ScopeItemsEditor } from "./ScopeItemsEditor";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 import { AutomationGuide } from "./AutomationGuide";
@@ -548,6 +549,44 @@ function QuoteBuilderShell({ id }: { id: string }) {
     );
   }
 
+  /** Free-form per-quote edit of a scope item (label/desc/value) , writes only
+   *  the quote's snapshot, never the shared catalog row. */
+  function patchScopeItem(itemId: string, patch: Partial<ScopeItem>) {
+    if (locked) return;
+    setContent((prev) =>
+      prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) } : prev
+    );
+  }
+
+  function removeScopeItem(itemId: string) {
+    if (locked) return;
+    setContent((prev) => {
+      if (!prev) return prev;
+      const removed = prev.scope.find((it) => it.id === itemId);
+      return {
+        ...prev,
+        // Removing the base line must also clear the chosen subtype, exactly
+        // like toggling it off in the subtype picker , otherwise the header
+        // pill and the scope disagree.
+        subtype: removed?.kind === "subtype" ? undefined : prev.subtype,
+        scope: prev.scope.filter((it) => it.id !== itemId),
+      };
+    });
+  }
+
+  /** A brand-new item that doesn't exist in the catalog (e.g. a client-specific
+   *  deliverable). Gets a non-catalog id so the pickers never match it. */
+  function addCustomScopeItem(kind: ScopeItemKind) {
+    if (locked) return;
+    const item: ScopeItem = {
+      id: `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
+      kind,
+      label: "",
+      value: 0,
+    };
+    setContent((prev) => (prev ? { ...prev, scope: [...prev.scope, item] } : prev));
+  }
+
   function setScopeMode(itemId: string, mode: ScopeItemMode) {
     if (locked) return;
     let patch: Partial<ScopeItem>;
@@ -940,6 +979,16 @@ function QuoteBuilderShell({ id }: { id: string }) {
               onSetMode={setScopeMode}
             />
           ))}
+
+          <ScopeItemsEditor
+            items={content.scope}
+            sections={sections}
+            disabled={locked}
+            onPatch={patchScopeItem}
+            onSetMode={setScopeMode}
+            onRemove={removeScopeItem}
+            onAddCustom={addCustomScopeItem}
+          />
 
           {content.type === "automation" && <AutomationGuide />}
         </div>
