@@ -158,8 +158,9 @@ export function SignSection({
     <QuoteSection id="sign" title="אישור וחתימה" intro="קראתם הכל? נשאר רק לאשר ולחתום, ומשם אני לוקח את זה.">
       <div className="mx-auto max-w-xl space-y-5">
         <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
-          <p className="text-xs font-medium text-muted-foreground">סה״כ לאישור</p>
-          <p className="mt-1 font-heading text-2xl font-black text-primary sm:text-3xl">{shekel(totals.total)}</p>
+          <p className="text-xs font-medium text-muted-foreground">סה״כ לאישור (לפני מע״מ)</p>
+          <p className="mt-1 font-heading text-2xl font-black text-primary sm:text-3xl">{shekel(totals.net)}</p>
+          <p className="mt-2 text-sm text-muted-foreground">כולל מע״מ: {shekel(totals.total)}</p>
           {selectedTier && (
             <span className="mt-2 inline-block rounded-full border border-primary/30 bg-background/60 px-3 py-1 text-xs font-semibold text-primary">
               + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
@@ -168,7 +169,7 @@ export function SignSection({
         </div>
 
         <div>
-          <label htmlFor="sign-name" className="mb-1.5 block text-sm font-medium text-foreground">
+          <label htmlFor="sign-name" className="mb-1.5 block text-base font-medium text-foreground">
             שם מלא
           </label>
           <Input
@@ -183,23 +184,32 @@ export function SignSection({
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-sm font-medium text-foreground">חתימה</label>
+            <label htmlFor="sign-canvas" className="text-base font-medium text-foreground">
+              חתימה
+            </label>
             <button
               type="button"
               onClick={clearSignature}
               disabled={busy}
-              className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+              className="flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-primary hover:underline disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               נקה
             </button>
           </div>
+          <p id="sign-canvas-help" className="sr-only">
+            ציירו את החתימה בעזרת העכבר או מסך המגע.
+          </p>
           <canvas
+            id="sign-canvas"
             ref={canvasRef}
+            role="img"
+            aria-label="אזור חתימה, ציירו את החתימה עם העכבר או האצבע"
+            aria-describedby="sign-canvas-help"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerLeave={onPointerUp}
-            className="h-[150px] w-full touch-none rounded-xl border border-dashed border-border bg-field"
+            className="h-[150px] w-full touch-none rounded-xl border border-dashed border-border bg-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             style={{ cursor: busy ? "default" : "crosshair" }}
           />
         </div>
@@ -210,12 +220,14 @@ export function SignSection({
           onClick={() => setApproved((v) => !v)}
           disabled={busy}
           className={cn(
-            "flex w-full items-start gap-3 rounded-xl border p-3.5 text-start transition-colors",
+            "flex min-h-10 w-full items-start gap-3 rounded-xl border p-3.5 text-start transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             approved ? "border-primary/50 bg-primary/10" : "border-border bg-card hover:border-primary/30",
             "disabled:cursor-not-allowed disabled:opacity-60",
           )}
         >
           <span
+            aria-hidden="true"
             className={cn(
               "mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border transition-colors",
               approved ? "border-primary bg-primary text-[color:var(--ink,#0a0623)]" : "border-border text-transparent",
@@ -223,7 +235,7 @@ export function SignSection({
           >
             <Check className="size-3" />
           </span>
-          <span className="text-sm text-muted-foreground">קראתי את ההצעה והתנאים ואני מאשר/ת אותם.</span>
+          <span className="text-base text-muted-foreground">קראתי את ההצעה והתנאים ואני מאשר/ת אותם.</span>
         </button>
 
         <Button type="button" size="lg" className="w-full" onClick={handleSubmit} disabled={!canSubmit}>

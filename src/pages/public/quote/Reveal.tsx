@@ -114,7 +114,7 @@ export function QuoteSection({
       <Reveal>
         <div className="mb-6 text-center">
           <h2 className="font-heading text-2xl font-black sm:text-3xl">{title}</h2>
-          {intro && <p className="mt-2 text-sm text-muted-foreground">{intro}</p>}
+          {intro && <p className="mt-2 text-base text-muted-foreground">{intro}</p>}
         </div>
         {children}
       </Reveal>

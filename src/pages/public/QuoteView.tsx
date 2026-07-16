@@ -43,7 +43,7 @@ function ContactCta({ text, label = "דברו איתי בוואטסאפ" }: { te
         href={href}
         target="_blank"
         rel="noreferrer noopener"
-        className="inline-block rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-[color:var(--ink,#0a0623)]"
+        className="inline-flex min-h-10 items-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-[color:var(--ink,#0a0623)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {label}
       </a>
@@ -52,7 +52,7 @@ function ContactCta({ text, label = "דברו איתי בוואטסאפ" }: { te
   return (
     <a
       href="mailto:origuy@origuystudio.com"
-      className="inline-block rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-[color:var(--ink,#0a0623)]"
+      className="inline-flex min-h-10 items-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-[color:var(--ink,#0a0623)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       כתבו לי במייל
     </a>
@@ -265,17 +265,17 @@ function SignedSuccessCard({ signedName, signedAt }: { signedName: string | null
   return (
     <section id="sign" className="scroll-mt-24 py-10 sm:py-14">
       <div className="mx-auto w-full max-w-xl rounded-3xl border border-primary/30 bg-primary/5 p-8 text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
+        <span aria-hidden="true" className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
           <CheckCircle2 className="size-7" />
         </span>
-        <h2 className="mt-4 font-heading text-2xl font-black">ההצעה אושרה ✓</h2>
+        <h2 className="mt-4 font-heading text-2xl font-black sm:text-3xl">ההצעה אושרה ✓</h2>
         {signedName && (
-          <p className="mt-3 text-sm text-foreground">
+          <p className="mt-3 text-base text-foreground">
             נחתם על ידי <b>{signedName}</b>
             {dateHe && <> · {dateHe}</>}
           </p>
         )}
-        <p className="mt-4 text-sm text-muted-foreground">קיבלתי את האישור, אני אחזור אליך עם השלבים הבאים.</p>
+        <p className="mt-4 text-base text-muted-foreground">קיבלתי את האישור, אני אחזור אליך עם השלבים הבאים.</p>
       </div>
     </section>
   );

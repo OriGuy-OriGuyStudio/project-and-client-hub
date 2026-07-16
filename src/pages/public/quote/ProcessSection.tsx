@@ -19,10 +19,10 @@ export function ProcessSection({ phases }: { phases: QuotePhase[] }) {
             </span>
             <div className="rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground">{p.name}</p>
+                <p className="text-base font-semibold text-foreground">{p.name}</p>
                 {p.duration && <p className="text-xs text-muted-foreground">{p.duration}</p>}
               </div>
-              {p.desc && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>}
+              {p.desc && <p className="mt-1 text-base leading-relaxed text-muted-foreground">{p.desc}</p>}
             </div>
           </li>
         ))}

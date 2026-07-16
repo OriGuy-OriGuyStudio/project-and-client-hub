@@ -32,6 +32,7 @@ function ExtraCard({
       onClick={onToggle}
       className={cn(
         "flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-start transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         selected ? "border-primary/50 bg-primary/10" : "border-border bg-card",
         !readOnly && !selected && "hover:border-primary/30",
         readOnly ? "cursor-default" : "cursor-pointer",
@@ -39,6 +40,7 @@ function ExtraCard({
     >
       <div className="flex min-w-0 items-start gap-3">
         <span
+          aria-hidden="true"
           className={cn(
             "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
             selected ? "border-primary bg-primary text-[color:var(--ink,#0a0623)]" : "border-border text-transparent",
@@ -48,14 +50,14 @@ function ExtraCard({
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-foreground">{label}</p>
+            <p className="text-base font-medium text-foreground">{label}</p>
             {recommended && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                 מומלץ
               </span>
             )}
           </div>
-          {desc && <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{desc}</p>}
+          {desc && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{desc}</p>}
         </div>
       </div>
       <span className="shrink-0 text-sm font-semibold text-foreground">{shekel(price)}</span>
@@ -89,25 +91,26 @@ function TierCard({
       onClick={onToggle}
       className={cn(
         "flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-start transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         selected ? "border-primary/50 bg-primary/10" : "border-border bg-card",
         !readOnly && !selected && "hover:border-primary/30",
         readOnly ? "cursor-default" : "cursor-pointer",
       )}
     >
       <div className="flex min-w-0 items-start gap-3">
-        <span className="mt-0.5 shrink-0 text-primary">
-          {selected ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground/50" />}
+        <span aria-hidden="true" className="mt-0.5 shrink-0 text-primary">
+          {selected ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground/70" />}
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">{name}</p>
+            <p className="text-base font-semibold text-foreground">{name}</p>
             {recommended && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                 מומלץ
               </span>
             )}
           </div>
-          {description && <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{description}</p>}
+          {description && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>
       <span className="shrink-0 text-sm font-semibold text-foreground">
@@ -209,8 +212,8 @@ export function PricingSection({
         <div className="space-y-8">
           {hasExtras && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground">תוספות לבחירה</h3>
-              <p className="mt-1 text-sm text-muted-foreground">כל תוספת כאן היא בחירה שלך, אין חובה לסמן כלום.</p>
+              <h3 className="text-lg font-semibold text-foreground">תוספות לבחירה</h3>
+              <p className="mt-1 text-base text-muted-foreground">כל תוספת כאן היא בחירה שלך, אין חובה לסמן כלום.</p>
               <RevealStagger className="mt-3 space-y-2.5">
                 {optionalScopeItems.map((it) => (
                   <RevealItem key={it.id}>
@@ -243,8 +246,8 @@ export function PricingSection({
 
           {hasMaintenance && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground">ליווי אחרי ההשקה</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h3 className="text-lg font-semibold text-foreground">ליווי אחרי ההשקה</h3>
+              <p className="mt-1 text-base text-muted-foreground">
                 אם תרצו שאני אמשיך לתחזק, לעדכן ולגבות אחרי שהפרויקט עולה לאוויר.
               </p>
               <RevealStagger className="mt-3 space-y-2.5">
@@ -262,13 +265,17 @@ export function PricingSection({
                   </RevealItem>
                 ))}
               </RevealStagger>
-              <p className="mt-2 text-sm text-muted-foreground">אפשר להצטרף גם אחרי העלייה לאוויר.</p>
+              <p className="mt-2 text-base text-muted-foreground">אפשר להצטרף גם אחרי העלייה לאוויר.</p>
             </div>
           )}
 
           <div id="pricing-summary" className="scroll-mt-24 rounded-3xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
-            <h3 className="text-sm font-semibold text-foreground">סיכום</h3>
+            <h3 className="text-lg font-semibold text-foreground">סיכום</h3>
 
+            {/* Math rows , project price, extras, discount only. The
+               ex-VAT/incl-VAT split moves to the hero strip below so the
+               single number the client anchors on is the ex-VAT price
+               (the market-standard convention), never the incl-VAT total. */}
             <div className="mt-4 space-y-2 rounded-2xl bg-background/50 p-4">
               <SummaryRow label="מחיר הפרויקט" value={shekel(content.final_price)} />
               {extrasTotal > 0 && <SummaryRow label="+ תוספות שבחרת" value={`+${shekel(extrasTotal)}`} />}
@@ -278,28 +285,26 @@ export function PricingSection({
                   value={`-${shekel(totals.discount)}`}
                 />
               )}
-              <SummaryRow label='לפני מע"מ' value={shekel(totals.net)} />
-              <SummaryRow label={`מע"מ (${content.vat_pct}%)`} value={shekel(totals.vat)} muted />
             </div>
 
             <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
-              <p className="text-xs font-medium text-muted-foreground">סה"כ כולל מע"מ</p>
-              <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.total)}</p>
+              <p className="text-xs font-medium text-muted-foreground">סה"כ (לפני מע"מ)</p>
+              <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.net)}</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                מע"מ ({content.vat_pct}%): {shekel(totals.vat)} · סה"כ לתשלום כולל מע"מ: {shekel(totals.total)}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)} · יתרה: {shekel(totals.split.rest)} (כולל מע"מ)
+              </p>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
-                מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)}
-              </span>
-              <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
-                יתרה: {shekel(totals.split.rest)}
-              </span>
-              {selectedTier && (
-                <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary">
+            {selectedTier && (
+              <div className="mt-4 flex justify-center">
+                <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary">
                   + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </QuoteSection>
@@ -310,12 +315,13 @@ export function PricingSection({
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-primary/20 bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0 rounded-xl bg-primary/10 px-3 py-1.5">
-            <p className="text-[11px] text-muted-foreground">סה"כ כולל מע"מ</p>
-            <p className="truncate font-heading text-lg font-black text-primary">{shekel(totals.total)}</p>
+            <p className="text-xs text-muted-foreground">סה"כ (לפני מע"מ)</p>
+            <p className="truncate font-heading text-lg font-black text-primary">{shekel(totals.net)}</p>
+            <p className="text-xs text-muted-foreground">כולל מע"מ: {shekel(totals.total)}</p>
           </div>
           <a
             href="#sign"
-            className="shrink-0 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-[color:var(--ink,#0a0623)]"
+            className="flex min-h-10 shrink-0 items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-[color:var(--ink,#0a0623)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {readOnly ? "האישור שלך" : "לחתימה"}
           </a>

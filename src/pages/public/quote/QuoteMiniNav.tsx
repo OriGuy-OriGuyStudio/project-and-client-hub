@@ -39,13 +39,15 @@ export function QuoteMiniNav({ items }: { items: QuoteNavItem[] }) {
       aria-label="ניווט בהצעה"
       className="sticky top-0 z-20 -mx-4 mt-8 overflow-x-auto border-y border-border/70 bg-background/85 px-4 py-2 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border"
     >
-      <ul className="flex w-max min-w-full items-center justify-center gap-1 text-xs sm:gap-2">
+      <ul className="flex w-max min-w-full items-center justify-center gap-1 text-sm sm:gap-2">
         {items.map((it) => (
           <li key={it.id}>
             <a
               href={`#${it.id}`}
+              aria-current={active === it.id ? "true" : undefined}
               className={cn(
-                "block whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition-colors",
+                "flex min-h-10 items-center whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active === it.id
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground",

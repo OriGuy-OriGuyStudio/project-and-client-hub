@@ -13,13 +13,13 @@ export function BonusesSection({ bonuses }: { bonuses: QuoteBonus[] }) {
         {bonuses.map((b) => (
           <RevealItem key={b.id}>
             <div className="flex h-full items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+              <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
                 <Gift className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">{b.name}</p>
-                {b.desc && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{b.desc}</p>}
-                {b.value > 0 && <p className="mt-1.5 text-[11px] font-medium text-primary">שווי {shekel(b.value)}</p>}
+                <p className="text-base font-semibold text-foreground">{b.name}</p>
+                {b.desc && <p className="mt-1 text-base leading-relaxed text-muted-foreground">{b.desc}</p>}
+                {b.value > 0 && <p className="mt-1.5 text-xs font-medium text-primary">שווי {shekel(b.value)}</p>}
               </div>
             </div>
           </RevealItem>

@@ -15,11 +15,11 @@ export function WhySection({ items }: { items: QuoteDiff[] }) {
         {items.map((d) => (
           <RevealItem key={d.id} className="w-full sm:basis-[calc(50%-0.375rem)]">
             <div className="h-full rounded-2xl border border-border bg-card p-4">
-              <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+              <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Sparkle className="size-4" />
               </span>
-              <p className="mt-2.5 text-sm font-semibold text-foreground">{d.title}</p>
-              {d.desc && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>}
+              <p className="mt-2.5 text-base font-semibold text-foreground">{d.title}</p>
+              {d.desc && <p className="mt-1 text-base leading-relaxed text-muted-foreground">{d.desc}</p>}
             </div>
           </RevealItem>
         ))}

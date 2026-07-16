@@ -17,12 +17,12 @@ export function TestimonialSection({ testimonial }: { testimonial: QuoteTestimon
           className="pointer-events-none absolute -top-3 start-4 size-16 -scale-x-100 text-primary/10 sm:size-20"
           strokeWidth={1}
         />
-        <div className="relative flex items-center justify-center gap-0.5">
+        <div role="img" aria-label="5 כוכבים" className="relative flex items-center justify-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="size-4 fill-primary text-primary" />
+            <Star key={i} aria-hidden="true" className="size-4 fill-primary text-primary" />
           ))}
         </div>
-        <p className="relative mt-3 text-sm leading-relaxed text-foreground sm:text-base">{testimonial.quote}</p>
+        <p className="relative mt-3 text-base leading-relaxed text-foreground">{testimonial.quote}</p>
         <p className="relative mt-4 text-sm font-semibold text-foreground">
           {testimonial.name}
           {testimonial.role && <span className="font-normal text-muted-foreground"> · {testimonial.role}</span>}

@@ -18,10 +18,10 @@ export function LegalSection({ legal }: { legal: string[] }) {
   return (
     <QuoteSection id="legal" title="התנאים">
       <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-          <ScrollText className="size-4 text-primary" /> תנאי ההתקשרות
-        </div>
-        <ol className="list-decimal space-y-2 ps-5 text-sm leading-relaxed text-muted-foreground">
+        <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <ScrollText aria-hidden="true" className="size-4 text-primary" /> תנאי ההתקשרות
+        </h3>
+        <ol className="list-decimal space-y-2 ps-5 text-base leading-relaxed text-muted-foreground">
           {shown.map((clause, i) => (
             <li key={i}>{clause}</li>
           ))}
@@ -29,11 +29,12 @@ export function LegalSection({ legal }: { legal: string[] }) {
         {hasMore && (
           <button
             type="button"
+            aria-expanded={expanded}
             onClick={() => setExpanded((v) => !v)}
-            className="mt-3 flex items-center gap-1 text-xs font-semibold text-primary"
+            className="mt-3 flex min-h-10 items-center gap-1 rounded-md px-1 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {expanded ? "הצג פחות" : "הצג את כל התנאים"}
-            <ChevronDown className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDown aria-hidden="true" className={`size-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
         )}
       </div>

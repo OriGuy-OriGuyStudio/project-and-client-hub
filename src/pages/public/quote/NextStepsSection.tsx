@@ -12,7 +12,7 @@ export function NextStepsSection({ steps }: { steps: QuoteStep[] }) {
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-bold text-primary">
               {i + 1}
             </span>
-            <p className="text-sm text-foreground">{s.text}</p>
+            <p className="text-base text-foreground">{s.text}</p>
           </li>
         ))}
       </ol>
