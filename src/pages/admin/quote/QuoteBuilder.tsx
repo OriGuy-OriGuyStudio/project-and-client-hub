@@ -178,7 +178,7 @@ export default function QuoteBuilder() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {TYPE_TABS.map((t) => (
-                    <DropdownMenuItem key={t.value} onClick={() => newQuote(t.value)}>
+                    <DropdownMenuItem key={t.value} onClick={() => void newQuote(t.value)}>
                       {t.label}
                     </DropdownMenuItem>
                   ))}
@@ -189,7 +189,7 @@ export default function QuoteBuilder() {
         />
       </div>
 
-      {activeId ? <QuoteBuilderShell id={activeId} /> : <QuotesList onOpen={setActiveId} />}
+      {activeId ? <QuoteBuilderShell key={activeId} id={activeId} /> : <QuotesList onOpen={setActiveId} />}
     </div>
   );
 }
