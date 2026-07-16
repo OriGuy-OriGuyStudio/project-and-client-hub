@@ -14,7 +14,7 @@ import { quoteTotals, type QuoteContentV2, type QuoteSelected } from "@/lib/quot
 /** No upsells/discount/maintenance chosen yet at this stage of the builder ,
  *  the price panel only needs the 3 base options + `chosen`, both of which
  *  are independent of the client-facing selection. */
-const EMPTY_SELECTION: QuoteSelected = { upsell_ids: [], maintenance_tier: null };
+const EMPTY_SELECTION: QuoteSelected = { upsell_ids: [], optional_ids: [], maintenance_tier: null };
 
 export function PricePanel({
   content,

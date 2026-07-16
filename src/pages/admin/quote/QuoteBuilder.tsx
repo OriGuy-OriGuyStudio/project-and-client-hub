@@ -816,7 +816,13 @@ function PriceSummaryCard({
   content: QuoteContentV2;
   mult: { fair: number; recommended: number; premium: number; floor: number };
 }) {
-  const totals = quoteTotals(content, { upsell_ids: [], maintenance_tier: null }, mult, mult.floor, () => 0);
+  const totals = quoteTotals(
+    content,
+    { upsell_ids: [], optional_ids: [], maintenance_tier: null },
+    mult,
+    mult.floor,
+    () => 0,
+  );
   const extras = optionalExtras(content);
   const lowestTierPrice =
     content.maintenance?.offer && content.maintenance.tiers.length > 0

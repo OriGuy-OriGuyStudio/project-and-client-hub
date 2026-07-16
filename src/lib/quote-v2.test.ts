@@ -34,7 +34,7 @@ function baseContent(overrides: Partial<QuoteContentV2> = {}): QuoteContentV2 {
   };
 }
 
-const noneSelected: QuoteSelected = { upsell_ids: [], maintenance_tier: null };
+const noneSelected: QuoteSelected = { upsell_ids: [], optional_ids: [], maintenance_tier: null };
 
 describe("emptyQuoteV2", () => {
   it("sets sensible defaults", () => {
@@ -154,7 +154,7 @@ describe("quoteTotals", () => {
   });
 
   it("a selected upsell adds to net and total", () => {
-    const selected: QuoteSelected = { upsell_ids: ["u1"], maintenance_tier: null };
+    const selected: QuoteSelected = { upsell_ids: ["u1"], optional_ids: [], maintenance_tier: null };
     const r = quoteTotals(baseContent(), selected, mult, floor, monthlyFor);
     expect(r.upsellsTotal).toBe(800);
     expect(r.net).toBe(7300);
@@ -162,10 +162,46 @@ describe("quoteTotals", () => {
   });
 
   it("multiple selected upsells sum together", () => {
-    const selected: QuoteSelected = { upsell_ids: ["u1", "u2"], maintenance_tier: null };
+    const selected: QuoteSelected = { upsell_ids: ["u1", "u2"], optional_ids: [], maintenance_tier: null };
     const r = quoteTotals(baseContent(), selected, mult, floor, monthlyFor);
     expect(r.upsellsTotal).toBe(2000);
     expect(r.net).toBe(8500);
+  });
+
+  it("a selected optional scope item adds to gross/net/total via optionalScopeTotal", () => {
+    const optionalScope: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "opt1", kind: "feature", label: "בלוג", value: 1800, optional: true },
+    ];
+    const content = baseContent({ scope: optionalScope, final_price: 2500, upsells: [] });
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: ["opt1"], maintenance_tier: null };
+    const r = quoteTotals(content, selected, mult, floor, monthlyFor);
+    expect(r.optionalScopeTotal).toBe(1800);
+    expect(r.net).toBe(4300);
+    expect(r.total).toBe(withVat(4300, 18));
+  });
+
+  it("an optional scope item NOT in optional_ids is excluded from totals", () => {
+    const optionalScope: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "opt1", kind: "feature", label: "בלוג", value: 1800, optional: true },
+    ];
+    const content = baseContent({ scope: optionalScope, final_price: 2500, upsells: [] });
+    const r = quoteTotals(content, noneSelected, mult, floor, monthlyFor);
+    expect(r.optionalScopeTotal).toBe(0);
+    expect(r.net).toBe(2500);
+  });
+
+  it("a free scope item's id passed in optional_ids is never priced", () => {
+    const scopeWithFree: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "free1", kind: "feature", label: "מפת אתר", value: 900, free: true },
+    ];
+    const content = baseContent({ scope: scopeWithFree, final_price: 2500, upsells: [] });
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: ["free1"], maintenance_tier: null };
+    const r = quoteTotals(content, selected, mult, floor, monthlyFor);
+    expect(r.optionalScopeTotal).toBe(0);
+    expect(r.net).toBe(2500);
   });
 
   it("breakdown sums exactly to final_price, even with rounding", () => {
@@ -215,7 +251,7 @@ describe("quoteTotals", () => {
   });
 
   it("discount applies after upsells are added", () => {
-    const selected: QuoteSelected = { upsell_ids: ["u1"], maintenance_tier: null };
+    const selected: QuoteSelected = { upsell_ids: ["u1"], optional_ids: [], maintenance_tier: null };
     const r = quoteTotals(
       baseContent({ discount: { mode: "percent", value: 10 } }),
       selected,
@@ -228,8 +264,27 @@ describe("quoteTotals", () => {
     expect(r.net).toBe(6570);
   });
 
+  it("a percent discount applies over the enlarged gross including optionalScopeTotal", () => {
+    const optionalScope: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "opt1", kind: "feature", label: "בלוג", value: 1800, optional: true },
+    ];
+    const content = baseContent({
+      scope: optionalScope,
+      final_price: 2500,
+      upsells: [],
+      discount: { mode: "percent", value: 10 },
+    });
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: ["opt1"], maintenance_tier: null };
+    const r = quoteTotals(content, selected, mult, floor, monthlyFor);
+    // gross = 2500 + 1800 = 4300, discount = 430, net = 3870
+    expect(r.optionalScopeTotal).toBe(1800);
+    expect(r.discount).toBe(430);
+    expect(r.net).toBe(3870);
+  });
+
   it("selecting a maintenance tier with no matching snapshot resolves monthly to 0 (never falls back to a live catalog lookup)", () => {
-    const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: [], maintenance_tier: "pro" };
     const r = quoteTotals(baseContent(), selected, mult, floor, monthlyFor);
     expect(r.monthly).toBe(0);
   });
@@ -242,7 +297,7 @@ describe("quoteTotals", () => {
   it("selecting a maintenance tier resolves its price from the content snapshot", () => {
     const tiers: MaintenanceTierSnapshot[] = [{ key: "pro", name: "Pro", price: 850 }];
     const content = baseContent({ maintenance: { offer: true, tiers } });
-    const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: [], maintenance_tier: "pro" };
     const r = quoteTotals(content, selected, mult, floor, monthlyFor);
     expect(r.monthly).toBe(850);
   });
@@ -250,7 +305,7 @@ describe("quoteTotals", () => {
   it("the snapshot price wins over monthlyFor when both could resolve the key", () => {
     const tiers: MaintenanceTierSnapshot[] = [{ key: "pro", name: "Pro", price: 850 }];
     const content = baseContent({ maintenance: { offer: true, tiers } });
-    const selected: QuoteSelected = { upsell_ids: [], maintenance_tier: "pro" };
+    const selected: QuoteSelected = { upsell_ids: [], optional_ids: [], maintenance_tier: "pro" };
     const r = quoteTotals(content, selected, mult, floor, monthlyFor);
     expect(r.monthly).not.toBe(TIER_META.pro.price);
     expect(r.monthly).toBe(850);

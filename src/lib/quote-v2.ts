@@ -150,13 +150,14 @@ export function discountAmount(net: number, d: QuoteDiscount | null): number {
   return Math.min(Math.max(Math.round(raw), 0), Math.round(base));
 }
 
-export type QuoteSelected = { upsell_ids: string[]; maintenance_tier: string | null };
+export type QuoteSelected = { upsell_ids: string[]; optional_ids: string[]; maintenance_tier: string | null };
 
 export type QuoteTotals = {
   anchor: number;
   options: PriceOption[];
   chosen: PriceOptionKey | null;
   upsellsTotal: number;
+  optionalScopeTotal: number;
   discount: number;
   net: number;
   vat: number;
@@ -197,7 +198,12 @@ export function quoteTotals(
     .filter((u) => selectedIds.has(u.id))
     .reduce((sum, u) => sum + (Number(u.price) || 0), 0);
 
-  const gross = (content.final_price || 0) + upsellsTotal;
+  const selectedOptionalIds = new Set(selected.optional_ids ?? []);
+  const optionalScopeTotal = (content.scope ?? [])
+    .filter((it) => it.optional && !it.free && selectedOptionalIds.has(it.id))
+    .reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+
+  const gross = (content.final_price || 0) + upsellsTotal + optionalScopeTotal;
   const discount = discountAmount(gross, content.discount);
   const net = Math.max(0, gross - discount);
   const total = withVat(net, content.vat_pct);
@@ -212,5 +218,18 @@ export function quoteTotals(
     : undefined;
   const monthly = snapshotTier ? snapshotTier.price : 0;
 
-  return { anchor, options, chosen, upsellsTotal, discount, net, vat, total, split, breakdown, monthly };
+  return {
+    anchor,
+    options,
+    chosen,
+    upsellsTotal,
+    optionalScopeTotal,
+    discount,
+    net,
+    vat,
+    total,
+    split,
+    breakdown,
+    monthly,
+  };
 }
