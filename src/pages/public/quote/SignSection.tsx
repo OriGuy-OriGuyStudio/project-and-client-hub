@@ -241,7 +241,11 @@ export function SignSection({
               "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 transition-colors",
               approved
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-muted-foreground/70 bg-field text-transparent",
+                // NOTE: no /alpha modifier here , the theme tokens are plain hex
+                // CSS vars, so `border-muted-foreground/70` silently degrades to
+                // a near-invisible border (the known token-alpha bug). Full
+                // `border-muted-foreground` keeps the box clearly visible.
+                : "border-muted-foreground bg-field text-transparent",
             )}
           >
             <Check className="size-4" />
