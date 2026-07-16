@@ -16,6 +16,7 @@ import { TestimonialSection } from "@/pages/public/quote/TestimonialSection";
 import { FaqSection } from "@/pages/public/quote/FaqSection";
 import { NextStepsSection } from "@/pages/public/quote/NextStepsSection";
 import { LegalSection } from "@/pages/public/quote/LegalSection";
+import { SignSection } from "@/pages/public/quote/SignSection";
 
 /** `get_quote_public` returns `selected` as `{}` when nothing was ever
  *  persisted (never-signed quote). Normalizes that into a real, empty
@@ -128,32 +129,10 @@ export default function QuoteView() {
     );
   }
 
-  if (data.status === "signed") {
-    const dateHe = data.signed_at
-      ? new Date(data.signed_at).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" })
-      : null;
-    return (
-      <Shell>
-        <div className="grid min-h-[60vh] place-items-center">
-          <div className="w-full rounded-3xl border border-primary/30 bg-primary/5 p-8 text-center">
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
-              <CheckCircle2 className="size-7" />
-            </span>
-            <h1 className="mt-4 font-heading text-2xl font-black">ההצעה אושרה</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{data.title}</p>
-            {data.signed_name && (
-              <p className="mt-4 text-sm text-foreground">
-                נחתם על ידי <b>{data.signed_name}</b>
-                {dateHe && <> · {dateHe}</>}
-              </p>
-            )}
-            <p className="mt-4 text-sm text-muted-foreground">תודה, אני יוצא לדרך. נדבר בקרוב.</p>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
-
+  // A signed quote is resolved, not expired , it skips the expiry check
+  // below (quoteExpiry only flags `status === 'sent'`) and renders through
+  // QuoteNormalView with read-only pricing + a success card instead of the
+  // sign form (see the `readOnly` branch there).
   const { expired, expiresAt } = quoteExpiry(data);
   if (expired) {
     const expiredDate = expiresAt
@@ -177,15 +156,23 @@ export default function QuoteView() {
     );
   }
 
-  // Normal (draft/sent, not expired): full content sections. Interactive
-  // pricing (Task 5) and signing (Task 6) mount at the marked points below.
-  return <QuoteNormalView data={data} />;
+  // Normal (draft/sent not expired, or signed): full content sections, with
+  // either the interactive pricing + sign form, or (once signed) read-only
+  // pricing + a success card in its place.
+  return <QuoteNormalView data={data} token={token!} />;
 }
 
-/** The "normal" (draft/sent, not expired) render: hero, mini-nav, and every
- *  content section that actually has content. Split out from the state
- *  switch above purely so hooks (the nav-items memo) don't run conditionally. */
-function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuotePublic>["data"]> }) {
+/** The "normal" render: hero, mini-nav, and every content section that
+ *  actually has content, for a draft/sent (not expired) OR signed quote.
+ *  Split out from the state switch above purely so hooks (the nav-items
+ *  memo) don't run conditionally. */
+function QuoteNormalView({
+  data,
+  token,
+}: {
+  data: NonNullable<ReturnType<typeof useQuotePublic>["data"]>;
+  token: string;
+}) {
   const content = data.content;
 
   // Selection state lives here (not in PricingSection) so Task 6's sign flow
@@ -215,6 +202,7 @@ function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuot
     (content.bonuses ?? []).length > 0 && { id: "bonuses", label: "מתנות" },
     (content.faq ?? []).length > 0 && { id: "faq", label: "שאלות" },
     (content.legal ?? []).length > 0 && { id: "legal", label: "תנאים" },
+    { id: "sign", label: readOnly ? "האישור שלך" : "אישור וחתימה" },
   ].filter((x): x is QuoteNavItem => !!x);
 
   return (
@@ -253,10 +241,42 @@ function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuot
       <LegalSection legal={content.legal ?? []} />
 
       {/* SignSection , Task 6 */}
+      {readOnly ? (
+        <SignedSuccessCard signedName={data.signed_name} signedAt={data.signed_at} />
+      ) : (
+        <SignSection token={token} content={content} selected={selected} />
+      )}
 
       {/* Reserves space so the mobile sticky pricing bar (rendered by
          PricingSection, position: fixed) never overlaps the last section. */}
       <div aria-hidden className="h-20 sm:hidden" />
     </Shell>
+  );
+}
+
+/** Read-only success card shown in the sign form's place once a quote is
+ *  signed , same slot, same "sign" nav anchor, so the page structure stays
+ *  identical whether the client is signing or reviewing what they already
+ *  signed. */
+function SignedSuccessCard({ signedName, signedAt }: { signedName: string | null; signedAt: string | null }) {
+  const dateHe = signedAt
+    ? new Date(signedAt).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+  return (
+    <section id="sign" className="scroll-mt-24 py-10 sm:py-14">
+      <div className="mx-auto w-full max-w-xl rounded-3xl border border-primary/30 bg-primary/5 p-8 text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
+          <CheckCircle2 className="size-7" />
+        </span>
+        <h2 className="mt-4 font-heading text-2xl font-black">ההצעה אושרה ✓</h2>
+        {signedName && (
+          <p className="mt-3 text-sm text-foreground">
+            נחתם על ידי <b>{signedName}</b>
+            {dateHe && <> · {dateHe}</>}
+          </p>
+        )}
+        <p className="mt-4 text-sm text-muted-foreground">קיבלתי את האישור, אני אחזור אליך עם השלבים הבאים.</p>
+      </div>
+    </section>
   );
 }

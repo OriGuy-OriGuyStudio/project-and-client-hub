@@ -294,7 +294,8 @@ export function PricingSection({
       </QuoteSection>
 
       {/* Mobile sticky summary bar , always visible on small screens so the
-         total + sign CTA are reachable without scrolling back up. */}
+         total + sign CTA (or, once signed, the approval recap) are reachable
+         without scrolling back up. */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0">
@@ -305,7 +306,7 @@ export function PricingSection({
             href="#sign"
             className="shrink-0 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-[color:var(--ink,#0a0623)]"
           >
-            לחתימה
+            {readOnly ? "האישור שלך" : "לחתימה"}
           </a>
         </div>
       </div>
