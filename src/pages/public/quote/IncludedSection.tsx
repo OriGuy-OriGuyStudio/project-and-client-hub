@@ -79,11 +79,16 @@ export function IncludedSection({
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
               <Gift className="size-4" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">הבסיס</p>
               <p className="text-sm font-semibold text-foreground">{subtypeItem.label}</p>
               {subtypeItem.desc && <p className="mt-0.5 text-xs text-muted-foreground">{subtypeItem.desc}</p>}
             </div>
+            {priceById.has(subtypeItem.id) && (
+              <span className="shrink-0 text-sm font-semibold text-foreground">
+                {shekel(priceById.get(subtypeItem.id) ?? 0)}
+              </span>
+            )}
           </div>
         )}
 
