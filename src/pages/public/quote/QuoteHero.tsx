@@ -52,7 +52,7 @@ export function QuoteHero({
             blur
             delay={70}
             exitOnScrollOut={false}
-            className="mt-4 break-words font-heading text-3xl font-black sm:text-4xl"
+            className="mt-4 justify-center break-words font-heading text-3xl font-black sm:text-4xl"
           />
         ))}
       {/* The page's single h1: the custom title when there is one, or (when
@@ -69,7 +69,7 @@ export function QuoteHero({
           blur
           delay={70}
           exitOnScrollOut={false}
-          className={`break-words font-heading text-xl font-bold text-foreground sm:text-2xl ${clientName ? "mt-2" : "mt-4"}`}
+          className={`justify-center break-words font-heading text-xl font-bold text-foreground sm:text-2xl ${clientName ? "mt-2" : "mt-4"}`}
         />
       )}
 

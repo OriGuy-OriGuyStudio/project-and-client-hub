@@ -15,15 +15,15 @@ export function Timeline<T extends { id: string }>({
 }) {
   if (!items || items.length === 0) return null;
   return (
-    <ol className="relative space-y-4 ps-10">
+    <ol className="relative space-y-7 ps-12">
       <div
         aria-hidden
-        className="absolute bottom-4 top-3 w-px bg-gradient-to-b from-primary/50 via-primary/20 to-transparent"
+        className="absolute bottom-4 top-3 w-0.5 rounded-full bg-gradient-to-b from-primary/70 via-primary/30 to-primary/10"
         style={{ insetInlineStart: "15px" }}
       />
       {items.map((item, i) => (
         <li key={item.id} className="relative">
-          <span className="absolute -start-10 top-0 grid size-8 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+          <span className="absolute -start-12 top-0 grid size-8 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground ring-4 ring-background">
             {i + 1}
           </span>
           {renderItem(item, i)}

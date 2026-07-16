@@ -11,12 +11,16 @@ export function ProcessSection({ phases }: { phases: QuotePhase[] }) {
       <Timeline
         items={phases}
         renderItem={(p) => (
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="pt-1">
+            <div className="flex flex-wrap items-center gap-2.5">
               <p className="text-base font-semibold text-foreground">{p.name}</p>
-              {p.duration && <p className="text-xs text-muted-foreground">{p.duration}</p>}
+              {p.duration && (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {p.duration}
+                </span>
+              )}
             </div>
-            {p.desc && <p className="mt-1 text-base leading-relaxed text-muted-foreground">{p.desc}</p>}
+            {p.desc && <p className="mt-1.5 max-w-lg text-base leading-relaxed text-muted-foreground">{p.desc}</p>}
           </div>
         )}
       />

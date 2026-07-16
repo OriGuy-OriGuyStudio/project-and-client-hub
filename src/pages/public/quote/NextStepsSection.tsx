@@ -13,9 +13,7 @@ export function NextStepsSection({ steps }: { steps: QuoteStep[] }) {
         <Timeline
           items={steps}
           renderItem={(s) => (
-            <div className="rounded-2xl border border-border bg-card p-4">
-              <p className="text-base text-foreground">{s.text}</p>
-            </div>
+            <p className="pt-1.5 text-base font-medium text-foreground">{s.text}</p>
           )}
         />
       </div>
