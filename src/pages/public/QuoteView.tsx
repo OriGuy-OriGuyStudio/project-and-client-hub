@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, Clock, FileQuestion, MessageCircleOff } from "lucide-react";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useMarkQuoteViewed, useQuotePublic, quoteExpiry } from "@/hooks/useQuotePublic";
+import { useMarkQuoteViewed, useQuotePublic, quoteExpiry, type QuotePublic } from "@/hooks/useQuotePublic";
+import type { QuoteSelected } from "@/lib/quote-v2";
 import { QuoteHero } from "@/pages/public/quote/QuoteHero";
 import { QuoteMiniNav, type QuoteNavItem } from "@/pages/public/quote/QuoteMiniNav";
 import { IncludedSection } from "@/pages/public/quote/IncludedSection";
+import { PricingSection } from "@/pages/public/quote/PricingSection";
 import { WhySection } from "@/pages/public/quote/WhySection";
 import { ProcessSection } from "@/pages/public/quote/ProcessSection";
 import { BonusesSection } from "@/pages/public/quote/BonusesSection";
@@ -14,6 +16,14 @@ import { TestimonialSection } from "@/pages/public/quote/TestimonialSection";
 import { FaqSection } from "@/pages/public/quote/FaqSection";
 import { NextStepsSection } from "@/pages/public/quote/NextStepsSection";
 import { LegalSection } from "@/pages/public/quote/LegalSection";
+
+/** `get_quote_public` returns `selected` as `{}` when nothing was ever
+ *  persisted (never-signed quote). Normalizes that into a real, empty
+ *  `QuoteSelected` so the pricing/sign UI never has to special-case it. */
+function normalizeSelected(raw: QuotePublic["selected"] | null | undefined): QuoteSelected {
+  if (raw && "upsell_ids" in raw) return raw as QuoteSelected;
+  return { upsell_ids: [], optional_ids: [], maintenance_tier: null };
+}
 
 const STUDIO_WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 
@@ -178,6 +188,15 @@ export default function QuoteView() {
 function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuotePublic>["data"]> }) {
   const content = data.content;
 
+  // Selection state lives here (not in PricingSection) so Task 6's sign flow
+  // can read the same `selected` when it submits. `sent` quotes start from
+  // an empty selection; a `draft` quote being previewed by Ori keeps the
+  // same behavior. Read-only mode never mutates this, so the initializer
+  // running once (from `data.selected`, which is stable for a given token)
+  // is enough , no need to resync on refetch.
+  const [selected, setSelected] = useState<QuoteSelected>(() => normalizeSelected(data.selected));
+  const readOnly = data.status === "signed";
+
   const validityLabel = useMemo(() => {
     const base = data.sent_at ?? data.created_at;
     const days = Number(content?.validity_days) || 0;
@@ -190,6 +209,7 @@ function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuot
   const hasIncluded = (content.scope ?? []).some((it) => !it.optional);
   const navItems: QuoteNavItem[] = [
     hasIncluded && { id: "included", label: "מה מקבלים" },
+    { id: "pricing", label: "המחיר" },
     (content.differentiators ?? []).length > 0 && { id: "why", label: "למה איתי" },
     (content.phases ?? []).length > 0 && { id: "process", label: "איך זה עובד" },
     (content.bonuses ?? []).length > 0 && { id: "bonuses", label: "מתנות" },
@@ -217,7 +237,12 @@ function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuot
         />
       )}
 
-      {/* PricingSection , Task 5 */}
+      <PricingSection
+        content={content}
+        selected={selected}
+        onSelectedChange={setSelected}
+        readOnly={readOnly}
+      />
 
       <WhySection items={content.differentiators ?? []} />
       <ProcessSection phases={content.phases ?? []} />
@@ -228,6 +253,10 @@ function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuot
       <LegalSection legal={content.legal ?? []} />
 
       {/* SignSection , Task 6 */}
+
+      {/* Reserves space so the mobile sticky pricing bar (rendered by
+         PricingSection, position: fixed) never overlaps the last section. */}
+      <div aria-hidden className="h-20 sm:hidden" />
     </Shell>
   );
 }
