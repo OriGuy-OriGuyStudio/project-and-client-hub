@@ -178,6 +178,67 @@ const SUBTYPE_DEFAULTS: Record<string, { pages: string[]; features: string[] }> 
   },
 };
 
+/** Turns a website subtype ON: replaces any existing subtype scope item with
+ *  `row` and additively seeds its SUBTYPE_DEFAULTS pages/features (never
+ *  overrides an item already in `scope`). Pure , shared by the manual
+ *  subtype picker's "select" branch (selectSubtype) and the AI scope-fill
+ *  apply, so both produce the exact same shape. Deliberately has NO toggle-
+ *  off behavior: selectSubtype's own toggle-off branch is only safe for a
+ *  synchronous click (it reads `prev` itself), but the AI apply runs after
+ *  an `await` and must never remove a subtype the admin selected while the
+ *  call was pending , so that branch is kept out of this shared helper and
+ *  each caller decides for itself whether "already selected" means "turn
+ *  off" (manual click) or "skip, it's already there" (AI apply). */
+function applySubtypeSelection(
+  scope: ScopeItem[],
+  row: QuoteCatalogRow,
+  catalogRows: QuoteCatalogRow[] | undefined
+): { subtype: string; scope: ScopeItem[] } {
+  const withoutSubtype = scope.filter((it) => it.kind !== "subtype");
+  const item: ScopeItem = {
+    id: row.id,
+    kind: "subtype",
+    label: row.label,
+    value: Number(row.base_price ?? 0) * Number(row.default_mult ?? 1),
+    desc: row.description ?? undefined,
+  };
+  let next = [...withoutSubtype, item];
+
+  const defaults = SUBTYPE_DEFAULTS[row.label];
+  if (defaults) {
+    const pageRows = catalogFor(catalogRows, "page", "website");
+    const featureRows = catalogFor(catalogRows, "feature", "website");
+    const toAdd: ScopeItem[] = [];
+    for (const label of defaults.pages) {
+      const catalogRow = pageRows.find((r) => r.label === label);
+      if (catalogRow && !next.some((it) => it.id === catalogRow.id)) {
+        toAdd.push({
+          id: catalogRow.id,
+          kind: "page",
+          label: catalogRow.label,
+          value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+          desc: catalogRow.description ?? undefined,
+        });
+      }
+    }
+    for (const label of defaults.features) {
+      const catalogRow = featureRows.find((r) => r.label === label);
+      if (catalogRow && !next.some((it) => it.id === catalogRow.id)) {
+        toAdd.push({
+          id: catalogRow.id,
+          kind: "feature",
+          label: catalogRow.label,
+          value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+          desc: catalogRow.description ?? undefined,
+        });
+      }
+    }
+    next = [...next, ...toAdd];
+  }
+
+  return { subtype: row.label, scope: next };
+}
+
 export default function QuoteBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const createQuote = useCreateQuoteV2();
@@ -453,53 +514,11 @@ function QuoteBuilderShell({ id }: { id: string }) {
     setContent((prev) => {
       if (!prev) return prev;
       const already = prev.scope.some((it) => it.id === row.id && it.kind === "subtype");
-      const withoutSubtype = prev.scope.filter((it) => it.kind !== "subtype");
-      if (already) return { ...prev, subtype: undefined, scope: withoutSubtype };
-      const item: ScopeItem = {
-        id: row.id,
-        kind: "subtype",
-        label: row.label,
-        value: Number(row.base_price ?? 0) * Number(row.default_mult ?? 1),
-        desc: row.description ?? undefined,
-      };
-      let scope = [...withoutSubtype, item];
-
-      // Selecting a subtype seeds its typical pages/features as a starting
-      // point (additive only , never removes items the admin already picked,
-      // and never overrides an item that's already in scope).
-      const defaults = SUBTYPE_DEFAULTS[row.label];
-      if (defaults) {
-        const pageRows = catalogFor(catalogRows, "page", "website");
-        const featureRows = catalogFor(catalogRows, "feature", "website");
-        const toAdd: ScopeItem[] = [];
-        for (const label of defaults.pages) {
-          const catalogRow = pageRows.find((r) => r.label === label);
-          if (catalogRow && !scope.some((it) => it.id === catalogRow.id)) {
-            toAdd.push({
-              id: catalogRow.id,
-              kind: "page",
-              label: catalogRow.label,
-              value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
-              desc: catalogRow.description ?? undefined,
-            });
-          }
-        }
-        for (const label of defaults.features) {
-          const catalogRow = featureRows.find((r) => r.label === label);
-          if (catalogRow && !scope.some((it) => it.id === catalogRow.id)) {
-            toAdd.push({
-              id: catalogRow.id,
-              kind: "feature",
-              label: catalogRow.label,
-              value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
-              desc: catalogRow.description ?? undefined,
-            });
-          }
-        }
-        scope = [...scope, ...toAdd];
+      if (already) {
+        return { ...prev, subtype: undefined, scope: prev.scope.filter((it) => it.kind !== "subtype") };
       }
-
-      return { ...prev, subtype: row.label, scope };
+      const { subtype, scope } = applySubtypeSelection(prev.scope, row, catalogRows);
+      return { ...prev, subtype, scope };
     });
   }
 
@@ -541,6 +560,19 @@ function QuoteBuilderShell({ id }: { id: string }) {
   function setFinalPrice(price: number) {
     if (locked) return;
     setContent((prev) => (prev ? { ...prev, final_price: price } : prev));
+  }
+
+  /** Functional-update path handed to ProposalEditors/AddonsEditors so their
+   *  AI-assist handlers can apply a result against the LATEST content at
+   *  commit time, not the `content` closed over when the async call started
+   *  (see the two components' `onChangeFn` prop doc). `setContent` itself
+   *  already accepts a functional updater (it's a plain useState setter) but
+   *  its inferred type allows `null`, which isn't assignable to the
+   *  `(prev: QuoteContentV2) => QuoteContentV2` shape those handlers need ,
+   *  this just narrows that for them (content is always loaded by the time
+   *  these editors render, since the shell itself early-returns on `!content`). */
+  function updateContentFn(updater: (prev: QuoteContentV2) => QuoteContentV2) {
+    setContent((prev) => (prev ? updater(prev) : prev));
   }
 
   async function save() {
@@ -585,24 +617,33 @@ function QuoteBuilderShell({ id }: { id: string }) {
 
   /** "מלא היקף עם AI" (setup tab): sends the discovery notes + this type's
    *  catalog (subtype rows for website + every scope-section kind) to
-   *  quoteAiScopeFill, then applies the result through the SAME handlers the
-   *  admin uses manually (selectSubtype/toggleScopeItem) , additive only,
-   *  never overrides an item already in scope. Ids the AI returns are already
+   *  quoteAiScopeFill, then applies the result in ONE functional `setContent`
+   *  update against whatever the LATEST content is at commit time , additive
+   *  only, never overrides an item already in scope. This deliberately does
+   *  NOT call `selectSubtype`/`toggleScopeItem` (both TOGGLE, i.e. they'd
+   *  remove an item that's already present): if the admin manually added the
+   *  exact item the AI later suggests while the multi-second Gemini call was
+   *  pending, checking "already in scope" against the `content` snapshot
+   *  captured before the `await` would miss it, and calling the toggle
+   *  handler would then silently REMOVE it instead of leaving it alone. The
+   *  updater below re-checks "already in scope" against `prev` (the real
+   *  current state) and only ever appends. Ids the AI returns are already
    *  filtered against the catalog passed in (quote-ai.ts), so any lookup miss
    *  here just means "not in this quote's own catalog snapshot" and is
    *  silently skipped. */
   async function handleAiScopeFill() {
     if (!content) return;
+    const type = content.type;
     const notes = (content.notes ?? "").trim();
     if (!notes || locked) return;
     setScopeFillPending(true);
     try {
       const entries: { row: QuoteCatalogRow; kind: ScopeItemKind }[] = [];
-      if (content.type === "website") {
+      if (type === "website") {
         for (const row of subtypeRows) entries.push({ row, kind: "subtype" });
       }
       for (const s of sections) {
-        for (const row of catalogFor(catalogRows, s.kind, content.type)) {
+        for (const row of catalogFor(catalogRows, s.kind, type)) {
           entries.push({ row, kind: s.kind });
         }
       }
@@ -613,24 +654,54 @@ function QuoteBuilderShell({ id }: { id: string }) {
         desc: row.description ?? undefined,
       }));
 
-      const result = await quoteAiScopeFill({ type: content.type, catalog, notes });
+      const result = await quoteAiScopeFill({ type, catalog, notes });
 
       let addedCount = 0;
-      if (result.subtype_id && content.type === "website") {
-        const already = content.scope.some((it) => it.id === result.subtype_id && it.kind === "subtype");
-        const row = subtypeRows.find((r) => r.id === result.subtype_id);
-        if (!already && row) {
-          selectSubtype(row);
-          addedCount++;
+      setContent((prev) => {
+        // Type may have changed while the call was pending (switching type
+        // re-seeds the whole content) , the catalog/entries we built are for
+        // the old type, so bail out rather than apply mismatched ids.
+        if (!prev || prev.type !== type) return prev;
+
+        let scope = prev.scope;
+        let subtype = prev.subtype;
+        // Local, not the outer `addedCount` , assigned (not accumulated) into
+        // the outer variable once at the end, so this stays correct even if
+        // React invokes this updater twice (React.StrictMode double-invokes
+        // state updaters in dev to catch impurity; `prev` is identical both
+        // times, so re-assigning the same freshly-computed total is safe,
+        // while `addedCount++` here would double-count under that dev check).
+        let localAdded = 0;
+
+        if (result.subtype_id && type === "website") {
+          const already = scope.some((it) => it.id === result.subtype_id && it.kind === "subtype");
+          const row = subtypeRows.find((r) => r.id === result.subtype_id);
+          if (!already && row) {
+            const applied = applySubtypeSelection(scope, row, catalogRows);
+            scope = applied.scope;
+            subtype = applied.subtype;
+            localAdded++;
+          }
         }
-      }
-      for (const id of result.item_ids) {
-        if (content.scope.some((it) => it.id === id)) continue;
-        const found = entries.find((e) => e.row.id === id);
-        if (!found) continue;
-        toggleScopeItem(found.row, found.kind);
-        addedCount++;
-      }
+
+        for (const id of result.item_ids) {
+          if (scope.some((it) => it.id === id)) continue;
+          const found = entries.find((e) => e.row.id === id);
+          if (!found) continue;
+          const item: ScopeItem = {
+            id: found.row.id,
+            kind: found.kind,
+            label: found.row.label,
+            value: Number(found.row.base_price ?? 0) * Number(found.row.default_mult ?? 1),
+            desc: found.row.description ?? undefined,
+          };
+          scope = [...scope, item];
+          localAdded++;
+        }
+
+        addedCount = localAdded;
+        return { ...prev, subtype, scope };
+      });
 
       toast({
         title: addedCount > 0 ? `ה-AI סימן ${addedCount} פריטים` : "ה-AI לא מצא פריטים חדשים להוסיף",
@@ -884,6 +955,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
         <ProposalEditors
           content={content}
           onChange={setContent}
+          onChangeFn={updateContentFn}
           disabled={locked}
           clientName={clientName}
           clientBusiness={clientBusiness}
@@ -894,6 +966,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
         <AddonsEditors
           content={content}
           onChange={setContent}
+          onChangeFn={updateContentFn}
           disabled={locked}
           upsellCatalog={upsellCatalog ?? []}
           clientBusiness={clientBusiness}

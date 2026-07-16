@@ -847,12 +847,20 @@ export function PaymentValidityEditor({
 export function ProposalEditors({
   content,
   onChange,
+  onChangeFn,
   disabled,
   clientName,
   clientBusiness,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
+  /** Functional-update path , applies an updater against the LATEST content
+   *  at commit time (React's functional setState form), not the `content`
+   *  captured when the async AI call started. Required for any apply that
+   *  happens after an `await`: writing back `{ ...content, ... }` from a
+   *  stale closure would silently revert whatever the admin edited while the
+   *  multi-second Gemini call was pending. */
+  onChangeFn: (updater: (prev: QuoteContentV2) => QuoteContentV2) => void;
   disabled: boolean;
   /** Client identity , top-level DB columns in QuoteBuilderShell (not part of
    *  `content`) , passed through only to give the AI narrative assist a hint
@@ -874,7 +882,9 @@ export function ProposalEditors({
         scope_labels,
         notes: content.notes,
       });
-      onChange({ ...content, narrative: result.narrative });
+      // Functional apply , only overwrites `narrative` against whatever the
+      // content is NOW, so any edit made elsewhere while this awaited is kept.
+      onChangeFn((prev) => ({ ...prev, narrative: result.narrative }));
     } catch (e) {
       toastError(e instanceof Error ? e.message : "ה-AI לא הצליח לנסח את הטקסט, נסה שוב.");
     } finally {
@@ -933,12 +943,15 @@ export function ProposalEditors({
 export function AddonsEditors({
   content,
   onChange,
+  onChangeFn,
   disabled,
   upsellCatalog,
   clientBusiness,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
+  /** Functional-update path , see the identical prop on ProposalEditors. */
+  onChangeFn: (updater: (prev: QuoteContentV2) => QuoteContentV2) => void;
   disabled: boolean;
   upsellCatalog: QuoteCatalogRow[];
   /** Client business name, top-level DB column in QuoteBuilderShell (not part
@@ -954,7 +967,11 @@ export function AddonsEditors({
   // catalog passed to it (quote-ai.ts); we still dedupe against what's
   // already in content.upsells before turning a pick into a snapshot, same
   // additive-only rule as the scope-fill assist , never re-adds or removes
-  // an upsell the admin already toggled.
+  // an upsell the admin already toggled. Dedupe + apply both happen inside
+  // the functional updater below, against the LATEST upsells at commit time
+  // (not the `content` captured before the await) , otherwise an upsell the
+  // admin added manually while this call was pending would look "new" to a
+  // stale snapshot and get silently duplicated when the AI result lands.
   async function handleAiUpsells() {
     setAiPending(true);
     try {
@@ -967,9 +984,14 @@ export function AddonsEditors({
         notes: content.notes,
       });
 
-      const existingIds = new Set(content.upsells.map((u) => u.id));
-      const toAdd = result.picks.filter((p) => !existingIds.has(p.id));
-      if (toAdd.length > 0) {
+      let addedCount = 0;
+      let addedReasons: string[] = [];
+      onChangeFn((prev) => {
+        const existingIds = new Set(prev.upsells.map((u) => u.id));
+        const toAdd = result.picks.filter((p) => !existingIds.has(p.id));
+        addedCount = toAdd.length;
+        addedReasons = toAdd.map((p) => p.reason).filter((r): r is string => !!r);
+        if (toAdd.length === 0) return prev;
         const byId = new Map(scoped.map((row) => [row.id, row]));
         const newSnapshots: QuoteUpsell[] = toAdd
           .map((p) => byId.get(p.id))
@@ -981,13 +1003,12 @@ export function AddonsEditors({
             price: Number(row.base_price ?? 0),
             recommended: row.recommended,
           }));
-        onChange({ ...content, upsells: [...content.upsells, ...newSnapshots] });
-      }
+        return { ...prev, upsells: [...prev.upsells, ...newSnapshots] };
+      });
 
-      const reasons = toAdd.map((p) => p.reason).filter(Boolean).join(" · ");
       toast({
-        title: toAdd.length > 0 ? `ה-AI הציע ${toAdd.length} תוספות` : "ה-AI לא מצא תוספות חדשות להציע",
-        description: reasons || undefined,
+        title: addedCount > 0 ? `ה-AI הציע ${addedCount} תוספות` : "ה-AI לא מצא תוספות חדשות להציע",
+        description: addedReasons.join(" · ") || undefined,
         variant: "success",
       });
     } catch (e) {
