@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Calculator,
+  ChevronDown,
   Copy,
   List,
   Loader2,
@@ -27,6 +28,12 @@ import { Label } from "@/components/ui/label";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast, toastError } from "@/hooks/use-toast";
 import {
@@ -40,6 +47,8 @@ import {
   useDeleteQuoteV2,
   useQuoteMultipliers,
   useUpsellCatalog,
+  fetchQuoteDefaultsContent,
+  newQuoteContentFromDefaults,
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
@@ -117,9 +126,9 @@ export default function QuoteBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const createQuote = useCreateQuoteV2();
 
-  async function newQuote() {
+  async function newQuote(type: QuoteType) {
     try {
-      const id = await createQuote.mutateAsync("website");
+      const id = await createQuote.mutateAsync(type);
       setActiveId(id);
     } catch {
       toastError("יצירת ההצעה נכשלה.");
@@ -155,10 +164,26 @@ export default function QuoteBuilder() {
                   ברירות מחדל
                 </Link>
               </Button>
-              <Button onClick={newQuote} disabled={createQuote.isPending}>
-                {createQuote.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                הצעה חדשה
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={createQuote.isPending}>
+                    {createQuote.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Plus className="size-4" />
+                    )}
+                    הצעה חדשה
+                    <ChevronDown className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {TYPE_TABS.map((t) => (
+                    <DropdownMenuItem key={t.value} onClick={() => newQuote(t.value)}>
+                      {t.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           }
         />
@@ -305,6 +330,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const [clientName, setClientName] = useState("");
   const [clientBusiness, setClientBusiness] = useState("");
   const [tab, setTab] = useState<BuilderTab>("setup");
+  const [switchingType, setSwitchingType] = useState(false);
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -334,15 +360,24 @@ function QuoteBuilderShell({ id }: { id: string }) {
 
   const mult = content ? multipliers?.[content.type] ?? DEFAULT_QUOTE_MULTIPLIERS[content.type] : null;
 
-  function setType(type: QuoteType) {
-    if (locked || !content || type === content.type) return;
-    // Different types draw from entirely separate catalogs, so switching
-    // clears the scope + subtype rather than carrying over stale items.
-    // `platform` is website-only; entering website defaults it to wordpress
-    // (swapping the legal clause to match), leaving it clears it.
-    const platform = type === "website" ? "wordpress" : undefined;
-    const legal = type === "website" ? applyPlatformClause(content.legal, "wordpress") : content.legal;
-    setContent({ ...content, type, subtype: undefined, scope: [], final_price: 0, platform, legal });
+  async function setType(type: QuoteType) {
+    if (locked || !content || type === content.type || switchingType) return;
+    // Different types draw from entirely separate catalogs and studio-wide
+    // boilerplate (differentiators/phases/bonuses/faq/next steps/legal/
+    // upsells/maintenance), so switching re-seeds the WHOLE content from the
+    // new type's defaults rather than carrying over stale type-specific
+    // content (e.g. website differentiators + WordPress legal leaking into
+    // an automation quote). Client identity (title/name/business) lives in
+    // top-level state outside `content`, so it's untouched by this.
+    setSwitchingType(true);
+    try {
+      const defaults = await fetchQuoteDefaultsContent(type);
+      setContent(newQuoteContentFromDefaults(type, defaults));
+    } catch {
+      toastError("החלפת סוג ההצעה נכשלה.");
+    } finally {
+      setSwitchingType(false);
+    }
   }
 
   function setPlatform(platform: "custom" | "wordpress") {
@@ -537,19 +572,20 @@ function QuoteBuilderShell({ id }: { id: string }) {
                   type="button"
                   role="tab"
                   aria-selected={content.type === t.value}
-                  disabled={locked}
-                  onClick={() => setType(t.value)}
+                  disabled={locked || switchingType}
+                  onClick={() => void setType(t.value)}
                   className={cn(
                     "rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
                     content.type === t.value
                       ? "border-primary bg-primary/15 text-primary"
                       : "border-border bg-field text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                    locked && "cursor-not-allowed opacity-60"
+                    (locked || switchingType) && "cursor-not-allowed opacity-60"
                   )}
                 >
                   {t.label}
                 </button>
               ))}
+              {switchingType && <Loader2 className="size-4 animate-spin self-center text-muted-foreground" />}
             </div>
           </Card>
 

@@ -276,7 +276,7 @@ function isEmptyRecord(v: unknown): boolean {
  *  FALLBACK_QUOTE_DEFAULTS (id: null) when that type has no row yet. Shared
  *  by the hook below and by `createQuoteV2`, which needs the same data
  *  outside a component. */
-async function fetchQuoteDefaultsContent(
+export async function fetchQuoteDefaultsContent(
   type: QuoteType
 ): Promise<QuoteDefaultsContent & { id: string | null; type: QuoteType }> {
   const { data, error } = await supabase.from("quote_defaults").select("*").eq("type", type).maybeSingle();
