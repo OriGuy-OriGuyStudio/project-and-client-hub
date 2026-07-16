@@ -975,6 +975,11 @@ export function AddonsEditors({
   async function handleAiUpsells() {
     setAiPending(true);
     try {
+      // Captured before the await: the guard inside the updater compares the
+      // live prev.type against it, so a type switch mid-flight (which re-seeds
+      // the whole content) drops the stale wrong-type suggestions instead of
+      // adding them.
+      const typeAtCall = content.type;
       const scoped = upsellCatalog.filter((row) => row.type === null || row.type === content.type);
       const scope_labels = content.scope.filter((it) => !it.optional && !it.free).map((it) => it.label);
       const result = await quoteAiUpsells({
@@ -987,6 +992,7 @@ export function AddonsEditors({
       let addedCount = 0;
       let addedReasons: string[] = [];
       onChangeFn((prev) => {
+        if (prev.type !== typeAtCall) return prev;
         const existingIds = new Set(prev.upsells.map((u) => u.id));
         const toAdd = result.picks.filter((p) => !existingIds.has(p.id));
         addedCount = toAdd.length;
