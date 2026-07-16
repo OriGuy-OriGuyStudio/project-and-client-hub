@@ -665,7 +665,14 @@ export function TestimonialEditor({
   onChange: (v: QuoteTestimonial | null) => void;
   disabled?: boolean;
 }) {
-  const on = !!(value && value.quote);
+  // "On" = a testimonial OBJECT exists (null/undefined = off). Deriving this
+  // from `value.quote` being non-empty was a real bug: checking the box on a
+  // quote with an empty testimonial wrote {quote:""} back, which still read
+  // as "off", so the checkbox un-checked itself and the fields never opened
+  // (Ori: "ההמלצה של ליאור אני לא יכול להוסיף אותה"). The public page only
+  // renders a testimonial with actual quote text, so an empty-but-on object
+  // never leaks to the client.
+  const on = value != null;
   const t = value ?? { quote: "", name: "", role: "" };
   return (
     <Card className="space-y-3 p-5">
