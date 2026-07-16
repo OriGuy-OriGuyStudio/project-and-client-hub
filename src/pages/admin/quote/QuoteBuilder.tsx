@@ -60,7 +60,7 @@ import {
   type QuoteContentV2,
 } from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
-import { ScopeSection } from "./ScopeSection";
+import { ScopeSection, type ScopeItemMode } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 import { AutomationGuide } from "./AutomationGuide";
@@ -508,10 +508,14 @@ function QuoteBuilderShell({ id }: { id: string }) {
     );
   }
 
-  function setScopeOptional(itemId: string, optional: boolean) {
+  function setScopeMode(itemId: string, mode: ScopeItemMode) {
     if (locked) return;
+    let patch: Partial<ScopeItem>;
+    if (mode === "free") patch = { optional: false, free: true };
+    else if (mode === "optional") patch = { optional: true, free: false };
+    else patch = { optional: false, free: false };
     setContent((prev) =>
-      prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, optional } : it)) } : prev
+      prev ? { ...prev, scope: prev.scope.map((it) => (it.id === itemId ? { ...it, ...patch } : it)) } : prev
     );
   }
 
@@ -742,10 +746,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
               disabled={locked}
               onToggle={(row) => toggleScopeItem(row, s.kind)}
               onValueChange={updateScopeValue}
-              onToggleOptional={(itemId) => {
-                const current = content.scope.find((it) => it.id === itemId);
-                setScopeOptional(itemId, !current?.optional);
-              }}
+              onSetMode={setScopeMode}
             />
           ))}
 

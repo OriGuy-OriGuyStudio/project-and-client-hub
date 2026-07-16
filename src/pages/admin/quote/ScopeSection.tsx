@@ -9,6 +9,23 @@ import { cn } from "@/lib/utils";
 import { shekel, type ScopeItem } from "@/lib/quote-pricing";
 import type { QuoteCatalogRow } from "@/types/database";
 
+/** The three mutually-exclusive per-item states: counts in the price anchor,
+ *  included at no extra cost (value-stack, ₪0 to the anchor), or a
+ *  client-selectable add-on (excluded from the anchor). */
+export type ScopeItemMode = "included" | "free" | "optional";
+
+function modeOf(item: ScopeItem | undefined): ScopeItemMode {
+  if (item?.free) return "free";
+  if (item?.optional) return "optional";
+  return "included";
+}
+
+const MODE_OPTIONS: { value: ScopeItemMode; label: string }[] = [
+  { value: "included", label: "כלול במחיר" },
+  { value: "free", label: "כלול ללא עלות" },
+  { value: "optional", label: "תוספת אופציונלית" },
+];
+
 export function ScopeSection({
   title,
   rows,
@@ -16,7 +33,7 @@ export function ScopeSection({
   disabled,
   onToggle,
   onValueChange,
-  onToggleOptional,
+  onSetMode,
 }: {
   title: string;
   rows: QuoteCatalogRow[];
@@ -24,7 +41,7 @@ export function ScopeSection({
   disabled?: boolean;
   onToggle: (row: QuoteCatalogRow) => void;
   onValueChange: (itemId: string, value: number) => void;
-  onToggleOptional: (itemId: string) => void;
+  onSetMode: (itemId: string, mode: ScopeItemMode) => void;
 }) {
   if (rows.length === 0) return null;
 
@@ -35,7 +52,7 @@ export function ScopeSection({
         {rows.map((row) => {
           const item = scope.find((it) => it.id === row.id);
           const selected = !!item;
-          const isOptional = !!item?.optional;
+          const mode = modeOf(item);
           return (
             <div
               key={row.id}
@@ -76,37 +93,28 @@ export function ScopeSection({
                 )}
               </div>
               {selected && (
-                <div className="flex items-center gap-1 self-start rounded-lg border border-border bg-field p-0.5 text-xs">
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => isOptional && onToggleOptional(row.id)}
-                    aria-pressed={!isOptional}
-                    className={cn(
-                      "rounded-md px-2 py-1 font-medium transition-colors",
-                      !isOptional
-                        ? "border border-primary bg-primary/15 text-primary"
-                        : "border border-transparent bg-field text-muted-foreground",
-                      disabled && "cursor-not-allowed opacity-60"
-                    )}
-                  >
-                    כלול במחיר
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => !isOptional && onToggleOptional(row.id)}
-                    aria-pressed={isOptional}
-                    className={cn(
-                      "rounded-md px-2 py-1 font-medium transition-colors",
-                      isOptional
-                        ? "border border-primary bg-primary/15 text-primary"
-                        : "border border-transparent bg-field text-muted-foreground",
-                      disabled && "cursor-not-allowed opacity-60"
-                    )}
-                  >
-                    תוספת אופציונלית
-                  </button>
+                <div className="flex flex-wrap items-center gap-1 self-start rounded-lg border border-border bg-field p-0.5 text-xs">
+                  {MODE_OPTIONS.map((opt) => {
+                    const active = mode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !active && onSetMode(row.id, opt.value)}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-md px-2 py-1 font-medium transition-colors",
+                          active
+                            ? "border border-primary bg-primary/15 text-primary"
+                            : "border border-transparent bg-field text-muted-foreground",
+                          disabled && "cursor-not-allowed opacity-60"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

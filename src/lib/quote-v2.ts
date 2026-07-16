@@ -203,7 +203,10 @@ export function quoteTotals(
   const total = withVat(net, content.vat_pct);
   const vat = total - net;
   const split = paymentSplit(total, content.payment.deposit_pct);
-  const breakdown = breakdownForFinal(content.scope.filter((i) => !i.optional), content.final_price);
+  const breakdown = breakdownForFinal(
+    content.scope.filter((i) => !i.optional && !i.free),
+    content.final_price,
+  );
   const snapshotTier = selected.maintenance_tier
     ? (content.maintenance?.tiers ?? []).find((t) => t.key === selected.maintenance_tier)
     : undefined;

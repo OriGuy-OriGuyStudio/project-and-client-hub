@@ -189,6 +189,19 @@ describe("quoteTotals", () => {
     expect(r.breakdown.reduce((s, l) => s + l.price, 0)).toBe(2500);
   });
 
+  it("a free scope item is excluded from the anchor, the breakdown, and optionalExtras", () => {
+    const scopeWithFree: ScopeItem[] = [
+      { id: "inc1", kind: "page", label: "בית", value: 2500 },
+      { id: "free1", kind: "feature", label: "מפת אתר", value: 900, free: true },
+    ];
+    const content = baseContent({ scope: scopeWithFree, final_price: 2500, upsells: [] });
+    const r = quoteTotals(content, noneSelected, mult, floor, monthlyFor);
+    expect(r.anchor).toBe(2500);
+    expect(r.breakdown.map((l) => l.id)).toEqual(["inc1"]);
+    expect(r.breakdown.reduce((s, l) => s + l.price, 0)).toBe(2500);
+    expect(optionalExtras(content).items.map((i) => i.id)).not.toContain("free1");
+  });
+
   it("a percent discount reduces net (applied on final_price + upsells)", () => {
     const r = quoteTotals(
       baseContent({ discount: { mode: "percent", value: 10 } }),

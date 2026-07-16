@@ -27,6 +27,19 @@ describe("anchorValue", () => {
     const items = [{ id: "a", kind: "page", label: "בית", value: 2500 }] as const;
     expect(anchorValue({ type: "website", items: [...items] })).toBe(2500);
   });
+  it("excludes free items (included at no extra cost)", () => {
+    const items = [
+      { id: "a", kind: "page", label: "בית", value: 2500 },
+      { id: "b", kind: "feature", label: "בלוג", value: 1800, free: true },
+    ] as const;
+    expect(anchorValue({ type: "website", items: [...items] })).toBe(2500);
+  });
+  it("an item that is neither optional nor free is included", () => {
+    const items = [
+      { id: "a", kind: "page", label: "בית", value: 2500, optional: false, free: false },
+    ] as const;
+    expect(anchorValue({ type: "website", items: [...items] })).toBe(2500);
+  });
 });
 
 import { priceOptions, belowFloor, DEFAULT_MULTIPLIERS } from "./quote-pricing";

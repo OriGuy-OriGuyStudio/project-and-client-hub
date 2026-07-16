@@ -3,11 +3,23 @@ export type WebsiteSubtype =
   | "landing" | "portfolio" | "store" | "catalog" | "content" | "event" | "campaign" | "onepage";
 export type ScopeItemKind = "subtype" | "page" | "feature" | "module" | "automation";
 
-export type ScopeItem = { id: string; kind: ScopeItemKind; label: string; value: number; optional?: boolean };
+export type ScopeItem = {
+  id: string;
+  kind: ScopeItemKind;
+  label: string;
+  value: number;
+  /** Client-selectable add-on, excluded from the anchor. */
+  optional?: boolean;
+  /** Included in the package (shown to the client) but adds ₪0 to the anchor,
+   *  a value-stack , mutually exclusive with `optional`. */
+  free?: boolean;
+};
 export type QuoteScope = { type: QuoteType; subtype?: WebsiteSubtype; items: ScopeItem[] };
 
 export function anchorValue(scope: QuoteScope): number {
-  return (scope.items ?? []).filter((it) => !it.optional).reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+  return (scope.items ?? [])
+    .filter((it) => !it.optional && !it.free)
+    .reduce((sum, it) => sum + (Number(it.value) || 0), 0);
 }
 
 export type Multipliers = { fair: number; recommended: number; premium: number };
