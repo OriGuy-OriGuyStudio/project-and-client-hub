@@ -105,7 +105,10 @@ function PageBackdrop() {
  *  narrower column. */
 function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div dir="rtl" className="relative min-h-screen bg-background text-foreground">
+    // The quote page is designed dark-only (direction ג) , force the dark
+    // token set regardless of the viewer's OS/app theme, so a light-mode
+    // client still gets the intended premium dark document.
+    <div dir="rtl" className="dark relative min-h-screen bg-background text-foreground">
       <PageBackdrop />
       <div
         className={cn(
