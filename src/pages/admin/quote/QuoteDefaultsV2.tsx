@@ -22,11 +22,15 @@ import {
   useUpsellCatalog,
   useSaveUpsellCatalogItem,
   useDeleteUpsellCatalogItem,
+  useQuoteCatalog,
+  useSaveCatalogItem,
+  useDeleteCatalogItem,
+  catalogFor,
   type QuoteDefaultsContent,
 } from "@/hooks/useQuotesV2";
 import { newId } from "@/lib/quote-v2";
 import { cn } from "@/lib/utils";
-import type { QuoteType } from "@/lib/quote-pricing";
+import type { QuoteType, ScopeItemKind } from "@/lib/quote-pricing";
 import {
   BonusesEditor,
   DelBtn,
@@ -256,6 +260,240 @@ function UpsellCatalogSection() {
   );
 }
 
+/** One editable draft row for a scope-item catalog group (subtypes/pages/
+ *  features/modules/automations). Unlike upsells, these are always scoped to
+ *  one fixed (kind, type) pair set by the group, so the row itself carries no
+ *  type picker. */
+type ScopeDraft = {
+  id?: string;
+  key: string;
+  label: string;
+  description: string;
+  base_price: number;
+  recommended: boolean;
+};
+
+/** CRUD over one (kind, type) slice of `quote_catalog` , e.g. all website
+ *  "page" rows. Mirrors UpsellCatalogSection's draft/save/add/delete pattern
+ *  but scoped to a single fixed kind+type (no per-row type picker needed).
+ *  Reads from the same `["quote-catalog"]` cache as the upsell section and
+ *  the builder's pickers, so edits here show up everywhere immediately. */
+function CatalogGroupSection({
+  title,
+  subtitle,
+  kind,
+  type,
+}: {
+  title: string;
+  subtitle: string;
+  kind: ScopeItemKind;
+  type: QuoteType;
+}) {
+  const { data: catalog, isLoading } = useQuoteCatalog();
+  const saveItem = useSaveCatalogItem();
+  const deleteItem = useDeleteCatalogItem();
+  const [drafts, setDrafts] = useState<ScopeDraft[] | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ScopeDraft | null>(null);
+  const loadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!catalog || loadedRef.current) return;
+    loadedRef.current = true;
+    setDrafts(
+      catalogFor(catalog, kind, type).map((row) => ({
+        id: row.id,
+        key: row.id,
+        label: row.label,
+        description: row.description ?? "",
+        base_price: Number(row.base_price ?? 0),
+        recommended: row.recommended,
+      }))
+    );
+  }, [catalog, kind, type]);
+
+  function updateDraft(key: string, patch: Partial<ScopeDraft>) {
+    setDrafts((prev) => (prev ? prev.map((d) => (d.key === key ? { ...d, ...patch } : d)) : prev));
+  }
+
+  function addDraft() {
+    setDrafts((prev) => [
+      ...(prev ?? []),
+      { key: newId(`${kind}-draft`), label: "", description: "", base_price: 0, recommended: false },
+    ]);
+  }
+
+  async function handleSaveRow(draft: ScopeDraft) {
+    if (!draft.label.trim()) {
+      toastError("צריך כותרת לפריט.");
+      return;
+    }
+    try {
+      const id = await saveItem.mutateAsync({
+        id: draft.id,
+        kind,
+        type,
+        label: draft.label.trim(),
+        description: draft.description.trim() || null,
+        base_price: Math.max(0, Math.round(Number(draft.base_price) || 0)),
+        recommended: draft.recommended,
+      });
+      setDrafts((prev) => (prev ? prev.map((d) => (d.key === draft.key ? { ...d, id } : d)) : prev));
+      toast({ title: "הפריט נשמר", variant: "success" });
+    } catch {
+      toastError("השמירה נכשלה.");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      if (deleteTarget.id) {
+        await deleteItem.mutateAsync(deleteTarget.id);
+      }
+      setDrafts((prev) => (prev ? prev.filter((d) => d.key !== deleteTarget.key) : prev));
+      toast({ title: "הפריט נמחק", variant: "success" });
+    } catch {
+      toastError("המחיקה נכשלה.");
+    } finally {
+      setDeleteTarget(null);
+    }
+  }
+
+  return (
+    <>
+      <EditorShell title={title} subtitle={subtitle} onAdd={addDraft}>
+        {isLoading || !drafts ? (
+          <p className="text-sm text-muted-foreground">טוען…</p>
+        ) : drafts.length === 0 ? (
+          <EmptyRow text="אין פריטים בקטלוג הזה." />
+        ) : (
+          drafts.map((d) => (
+            <div key={d.key} className="flex items-start gap-2 rounded-xl border border-border bg-background/30 p-3">
+              <div className="flex-1 space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
+                  <Input
+                    value={d.label}
+                    onChange={(e) => updateDraft(d.key, { label: e.target.value })}
+                    placeholder="כותרת הפריט"
+                    className="h-9"
+                  />
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      value={Number.isFinite(d.base_price) ? d.base_price : 0}
+                      onChange={(e) =>
+                        updateDraft(d.key, { base_price: Math.max(0, Math.round(Number(e.target.value) || 0)) })
+                      }
+                      placeholder="מחיר"
+                      className="h-9 pe-8"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 end-2 flex items-center text-xs text-muted-foreground">
+                      ₪
+                    </span>
+                  </div>
+                </div>
+                <Textarea
+                  value={d.description}
+                  onChange={(e) => updateDraft(d.key, { description: e.target.value })}
+                  placeholder="תיאור קצר (מוצג ללקוח, אופציונלי)"
+                  rows={2}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={d.recommended}
+                      onChange={(e) => updateDraft(d.key, { recommended: e.target.checked })}
+                      className="size-4 accent-primary"
+                    />
+                    מומלץ (הדגשה בבחירת הפריט)
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={saveItem.isPending}
+                    onClick={() => handleSaveRow(d)}
+                  >
+                    {saveItem.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                    שמירה
+                  </Button>
+                </div>
+              </div>
+              <DelBtn onClick={() => setDeleteTarget(d)} />
+            </div>
+          ))
+        )}
+      </EditorShell>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="מחיקת פריט מהקטלוג"
+        confirmLabel="מחק"
+        description={
+          <>
+            הפעולה תמחק לצמיתות את הפריט
+            {deleteTarget ? ` "${deleteTarget.label || "ללא שם"}"` : ""} מהקטלוג. הצעות מחיר קיימות שכבר כוללות אותו
+            שומרות עותק משלהן ולא ייפגעו.
+          </>
+        }
+        onConfirm={handleDelete}
+      />
+    </>
+  );
+}
+
+/** The full scope-item catalog editor for the current type tab: groups the
+ *  relevant `quote_catalog` kinds for that type (website has three,
+ *  system/automation each have one). Placed under the type tabs so switching
+ *  tabs swaps which groups are shown, same as the rest of the page. */
+function CatalogEditorSection({ type }: { type: QuoteType }) {
+  if (type === "website") {
+    return (
+      <div className="space-y-5">
+        <CatalogGroupSection
+          title="ניהול תת-סוגי אתר"
+          subtitle="תת-הסוגים שאורי בוחר מהם בבניית הצעת אתר (למשל: דף נחיתה, חנות, תיק עבודות)."
+          kind="subtype"
+          type="website"
+        />
+        <CatalogGroupSection
+          title="ניהול עמודים"
+          subtitle="העמודים שאפשר להוסיף לאתר בהצעת המחיר."
+          kind="page"
+          type="website"
+        />
+        <CatalogGroupSection
+          title="ניהול פיצ'רים"
+          subtitle="הפיצ'רים שאפשר להוסיף לאתר בהצעת המחיר."
+          kind="feature"
+          type="website"
+        />
+      </div>
+    );
+  }
+  if (type === "system") {
+    return (
+      <CatalogGroupSection
+        title="ניהול מודולים"
+        subtitle="המודולים שאפשר להוסיף למערכת בהצעת המחיר."
+        kind="module"
+        type="system"
+      />
+    );
+  }
+  return (
+    <CatalogGroupSection
+      title="ניהול אוטומציות"
+      subtitle="האוטומציות שאפשר להוסיף בהצעת המחיר."
+      kind="automation"
+      type="automation"
+    />
+  );
+}
+
 export default function QuoteDefaultsV2() {
   const [type, setType] = useState<QuoteType>("website");
   const { data, isLoading } = useQuoteDefaultsV2(type);
@@ -325,6 +563,14 @@ export default function QuoteDefaultsV2() {
           ))}
         </div>
       </Card>
+
+      <CatalogEditorSection type={type} />
+
+      <div className="flex items-center gap-3 pt-2">
+        <div className="h-px flex-1 bg-border" />
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">ברירות המחדל לתוכן ההצעה</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
 
       {!ready ? (
         <Card className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">

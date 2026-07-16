@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { QuoteType } from "@/lib/quote-pricing";
+import type { QuoteType, ScopeItemKind } from "@/lib/quote-pricing";
 import {
   emptyQuoteV2,
   type QuoteContentV2,
@@ -139,6 +139,95 @@ export function useSaveUpsellCatalogItem() {
 /** Admin: delete an upsell catalog row. Quotes that already picked it keep
  *  their own snapshot (QuoteUpsell copied into content.upsells), unaffected. */
 export function useDeleteUpsellCatalogItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase.from("quote_catalog").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-catalog"] });
+    },
+  });
+}
+
+// ---- generic catalog CRUD (subtypes/pages/features/modules/automations/upsells) --
+
+/** Admin input for creating/editing any `quote_catalog` row, scope kinds
+ *  (subtype/page/feature/module/automation) and upsells alike. Scope kinds
+ *  always carry a concrete `type` (e.g. subtype/page/feature -> "website");
+ *  only upsells use `type: null` for "כללי" (universal). */
+export type CatalogItemInput = {
+  id?: string;
+  kind: ScopeItemKind | "upsell";
+  type: QuoteType | null;
+  label: string;
+  description?: string | null;
+  base_price: number;
+  recommended?: boolean;
+  sort?: number;
+};
+
+/** Admin: insert or update any `quote_catalog` row. New rows are appended
+ *  after the current highest `sort` for that (kind, type) pair (10, then 20,
+ *  30…) and default to `default_mult: 1`. Existing rows only ever update
+ *  label/description/base_price/recommended , kind/type/sort don't change
+ *  after creation in this UI. Powers both the per-type scope-item editors
+ *  (QuoteDefaultsV2) and, via delegation, the upsell catalog CRUD below. */
+export function useSaveCatalogItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CatalogItemInput): Promise<string> => {
+      if (input.id) {
+        const { error } = await supabase
+          .from("quote_catalog")
+          .update({
+            label: input.label,
+            description: input.description ?? null,
+            base_price: input.base_price,
+            ...(input.recommended !== undefined ? { recommended: input.recommended } : {}),
+          })
+          .eq("id", input.id);
+        if (error) throw error;
+        return input.id;
+      }
+      let nextSort = input.sort;
+      if (nextSort === undefined) {
+        let maxQuery = supabase.from("quote_catalog").select("sort").eq("kind", input.kind);
+        maxQuery = input.type === null ? maxQuery.is("type", null) : maxQuery.eq("type", input.type);
+        const { data: maxRow, error: maxError } = await maxQuery
+          .order("sort", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (maxError) throw maxError;
+        nextSort = ((maxRow as { sort: number } | null)?.sort ?? 0) + 10;
+      }
+      const { data, error } = await supabase
+        .from("quote_catalog")
+        .insert({
+          kind: input.kind,
+          type: input.type,
+          label: input.label,
+          description: input.description ?? null,
+          base_price: input.base_price,
+          default_mult: 1,
+          recommended: input.recommended ?? false,
+          sort: nextSort,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-catalog"] });
+    },
+  });
+}
+
+/** Admin: delete any `quote_catalog` row by id. Quotes that already snapshot
+ *  it into their own content (scope items / upsells) keep their copy. */
+export function useDeleteCatalogItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
