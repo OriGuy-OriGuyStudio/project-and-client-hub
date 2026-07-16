@@ -143,7 +143,9 @@ export function SignSection({
         onError: (err) => {
           const raw = err instanceof Error ? err.message : "";
           toastError(
-            raw.includes("already signed") || raw.includes("not found")
+            raw.includes("expired")
+              ? "תוקף ההצעה פג, אפשר לכתוב לי ואשלח הצעה מעודכנת."
+              : raw.includes("already signed") || raw.includes("not found")
               ? "ההצעה כבר נחתמה או שאינה זמינה יותר."
               : "החתימה נכשלה, נסו שוב."
           );
@@ -226,7 +228,7 @@ export function SignSection({
         </button>
 
         <Button type="button" size="lg" className="w-full" onClick={handleSubmit} disabled={!canSubmit}>
-          {signQuote.isPending ? "רגע…" : justSigned ? "נחתם ✓" : "מאשר וחותם על ההצעה"}
+          {signQuote.isPending ? "רגע…" : justSigned ? "נחתם ✓" : "אישור וחתימה על ההצעה"}
         </Button>
       </div>
     </QuoteSection>

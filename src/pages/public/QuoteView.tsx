@@ -106,7 +106,7 @@ export default function QuoteView() {
           <EmptyState
             icon={FileQuestion}
             title="ההצעה לא נמצאה"
-            description="אם קיבלת קישור ממני והוא לא עובד, כתוב לי בוואטסאפ."
+            description="אם קיבלתם קישור ממני והוא לא עובד, אפשר לכתוב לי בוואטסאפ."
             action={<ContactCta text="היי אורי, קיבלתי קישור להצעת מחיר שלא עובד" />}
           />
         </div>
@@ -121,7 +121,7 @@ export default function QuoteView() {
           <EmptyState
             icon={MessageCircleOff}
             title="ההצעה סומנה כנדחתה"
-            description="אם זו טעות או שיש לך שאלה על ההצעה, כתוב לי ונדבר."
+            description="אם זו טעות או שיש שאלה על ההצעה, אפשר לכתוב לי ונדבר."
             action={<ContactCta text={`היי אורי, לגבי ההצעה "${data.title}"`} />}
           />
         </div>
@@ -146,8 +146,8 @@ export default function QuoteView() {
             title="ההצעה הזו פגה"
             description={
               expiredDate
-                ? `ההצעה הייתה בתוקף עד ${expiredDate}. אם עדיין רלוונטי, כתוב לי ואני אשלח הצעה מעודכנת.`
-                : "תוקף ההצעה פג. אם עדיין רלוונטי, כתוב לי ואני אשלח הצעה מעודכנת."
+                ? `ההצעה הייתה בתוקף עד ${expiredDate}. אם עדיין רלוונטי, אפשר לכתוב לי ואשלח הצעה מעודכנת.`
+                : "תוקף ההצעה פג. אם עדיין רלוונטי, אפשר לכתוב לי ואשלח הצעה מעודכנת."
             }
             action={<ContactCta text={`היי אורי, ההצעה "${data.title}" פגה, אשמח להצעה מעודכנת`} />}
           />
