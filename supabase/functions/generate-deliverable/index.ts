@@ -983,6 +983,407 @@ async function generateImage(apiKey: string, persona: any, projectId: string, se
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// mode="quote_ai": 4 AI assists for the admin quote builder (price, copy,
+// scope_fill, upsells). The mechanical quote engine stays the source of
+// truth: everything here is a SUGGESTION the admin applies through the
+// existing builder handlers, never an automatic mutation. Unknown catalog
+// ids returned by the model are filtered out client-side (src/lib/quote-ai.ts).
+// ---------------------------------------------------------------------------
+
+// Every quote_ai prompt spells this out instead of using the character
+// itself, so the source file never contains an em dash glyph.
+const EM_DASH_RULE = "אסור להשתמש בתו em dash (מקף ארוך, הסימן שדומה למקף רגיל אך ארוך יותר) בשום מקום בתשובה.";
+
+function scopeLabelsText(labels: any): string {
+  const arr = Array.isArray(labels) ? labels : [];
+  return arr.map((l: any) => "- " + String(l ?? "")).join(NL);
+}
+
+function scopeItemsText(scope: any): string {
+  const arr = Array.isArray(scope) ? scope : [];
+  return arr.map((s: any) => "- " + (s?.label ?? "") + ": " + (s?.value ?? "")).join(NL);
+}
+
+function catalogText(catalog: any): string {
+  const arr = Array.isArray(catalog) ? catalog : [];
+  return arr
+    .map(
+      (c: any) =>
+        "- id: " + (c?.id ?? "") + " | סוג: " + (c?.kind ?? "") + " | " + (c?.label ?? "") +
+        (c?.desc ? " (" + c.desc + ")" : ""),
+    )
+    .join(NL);
+}
+
+function upsellCatalogText(upsells: any): string {
+  const arr = Array.isArray(upsells) ? upsells : [];
+  return arr
+    .map((u: any) => "- id: " + (u?.id ?? "") + " | " + (u?.label ?? "") + (u?.desc ? " (" + u.desc + ")" : ""))
+    .join(NL);
+}
+
+function quotePricePrompt(payload: any): string {
+  const scopeText = scopeItemsText(payload?.scope);
+  const options = payload?.options || {};
+  const type = String(payload?.type ?? "");
+  const subtype = String(payload?.subtype ?? "");
+  return [
+    "אתה יועץ תמחור בכיר לסטודיו אתרים ישראלי פרימיום, עסק בוטיק של איש אחד (סטודיו אורי גיא).",
+    "המשימה: לחדד שלוש נקודות מחיר להצעת מחיר ללקוח, על בסיס היקף הפרויקט ומחיר בסיס מכני שכבר חושב.",
+    "כללים: כל מחיר בשקלים חדשים, לפני מע״מ, מספר שלם. אסור לרדת מתחת לרצפה שנתונה בשום מחיר, אפילו לא ברמת ה'הוגן'. אפשר לחדד ולכוון קלות את הבסיס המכני לפי ההיגיון העסקי של ההיקף, אבל אל תשנה אותו דרמטית בלי סיבה טובה.",
+    "סוג הפרויקט: " + type + (subtype ? " (" + subtype + ")" : "") +
+      (payload?.client_business ? ", העסק של הלקוח: " + payload.client_business : ""),
+    "היקף הפרויקט:\n" + (scopeText || "לא צויין"),
+    "עוגן מחיר (anchor) שכבר חושב: " + String(payload?.anchor ?? ""),
+    "האפשרויות הבסיסיות שכבר חושבו מכנית: הוגן " + (options?.fair ?? "") + ", מומלץ " +
+      (options?.recommended ?? "") + ", פרימיום " + (options?.premium ?? "") + ".",
+    "רצפת מחיר, לעולם לא לרדת מתחתיה: " + String(payload?.floor ?? ""),
+    payload?.notes ? "הערות רקע מהאדמין:\n" + String(payload.notes) : "",
+    "עבור כל אחת משלוש הרמות (fair, recommended, premium) החזר מחיר מעודכן ורציונל: משפט אחד קצר וברור, מנוסח כפנייה ללקוח (אפשר להראות ללקוח כמו שהוא), שמסביר למה המחיר הזה הוגן ביחס להיקף. בלי סימני קריאה, בלי באזזוורדס.",
+    "בנוסף כתוב advice: 2 עד 3 משפטים לאורי (לא ללקוח) עם עצה איך להציג את המחיר בשיחה, על מה כדאי להדגיש ואיך להתמודד עם התנגדות מחיר צפויה.",
+    EM_DASH_RULE,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_PRICE_POINT_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    price: { type: "INTEGER" },
+    rationale: { type: "STRING" },
+  },
+  required: ["price", "rationale"],
+};
+
+const QUOTE_PRICE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    fair: QUOTE_PRICE_POINT_SCHEMA,
+    recommended: QUOTE_PRICE_POINT_SCHEMA,
+    premium: QUOTE_PRICE_POINT_SCHEMA,
+    advice: { type: "STRING" },
+  },
+  required: ["fair", "recommended", "premium", "advice"],
+};
+
+async function generateQuotePrice(apiKey: string, payload: any) {
+  const prompt = quotePricePrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.4,
+      maxOutputTokens: 2000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_PRICE_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let priced: any;
+      try {
+        priced = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!priced?.fair?.price || !priced?.recommended?.price || !priced?.premium?.price) {
+        return { ok: false, status: 502, error: "לא התקבל תמחור מלא. נסה שוב." };
+      }
+      // Safety net: clamp to the floor server-side too, regardless of the
+      // model's compliance with the prompt instruction.
+      const floor = Number(payload?.floor);
+      if (Number.isFinite(floor)) {
+        priced.fair.price = Math.max(Math.round(priced.fair.price), floor);
+        priced.recommended.price = Math.max(Math.round(priced.recommended.price), floor);
+        priced.premium.price = Math.max(Math.round(priced.premium.price), floor);
+      }
+      return { ok: true, data: priced };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai price error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
+function quoteCopyPrompt(payload: any): string {
+  const type = String(payload?.type ?? "");
+  const subtype = String(payload?.subtype ?? "");
+  const scopeText = scopeLabelsText(payload?.scope_labels);
+  return [
+    "אתה כותב בקול הכתיבה האישי של אורי גיא, בעל סטודיו אתרים בוטיק. אתה כותב פסקת פתיחה קצרה שתופיע בהצעת מחיר, פונה ישירות ללקוח.",
+    "כללי הקול של אורי: גוף ראשון יחיד ('אני בונה', 'אני מלווה', 'אצלי'). לעולם לא 'אנחנו'. עברית חמה ופשוטה, קרובה וישירה, בלי באזזוורדס ובלי מילים גדולות. בלי סימני קריאה. " + EM_DASH_RULE,
+    "אורך: 2 עד 4 משפטים בלבד. הטקסט חייב להיות ספציפי לפרויקט הזה ולא ניסוח גנרי שמתאים לכל לקוח.",
+    "סוג הפרויקט: " + type + (subtype ? " (" + subtype + ")" : ""),
+    payload?.client_name ? "שם הלקוח: " + String(payload.client_name) : "",
+    payload?.client_business ? "העסק של הלקוח: " + String(payload.client_business) : "",
+    scopeText ? "מה כלול בהיקף הפרויקט:\n" + scopeText : "",
+    payload?.notes ? "הערות רקע מהאפיון עם הלקוח:\n" + String(payload.notes) : "",
+    "כתוב פסקת פתיחה חמה להצעת המחיר, שמראה שהבנת בדיוק מה הלקוח צריך ולמה הפרויקט הזה מתאים לו באופן אישי.",
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_COPY_SCHEMA = {
+  type: "OBJECT",
+  properties: { narrative: { type: "STRING" } },
+  required: ["narrative"],
+};
+
+async function generateQuoteCopy(apiKey: string, payload: any) {
+  const prompt = quoteCopyPrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.7,
+      maxOutputTokens: 1000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_COPY_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let copy: any;
+      try {
+        copy = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!copy?.narrative || !String(copy.narrative).trim()) {
+        return { ok: false, status: 502, error: "לא נוצר ניסוח. נסה שוב." };
+      }
+      return { ok: true, data: copy };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai copy error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
+function quoteScopeFillPrompt(payload: any): string {
+  const type = String(payload?.type ?? "");
+  const catalog = catalogText(payload?.catalog);
+  return [
+    "אתה עוזר לאדמין של סטודיו אתרים למלא את היקף הפרויקט בהצעת מחיר, על בסיס סיכום שיחת אפיון עם הלקוח.",
+    "כלל ברזל: מותר לבחור אך ורק מזהים (id) שמופיעים ברשימת הקטלוג הנתונה למטה, בדיוק כפי שהם כתובים. אסור להמציא id שלא ברשימה, ואסור לבחור פריט שלא באמת מתאים למה שעלה בשיחה.",
+    "סוג הפרויקט: " + type + ".",
+    "קטלוג הפריטים הזמינים (id, סוג, שם, ותיאור אם יש):\n" + (catalog || "אין קטלוג זמין"),
+    "סיכום שיחת האפיון עם הלקוח:\n" + String(payload?.notes ?? ""),
+    "המשימה הראשונה: אם סוג הפרויקט הוא website ויש בקטלוג פריט מסוג subtype שמתאים למה שעלה בשיחה, בחר subtype_id אחד בלבד. אם סוג הפרויקט אינו website, או שאין תת-סוג מתאים בקטלוג, החזר subtype_id כמחרוזת ריקה.",
+    "המשימה השנייה: בחר מתוך הקטלוג את כל הפריטים (עמודים, פיצ'רים, מודולים, אוטומציות, לפי מה שקיים בקטלוג) שבאמת מתאימים להיקף שעלה בשיחה. אל תבחר פריטים לא רלוונטיים רק כדי למלא, ואל תפספס פריטים שברור מהשיחה שהלקוח צריך.",
+    "כתוב reasoning: הסבר קצר וברור, לאדמין ולא ללקוח, למה נבחר מה שנבחר.",
+    EM_DASH_RULE,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_SCOPE_FILL_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    subtype_id: { type: "STRING" },
+    item_ids: { type: "ARRAY", items: { type: "STRING" } },
+    reasoning: { type: "STRING" },
+  },
+  required: ["item_ids", "reasoning"],
+};
+
+async function generateQuoteScopeFill(apiKey: string, payload: any) {
+  const prompt = quoteScopeFillPrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    // The catalog can run to ~90 rows, so this needs a generous token budget
+    // or the JSON output truncates before item_ids closes.
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.3,
+      maxOutputTokens: 8000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_SCOPE_FILL_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let filled: any;
+      try {
+        filled = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!filled || !Array.isArray(filled.item_ids)) {
+        return { ok: false, status: 502, error: "לא התקבל מילוי היקף תקין. נסה שוב." };
+      }
+      filled.subtype_id = String(filled.subtype_id ?? "");
+      return { ok: true, data: filled };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai scope_fill error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
+function quoteUpsellsPrompt(payload: any): string {
+  const upsellsList = upsellCatalogText(payload?.upsells);
+  const scopeText = scopeLabelsText(payload?.scope_labels);
+  return [
+    "אתה עוזר לאדמין של סטודיו אתרים להציע תוספות (upsells) רלוונטיות ללקוח בתוך הצעת מחיר.",
+    "כלל ברזל: מותר להציע אך ורק תוספות שהמזהה (id) שלהן מופיע ברשימה הנתונה למטה, בדיוק כפי שהוא כתוב. אסור להמציא id שלא ברשימה.",
+    "רשימת התוספות הזמינות (id, שם, ותיאור אם יש):\n" + (upsellsList || "אין תוספות זמינות"),
+    scopeText ? "מה כבר כלול בהיקף הפרויקט:\n" + scopeText : "",
+    payload?.client_business ? "העסק של הלקוח: " + String(payload.client_business) : "",
+    payload?.notes ? "סיכום שיחת האפיון עם הלקוח:\n" + String(payload.notes) : "",
+    "בחר בין 0 ל-3 תוספות שבאמת מתאימות ללקוח הזה, על בסיס העסק שלו וההיקף שכבר סוכם. אל תציע תוספת רק כדי למכור עוד, רק אם היא באמת רלוונטית. אם אף תוספת לא מתאימה, החזר picks כמערך ריק.",
+    "לכל תוספת שנבחרה כתוב reason: משפט קצר בעברית, פנייה שאפשר להראות ללקוח, שמסביר למה היא מתאימה לו.",
+    EM_DASH_RULE,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_UPSELLS_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    picks: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          id: { type: "STRING" },
+          reason: { type: "STRING" },
+        },
+        required: ["id", "reason"],
+      },
+    },
+  },
+  required: ["picks"],
+};
+
+async function generateQuoteUpsells(apiKey: string, payload: any) {
+  const prompt = quoteUpsellsPrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.5,
+      maxOutputTokens: 2000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_UPSELLS_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let picked: any;
+      try {
+        picked = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!picked || !Array.isArray(picked.picks)) {
+        return { ok: false, status: 502, error: "לא התקבלו הצעות תוספת תקינות. נסה שוב." };
+      }
+      return { ok: true, data: picked };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai upsells error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -1008,9 +1409,37 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief", "seo"].includes(body?.mode)
+  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief", "seo", "quote_ai"].includes(
+      body?.mode,
+    )
     ? body.mode
     : "personas";
+
+  if (mode === "quote_ai") {
+    const action = String(body?.action ?? "");
+    const payload = body?.payload ?? {};
+    if (action === "price") {
+      const r = await generateQuotePrice(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    if (action === "copy") {
+      const r = await generateQuoteCopy(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    if (action === "scope_fill") {
+      const r = await generateQuoteScopeFill(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    if (action === "upsells") {
+      const r = await generateQuoteUpsells(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    return json({ ok: false, error: "פעולת AI לא מוכרת." }, 400);
+  }
 
   if (mode === "image") {
     if (!body?.persona) return json({ ok: false, error: "missing persona" }, 400);
