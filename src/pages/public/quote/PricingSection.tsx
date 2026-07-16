@@ -152,7 +152,7 @@ export function PricingSection({
 }: {
   content: QuoteContentV2;
   selected: QuoteSelected;
-  onSelectedChange: (next: QuoteSelected) => void;
+  onSelectedChange: React.Dispatch<React.SetStateAction<QuoteSelected>>;
   readOnly: boolean;
 }) {
   const totals = useMemo(
@@ -173,25 +173,34 @@ export function PricingSection({
 
   const extrasTotal = totals.optionalScopeTotal + totals.upsellsTotal;
 
+  // Functional updates so rapid taps in one React batch never clobber each
+  // other (a stale-closure spread over `selected` would drop the earlier tap).
   function toggleOptionalScope(id: string) {
     if (readOnly) return;
-    const set = new Set(selected.optional_ids ?? []);
-    if (set.has(id)) set.delete(id);
-    else set.add(id);
-    onSelectedChange({ ...selected, optional_ids: Array.from(set) });
+    onSelectedChange((prev) => {
+      const set = new Set(prev.optional_ids ?? []);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      return { ...prev, optional_ids: Array.from(set) };
+    });
   }
 
   function toggleUpsell(id: string) {
     if (readOnly) return;
-    const set = new Set(selected.upsell_ids ?? []);
-    if (set.has(id)) set.delete(id);
-    else set.add(id);
-    onSelectedChange({ ...selected, upsell_ids: Array.from(set) });
+    onSelectedChange((prev) => {
+      const set = new Set(prev.upsell_ids ?? []);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      return { ...prev, upsell_ids: Array.from(set) };
+    });
   }
 
   function toggleTier(key: string) {
     if (readOnly) return;
-    onSelectedChange({ ...selected, maintenance_tier: selected.maintenance_tier === key ? null : key });
+    onSelectedChange((prev) => ({
+      ...prev,
+      maintenance_tier: prev.maintenance_tier === key ? null : key,
+    }));
   }
 
   return (
