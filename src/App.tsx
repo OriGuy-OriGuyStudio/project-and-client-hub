@@ -62,6 +62,7 @@ const QuoteDefaultsV2 = lazy(() => import("@/pages/admin/quote/QuoteDefaultsV2")
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
 const ProjectGuide = lazy(() => import("@/pages/shared/ProjectGuide"));
 const RefLanding = lazy(() => import("@/pages/public/RefLanding"));
+const QuoteView = lazy(() => import("@/pages/public/QuoteView"));
 const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
 const PackagesLanding = lazy(() => import("@/pages/public/PackagesLanding"));
@@ -187,6 +188,16 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <RefLanding />
+                </Suspense>
+              }
+            />
+
+            {/* Public quote v2 client page (no auth, token-gated share link) */}
+            <Route
+              path="/quote/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <QuoteView />
                 </Suspense>
               }
             />
