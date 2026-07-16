@@ -775,7 +775,13 @@ function QuoteBuilderShell({ id }: { id: string }) {
 
       {tab === "price" && mult && (
         <>
-          <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
+          <PricePanel
+            content={content}
+            multipliers={mult}
+            disabled={locked}
+            onSetFinal={setFinalPrice}
+            clientBusiness={clientBusiness}
+          />
           <PriceSummaryCard content={content} mult={mult} />
         </>
       )}
