@@ -128,6 +128,46 @@ const KIND_SECTIONS: Record<QuoteType, { kind: ScopeItemKind; title: string }[]>
   automation: [{ kind: "automation", title: "אוטומציות" }],
 };
 
+/** Per-subtype starting point , when the admin picks a website subtype, these
+ *  pages/features get auto-added to the scope so they don't build every quote
+ *  from a blank slate. Keyed by the subtype catalog row's `label` (must match
+ *  the seeded `quote_catalog` labels exactly). Purely additive and only a
+ *  suggestion , the admin can deselect/adjust anything after. */
+const SUBTYPE_DEFAULTS: Record<string, { pages: string[]; features: string[] }> = {
+  "דף נחיתה": {
+    pages: ["עמוד בית"],
+    features: ["טפסים מתקדמים", "הגדרת מדידה (GA4 ופיקסלים)"],
+  },
+  "אתר תדמית": {
+    pages: ["עמוד בית", "אודות", "שירותים", "צור קשר"],
+    features: ["טפסים מתקדמים", "נגישות מלאה", "SEO טכני מוטמע"],
+  },
+  "חנות": {
+    pages: ["עמוד בית", "עמוד מוצר", "קטגוריה", "סל ותשלום", "אודות", "צור קשר"],
+    features: ["סליקה ותשלום", "חיפוש ופילטרים", "אזור אישי / התחברות"],
+  },
+  "קטלוג": {
+    pages: ["עמוד בית", "קטגוריה", "עמוד מוצר", "צור קשר"],
+    features: ["חיפוש ופילטרים"],
+  },
+  "אתר תוכן / מגזין": {
+    pages: ["עמוד בית", "בלוג", "עמוד מאמר בודד", "אודות", "צור קשר"],
+    features: ["מערכת ניהול תוכן", "חיפוש ופילטרים"],
+  },
+  "אתר אירוע": {
+    pages: ["עמוד בית", "עמוד הזמנת תור", "צור קשר"],
+    features: ["טפסים מתקדמים", "ספירה לאחור / טיימר"],
+  },
+  "מיקרו-סייט קמפיין": {
+    pages: ["עמוד בית"],
+    features: ["פופאפ ולכידת לידים", "הגדרת מדידה (GA4 ופיקסלים)"],
+  },
+  "אתר חד-עמודי": {
+    pages: ["עמוד בית"],
+    features: ["טפסים מתקדמים"],
+  },
+};
+
 export default function QuoteBuilder() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const createQuote = useCreateQuoteV2();
@@ -406,7 +446,42 @@ function QuoteBuilderShell({ id }: { id: string }) {
         label: row.label,
         value: Number(row.base_price ?? 0) * Number(row.default_mult ?? 1),
       };
-      return { ...prev, subtype: row.label, scope: [...withoutSubtype, item] };
+      let scope = [...withoutSubtype, item];
+
+      // Selecting a subtype seeds its typical pages/features as a starting
+      // point (additive only , never removes items the admin already picked,
+      // and never overrides an item that's already in scope).
+      const defaults = SUBTYPE_DEFAULTS[row.label];
+      if (defaults) {
+        const pageRows = catalogFor(catalogRows, "page", "website");
+        const featureRows = catalogFor(catalogRows, "feature", "website");
+        const toAdd: ScopeItem[] = [];
+        for (const label of defaults.pages) {
+          const catalogRow = pageRows.find((r) => r.label === label);
+          if (catalogRow && !scope.some((it) => it.id === catalogRow.id)) {
+            toAdd.push({
+              id: catalogRow.id,
+              kind: "page",
+              label: catalogRow.label,
+              value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+            });
+          }
+        }
+        for (const label of defaults.features) {
+          const catalogRow = featureRows.find((r) => r.label === label);
+          if (catalogRow && !scope.some((it) => it.id === catalogRow.id)) {
+            toAdd.push({
+              id: catalogRow.id,
+              kind: "feature",
+              label: catalogRow.label,
+              value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+            });
+          }
+        }
+        scope = [...scope, ...toAdd];
+      }
+
+      return { ...prev, subtype: row.label, scope };
     });
   }
 
