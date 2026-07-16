@@ -3,6 +3,7 @@ import { Check, Circle, CheckCircle2 } from "lucide-react";
 import { DEFAULT_MULTIPLIERS, shekel } from "@/lib/quote-pricing";
 import { quoteTotals, type QuoteContentV2, type QuoteSelected } from "@/lib/quote-v2";
 import { cn } from "@/lib/utils";
+import { sparkBurst } from "@/lib/confetti";
 import BorderGlow from "@/components/reactbits/BorderGlow";
 import { QuoteSection, RevealItem, RevealStagger } from "./Reveal";
 
@@ -13,8 +14,30 @@ const SUMMARY_GLOW_COLOR = "80 53 64"; // #B4D670 as H S L
 const SUMMARY_GLOW_SHADES = ["#B4D670", "#8fb84f", "#d3ec9f"];
 const SUMMARY_CARD_BG = "#161520"; // --card (dark theme)
 
-/** A single toggleable extra card (optional scope item or upsell). Same shape
- *  for both so the picker reads as one list, not two. */
+/** Module-level throttle so a burst of rapid taps (or the two toggle sites
+ *  , extras and maintenance tiers) never stacks more than one confetti burst
+ *  per 800ms. A single PricingSection instance is ever mounted per page, so
+ *  a plain module variable is enough (no need to thread this through state
+ *  or a ref). */
+let lastCelebrationAt = 0;
+
+/** Fires a small, contained confetti burst from the toggled row's own
+ *  position (not a full-screen blast) when the client SELECTS an extra or
+ *  maintenance tier, never on deselect. `sparkBurst` already no-ops under
+ *  `prefers-reduced-motion`. */
+function celebrateSelection(e: React.MouseEvent<HTMLButtonElement>) {
+  const now = Date.now();
+  if (now - lastCelebrationAt < 800) return;
+  lastCelebrationAt = now;
+  const rect = e.currentTarget.getBoundingClientRect();
+  sparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+/** A single toggleable extra row (optional scope item or upsell). Same shape
+ *  for both so the picker reads as one list, not two. Clean module row: text
+ *  on the start side, price + a circular check indicator on the end side.
+ *  Selected state is an emphasized border (never a filled background , the
+ *  "noisy background" the redesign moved away from). */
 function ExtraCard({
   label,
   desc,
@@ -30,7 +53,7 @@ function ExtraCard({
   selected: boolean;
   recommended?: boolean;
   readOnly: boolean;
-  onToggle: () => void;
+  onToggle: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
@@ -39,41 +62,44 @@ function ExtraCard({
       disabled={readOnly}
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-start transition-colors",
+        "flex w-full items-center justify-between gap-4 rounded-2xl border bg-card p-4 text-start transition-colors sm:p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        selected ? "border-primary/50 bg-primary/10" : "border-border bg-card",
-        !readOnly && !selected && "hover:border-primary/30",
+        selected ? "border-primary ring-1 ring-primary/50" : "border-border",
+        !readOnly && !selected && "hover:border-primary/40",
         readOnly ? "cursor-default" : "cursor-pointer",
       )}
     >
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-base font-medium text-foreground">{label}</p>
+          {recommended && (
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+              מומלץ
+            </span>
+          )}
+        </div>
+        {desc && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{desc}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="text-sm font-semibold text-foreground">{shekel(price)}</span>
         <span
           aria-hidden="true"
           className={cn(
-            "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
-            selected ? "border-primary bg-primary text-[color:var(--ink,#0a0623)]" : "border-border text-transparent",
+            "grid size-6 shrink-0 place-items-center rounded-full border transition-colors",
+            selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-transparent",
           )}
         >
-          <Check className="size-3" />
+          <Check className="size-3.5" />
         </span>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-medium text-foreground">{label}</p>
-            {recommended && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
-                מומלץ
-              </span>
-            )}
-          </div>
-          {desc && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{desc}</p>}
-        </div>
       </div>
-      <span className="shrink-0 text-sm font-semibold text-foreground">{shekel(price)}</span>
     </button>
   );
 }
 
-/** A single maintenance tier card, radio-style (single select, deselectable). */
+/** A single maintenance tier row, radio-style (single select, deselectable).
+ *  Selected tier inverts to a high-contrast light card (bg-primary, dark
+ *  text) so it reads as clearly "chosen" against the otherwise-dark rows;
+ *  unselected tiers stay the normal dark card. */
 function TierCard({
   name,
   description,
@@ -89,7 +115,7 @@ function TierCard({
   selected: boolean;
   recommended?: boolean;
   readOnly: boolean;
-  onToggle: () => void;
+  onToggle: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
@@ -98,33 +124,46 @@ function TierCard({
       disabled={readOnly}
       onClick={onToggle}
       className={cn(
-        "flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-start transition-colors",
+        "flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-start transition-colors sm:p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        selected ? "border-primary/50 bg-primary/10" : "border-border bg-card",
-        !readOnly && !selected && "hover:border-primary/30",
+        selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground",
+        !readOnly && !selected && "hover:border-primary/40",
         readOnly ? "cursor-default" : "cursor-pointer",
       )}
     >
-      <div className="flex min-w-0 items-start gap-3">
-        <span aria-hidden="true" className="mt-0.5 shrink-0 text-primary">
-          {selected ? <CheckCircle2 className="size-5" /> : <Circle className="size-5 text-muted-foreground/70" />}
-        </span>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold text-foreground">{name}</p>
-            {recommended && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
-                מומלץ
-              </span>
-            )}
-          </div>
-          {description && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{description}</p>}
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-base font-semibold">{name}</p>
+          {recommended && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                selected ? "bg-primary-foreground/10 text-primary-foreground" : "bg-primary/15 text-primary",
+              )}
+            >
+              מומלץ
+            </span>
+          )}
         </div>
+        {description && (
+          <p className={cn("mt-0.5 text-base leading-relaxed", selected ? "text-primary-foreground/75" : "text-muted-foreground")}>
+            {description}
+          </p>
+        )}
       </div>
-      <span className="shrink-0 text-sm font-semibold text-foreground">
-        {shekel(price)}
-        <span className="text-xs font-normal text-muted-foreground">/חודש</span>
-      </span>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="text-sm font-semibold">
+          {shekel(price)}
+          <span className={cn("text-xs font-normal", selected ? "text-primary-foreground/70" : "text-muted-foreground")}>
+            /חודש
+          </span>
+        </span>
+        {selected ? (
+          <CheckCircle2 aria-hidden="true" className="size-5" />
+        ) : (
+          <Circle aria-hidden="true" className="size-5 text-muted-foreground/70" />
+        )}
+      </div>
     </button>
   );
 }
@@ -154,7 +193,8 @@ function SummaryRow({
  *  tier pickers, and a live summary that's the ONLY place on the page the
  *  client sees a bottom-line total (never the admin's 3 options/anchor). All
  *  math comes from a single `quoteTotals` call per render; this component
- *  never adds arithmetic beyond summing the two extras totals for display. */
+ *  never adds arithmetic beyond summing/listing the selected extras and the
+ *  bonuses' display-only "gross value" line (item 4) for display. */
 export function PricingSection({
   content,
   selected,
@@ -182,36 +222,62 @@ export function PricingSection({
     ? tiers.find((t) => t.key === selected.maintenance_tier)
     : undefined;
 
-  const extrasTotal = totals.optionalScopeTotal + totals.upsellsTotal;
+  // Receipt lines: one per SELECTED extra (by name), in the same order
+  // they're offered (optional scope, then upsells).
+  const selectedExtraLines = useMemo(() => {
+    const optionalSelected = new Set(selected.optional_ids ?? []);
+    const upsellSelected = new Set(selected.upsell_ids ?? []);
+    return [
+      ...optionalScopeItems
+        .filter((it) => optionalSelected.has(it.id))
+        .map((it) => ({ id: it.id, label: it.label, price: Number(it.value) || 0 })),
+      ...upsells
+        .filter((u) => upsellSelected.has(u.id))
+        .map((u) => ({ id: u.id, label: u.title, price: Number(u.price) || 0 })),
+    ];
+  }, [optionalScopeItems, upsells, selected.optional_ids, selected.upsell_ids]);
+
+  // Item 4: bonuses amplify the perceived value of the total, pure display ,
+  // `gross` (pre-discount project + extras) is exactly `totals.net +
+  // totals.discount` (quoteTotals' own internal `gross` before the discount
+  // was subtracted), so this never re-derives pricing math of its own.
+  const bonusesTotal = (content.bonuses ?? []).reduce((sum, b) => sum + (Number(b.value) || 0), 0);
+  const grossWithBonuses = totals.net + totals.discount + bonusesTotal;
 
   // Functional updates so rapid taps in one React batch never clobber each
   // other (a stale-closure spread over `selected` would drop the earlier tap).
-  function toggleOptionalScope(id: string) {
+  function toggleOptionalScope(id: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (readOnly) return;
+    const isSelecting = !(selected.optional_ids ?? []).includes(id);
     onSelectedChange((prev) => {
       const set = new Set(prev.optional_ids ?? []);
       if (set.has(id)) set.delete(id);
       else set.add(id);
       return { ...prev, optional_ids: Array.from(set) };
     });
+    if (isSelecting) celebrateSelection(e);
   }
 
-  function toggleUpsell(id: string) {
+  function toggleUpsell(id: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (readOnly) return;
+    const isSelecting = !(selected.upsell_ids ?? []).includes(id);
     onSelectedChange((prev) => {
       const set = new Set(prev.upsell_ids ?? []);
       if (set.has(id)) set.delete(id);
       else set.add(id);
       return { ...prev, upsell_ids: Array.from(set) };
     });
+    if (isSelecting) celebrateSelection(e);
   }
 
-  function toggleTier(key: string) {
+  function toggleTier(key: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (readOnly) return;
+    const isSelecting = selected.maintenance_tier !== key;
     onSelectedChange((prev) => ({
       ...prev,
       maintenance_tier: prev.maintenance_tier === key ? null : key,
     }));
+    if (isSelecting) celebrateSelection(e);
   }
 
   return (
@@ -231,7 +297,7 @@ export function PricingSection({
                       price={Number(it.value) || 0}
                       selected={(selected.optional_ids ?? []).includes(it.id)}
                       readOnly={readOnly}
-                      onToggle={() => toggleOptionalScope(it.id)}
+                      onToggle={(e) => toggleOptionalScope(it.id, e)}
                     />
                   </RevealItem>
                 ))}
@@ -244,7 +310,7 @@ export function PricingSection({
                       selected={(selected.upsell_ids ?? []).includes(u.id)}
                       recommended={u.recommended}
                       readOnly={readOnly}
-                      onToggle={() => toggleUpsell(u.id)}
+                      onToggle={(e) => toggleUpsell(u.id, e)}
                     />
                   </RevealItem>
                 ))}
@@ -268,7 +334,7 @@ export function PricingSection({
                       selected={selected.maintenance_tier === t.key}
                       recommended={t.recommended}
                       readOnly={readOnly}
-                      onToggle={() => toggleTier(t.key)}
+                      onToggle={(e) => toggleTier(t.key, e)}
                     />
                   </RevealItem>
                 ))}
@@ -287,15 +353,18 @@ export function PricingSection({
               colors={SUMMARY_GLOW_SHADES}
             >
               <div className="p-5 sm:p-6">
-                <h3 className="text-lg font-semibold text-foreground">סיכום</h3>
+                <h3 className="text-lg font-semibold text-foreground">ההצעה שלך</h3>
 
-                {/* Math rows , project price, extras, discount only. The
-                   ex-VAT/incl-VAT split moves to the hero strip below so the
-                   single number the client anchors on is the ex-VAT price
-                   (the market-standard convention), never the incl-VAT total. */}
+                {/* The receipt , the project's line, then one line per
+                   selected extra (by name), then the discount. The ex-VAT/
+                   incl-VAT split stays in the totals box below so the single
+                   number the client anchors on is the ex-VAT price (the
+                   market-standard convention), never the incl-VAT total. */}
                 <div className="mt-4 space-y-2 rounded-2xl bg-background/50 p-4">
-                  <SummaryRow label="מחיר הפרויקט" value={shekel(content.final_price)} />
-                  {extrasTotal > 0 && <SummaryRow label="+ תוספות שבחרת" value={`+${shekel(extrasTotal)}`} />}
+                  <SummaryRow label="הפרויקט" value={shekel(content.final_price)} />
+                  {selectedExtraLines.map((line) => (
+                    <SummaryRow key={line.id} label={line.label} value={`+${shekel(line.price)}`} />
+                  ))}
                   {totals.discount > 0 && (
                     <SummaryRow
                       label={`- הנחה${content.discount?.label ? ` (${content.discount.label})` : ""}`}
@@ -305,6 +374,11 @@ export function PricingSection({
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
+                  {bonusesTotal > 0 && (
+                    <p className="text-sm text-muted-foreground line-through decoration-muted-foreground/60">
+                      שווי מלא כולל מתנות: {shekel(grossWithBonuses)}
+                    </p>
+                  )}
                   <p className="text-xs font-medium text-muted-foreground">סה"כ (לפני מע"מ)</p>
                   <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.net)}</p>
                   <p className="mt-3 text-sm text-muted-foreground">
@@ -322,6 +396,17 @@ export function PricingSection({
                     </span>
                   </div>
                 )}
+
+                <div className="mt-4 space-y-1.5">
+                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <Check aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+                    אפשר להוסיף או להוריד תוספות עד רגע החתימה.
+                  </p>
+                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <Check aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+                    ליווי חודשי אפשר לבטל בכל רגע.
+                  </p>
+                </div>
               </div>
             </BorderGlow>
           </div>

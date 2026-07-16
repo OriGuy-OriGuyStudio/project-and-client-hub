@@ -28,13 +28,9 @@ function IncludedRow({ item, price }: { item: ScopeItem; price: number | null })
           {item.desc && <p className="mt-0.5 text-base text-muted-foreground">{item.desc}</p>}
         </div>
       </div>
-      {item.free ? (
-        <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
-          כלול
-        </span>
-      ) : price != null ? (
+      {!item.free && price != null && (
         <span className="shrink-0 text-sm font-semibold text-foreground">{shekel(price)}</span>
-      ) : null}
+      )}
     </li>
   );
 }

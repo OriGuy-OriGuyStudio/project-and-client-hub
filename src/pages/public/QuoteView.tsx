@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useReducedMotion } from "framer-motion";
 import { CheckCircle2, Clock, FileQuestion, MessageCircleOff } from "lucide-react";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useMarkQuoteViewed, useQuotePublic, quoteExpiry, type QuotePublic } from "@/hooks/useQuotePublic";
 import type { QuoteSelected } from "@/lib/quote-v2";
+import SideRays from "@/components/reactbits/SideRays";
 import { QuoteHero } from "@/pages/public/quote/QuoteHero";
 import { QuoteMiniNav, type QuoteNavItem } from "@/pages/public/quote/QuoteMiniNav";
 import { IncludedSection } from "@/pages/public/quote/IncludedSection";
@@ -59,12 +61,48 @@ function ContactCta({ text, label = "דברו איתי בוואטסאפ" }: { te
   );
 }
 
+/** Full-bleed ambient light-ray backdrop for the top of the page, sitting
+ *  behind ALL content (z-0, content is z-10 above it) rather than scoped to
+ *  the hero card , reads as page atmosphere, not a lit box behind the
+ *  headings. Fades to transparent toward the bottom via a mask so it never
+ *  competes with body copy further down. Skipped entirely under
+ *  `prefers-reduced-motion`, same as every other animated flourish on this
+ *  signing document. */
+function PageBackdrop() {
+  const reduceMotion = useReducedMotion();
+  if (reduceMotion) return null;
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh]"
+      style={{
+        maskImage: "linear-gradient(to bottom, black, transparent)",
+        WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+      }}
+    >
+      <SideRays
+        speed={1.2}
+        rayColor1="#b4d670"
+        rayColor2="#96c8ff"
+        intensity={1.1}
+        spread={1.6}
+        origin="top-right"
+        saturation={1.1}
+        blend={0.6}
+        falloff={1.8}
+        opacity={0.25}
+      />
+    </div>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-10">
+    <div dir="rtl" className="relative min-h-screen bg-background text-foreground">
+      <PageBackdrop />
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-10">
         <div className="flex-1">{children}</div>
-        <p className="mt-10 text-center text-xs text-muted-foreground">Studio Ori Guy</p>
+        <p className="mt-10 text-center text-xs text-muted-foreground">Ori Guy Studio</p>
       </div>
     </div>
   );

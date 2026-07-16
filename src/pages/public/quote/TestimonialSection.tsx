@@ -46,8 +46,9 @@ export function TestimonialSection({ testimonial }: { testimonial: QuoteTestimon
       <div className="relative mx-auto max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
         <Quote
           aria-hidden
-          className="pointer-events-none absolute -top-3 start-4 size-16 -scale-x-100 text-primary/10 sm:size-20"
+          className="pointer-events-none absolute -top-3 start-4 size-16 -scale-x-100 text-primary sm:size-20"
           strokeWidth={1}
+          style={{ opacity: 0.12 }}
         />
         <div role="img" aria-label="5 כוכבים" className="relative flex items-center justify-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (

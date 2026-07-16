@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
-import { useReducedMotion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import SpecularButton from "@/components/reactbits/SpecularButton";
+import { Button } from "@/components/ui/button";
 import { toastError } from "@/hooks/use-toast";
 import { useSignQuote } from "@/hooks/useQuotePublic";
 import { celebrate } from "@/lib/confetti";
@@ -33,7 +33,6 @@ export function SignSection({
 }) {
   const qc = useQueryClient();
   const signQuote = useSignQuote();
-  const reduceMotion = useReducedMotion();
 
   const [name, setName] = useState("");
   const [approved, setApproved] = useState(false);
@@ -216,16 +215,24 @@ export function SignSection({
           />
         </div>
 
-        <button
-          type="button"
-          aria-pressed={approved}
-          onClick={() => setApproved((v) => !v)}
-          disabled={busy}
+        <div
+          role="checkbox"
+          aria-checked={approved}
+          aria-disabled={busy}
+          tabIndex={busy ? -1 : 0}
+          onClick={() => !busy && setApproved((v) => !v)}
+          onKeyDown={(e) => {
+            if (busy) return;
+            if (e.key === " " || e.key === "Enter") {
+              e.preventDefault();
+              setApproved((v) => !v);
+            }
+          }}
           className={cn(
             "flex min-h-10 w-full items-start gap-3 rounded-xl border p-3.5 text-start transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             approved ? "border-primary/50 bg-primary/10" : "border-border bg-card hover:border-primary/30",
-            "disabled:cursor-not-allowed disabled:opacity-60",
+            busy ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           )}
         >
           <span
@@ -237,28 +244,44 @@ export function SignSection({
           >
             <Check className="size-3" />
           </span>
-          <span className="text-base text-muted-foreground">קראתי את ההצעה והתנאים ואני מאשר/ת אותם.</span>
-        </button>
+          {/* The terms/privacy links are siblings of the checkbox row, not
+             descendants of a <button> (nesting an <a> inside a <button> is
+             invalid HTML and breaks click targeting), and stop propagation
+             so clicking a link opens it without toggling the checkbox. */}
+          <span className="text-base text-muted-foreground">
+            קראתי את ההצעה והתנאים, ואני מאשר/ת אותם ואת{" "}
+            <Link
+              to="/terms"
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(e) => e.stopPropagation()}
+              className="text-foreground underline hover:text-primary"
+            >
+              התקנון
+            </Link>{" "}
+            ו
+            <Link
+              to="/privacy"
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(e) => e.stopPropagation()}
+              className="text-foreground underline hover:text-primary"
+            >
+              מדיניות הפרטיות
+            </Link>
+            .
+          </span>
+        </div>
 
-        <SpecularButton
+        <Button
           type="button"
-          size="md"
+          size="lg"
           className="w-full"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          tint="#b4d670" // --primary (dark theme)
-          tintOpacity={1}
-          textColor="#0a0623" // --primary-foreground (dark theme)
-          lineColor="#ffffff"
-          // ~60% primary blended toward black. ogl's Color only parses hex/
-          // named colors (no CSS color-mix()), so this is precomputed.
-          baseColor="#6c8043"
-          intensity={1}
-          autoAnimate={!reduceMotion}
-          radius={14}
         >
           {signQuote.isPending ? "רגע…" : justSigned ? "נחתם ✓" : "אישור וחתימה על ההצעה"}
-        </SpecularButton>
+        </Button>
       </div>
     </QuoteSection>
   );
