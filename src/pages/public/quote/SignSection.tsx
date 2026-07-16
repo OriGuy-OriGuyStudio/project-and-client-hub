@@ -157,14 +157,13 @@ export function SignSection({
   return (
     <QuoteSection id="sign" title="אישור וחתימה" intro="קראתם הכל? נשאר רק לאשר ולחתום, ומשם אני לוקח את זה.">
       <div className="mx-auto max-w-xl space-y-5">
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-          <p className="text-sm text-foreground">
-            סה״כ לאישור: <span className="font-semibold text-primary">{shekel(totals.total)}</span>
-          </p>
+        <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
+          <p className="text-xs font-medium text-muted-foreground">סה״כ לאישור</p>
+          <p className="mt-1 font-heading text-2xl font-black text-primary sm:text-3xl">{shekel(totals.total)}</p>
           {selectedTier && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <span className="mt-2 inline-block rounded-full border border-primary/30 bg-background/60 px-3 py-1 text-xs font-semibold text-primary">
               + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
-            </p>
+            </span>
           )}
         </div>
 

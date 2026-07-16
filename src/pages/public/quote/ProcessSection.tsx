@@ -22,7 +22,7 @@ export function ProcessSection({ phases }: { phases: QuotePhase[] }) {
                 <p className="text-sm font-semibold text-foreground">{p.name}</p>
                 {p.duration && <p className="text-xs text-muted-foreground">{p.duration}</p>}
               </div>
-              {p.desc && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{p.desc}</p>}
+              {p.desc && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{p.desc}</p>}
             </div>
           </li>
         ))}

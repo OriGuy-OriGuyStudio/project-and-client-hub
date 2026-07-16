@@ -1,18 +1,29 @@
-import { Quote } from "lucide-react";
+import { Quote, Star } from "lucide-react";
 import type { QuoteTestimonial } from "@/lib/quote-v2";
 import { Reveal } from "./Reveal";
 
 /** A single client testimonial, when the admin attached one to the quote.
  *  No section id / mini-nav entry (it's a supporting beat, not a destination
- *  someone jumps to), so it just sits between "מתנות" and the FAQ. */
+ *  someone jumps to), so it just sits between "מתנות" and the FAQ. The 5-star
+ *  row is always full , the testimonial content has no rating field, this is
+ *  a static trust cue, not a per-quote rating. */
 export function TestimonialSection({ testimonial }: { testimonial: QuoteTestimonial | null }) {
   if (!testimonial || !testimonial.quote) return null;
   return (
     <Reveal className="py-8">
-      <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
-        <Quote className="mx-auto size-6 text-primary/60" />
-        <p className="mt-3 text-[15px] leading-relaxed text-foreground">{testimonial.quote}</p>
-        <p className="mt-4 text-sm font-semibold text-foreground">
+      <div className="relative mx-auto max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
+        <Quote
+          aria-hidden
+          className="pointer-events-none absolute -top-3 start-4 size-16 -scale-x-100 text-primary/10 sm:size-20"
+          strokeWidth={1}
+        />
+        <div className="relative flex items-center justify-center gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star key={i} className="size-4 fill-primary text-primary" />
+          ))}
+        </div>
+        <p className="relative mt-3 text-sm leading-relaxed text-foreground sm:text-base">{testimonial.quote}</p>
+        <p className="relative mt-4 text-sm font-semibold text-foreground">
           {testimonial.name}
           {testimonial.role && <span className="font-normal text-muted-foreground"> · {testimonial.role}</span>}
         </p>

@@ -3,7 +3,7 @@ import { Check, Circle, CheckCircle2 } from "lucide-react";
 import { DEFAULT_MULTIPLIERS, shekel } from "@/lib/quote-pricing";
 import { quoteTotals, type QuoteContentV2, type QuoteSelected } from "@/lib/quote-v2";
 import { cn } from "@/lib/utils";
-import { QuoteSection } from "./Reveal";
+import { QuoteSection, RevealItem, RevealStagger } from "./Reveal";
 
 /** A single toggleable extra card (optional scope item or upsell). Same shape
  *  for both so the picker reads as one list, not two. */
@@ -55,7 +55,7 @@ function ExtraCard({
               </span>
             )}
           </div>
-          {desc && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{desc}</p>}
+          {desc && <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{desc}</p>}
         </div>
       </div>
       <span className="shrink-0 text-sm font-semibold text-foreground">{shekel(price)}</span>
@@ -107,7 +107,7 @@ function TierCard({
               </span>
             )}
           </div>
-          {description && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>}
+          {description && <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>
       <span className="shrink-0 text-sm font-semibold text-foreground">
@@ -210,62 +210,66 @@ export function PricingSection({
           {hasExtras && (
             <div>
               <h3 className="text-sm font-semibold text-foreground">תוספות לבחירה</h3>
-              <p className="mt-1 text-xs text-muted-foreground">כל תוספת כאן היא בחירה שלך, אין חובה לסמן כלום.</p>
-              <div className="mt-3 space-y-2.5">
+              <p className="mt-1 text-sm text-muted-foreground">כל תוספת כאן היא בחירה שלך, אין חובה לסמן כלום.</p>
+              <RevealStagger className="mt-3 space-y-2.5">
                 {optionalScopeItems.map((it) => (
-                  <ExtraCard
-                    key={it.id}
-                    label={it.label}
-                    desc={it.desc}
-                    price={Number(it.value) || 0}
-                    selected={(selected.optional_ids ?? []).includes(it.id)}
-                    readOnly={readOnly}
-                    onToggle={() => toggleOptionalScope(it.id)}
-                  />
+                  <RevealItem key={it.id}>
+                    <ExtraCard
+                      label={it.label}
+                      desc={it.desc}
+                      price={Number(it.value) || 0}
+                      selected={(selected.optional_ids ?? []).includes(it.id)}
+                      readOnly={readOnly}
+                      onToggle={() => toggleOptionalScope(it.id)}
+                    />
+                  </RevealItem>
                 ))}
                 {upsells.map((u) => (
-                  <ExtraCard
-                    key={u.id}
-                    label={u.title}
-                    desc={u.desc}
-                    price={Number(u.price) || 0}
-                    selected={(selected.upsell_ids ?? []).includes(u.id)}
-                    recommended={u.recommended}
-                    readOnly={readOnly}
-                    onToggle={() => toggleUpsell(u.id)}
-                  />
+                  <RevealItem key={u.id}>
+                    <ExtraCard
+                      label={u.title}
+                      desc={u.desc}
+                      price={Number(u.price) || 0}
+                      selected={(selected.upsell_ids ?? []).includes(u.id)}
+                      recommended={u.recommended}
+                      readOnly={readOnly}
+                      onToggle={() => toggleUpsell(u.id)}
+                    />
+                  </RevealItem>
                 ))}
-              </div>
+              </RevealStagger>
             </div>
           )}
 
           {hasMaintenance && (
             <div>
               <h3 className="text-sm font-semibold text-foreground">ליווי אחרי ההשקה</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 אם תרצו שאני אמשיך לתחזק, לעדכן ולגבות אחרי שהפרויקט עולה לאוויר.
               </p>
-              <div className="mt-3 space-y-2.5">
+              <RevealStagger className="mt-3 space-y-2.5">
                 {tiers.map((t) => (
-                  <TierCard
-                    key={t.key}
-                    name={t.name}
-                    description={t.description}
-                    price={t.price}
-                    selected={selected.maintenance_tier === t.key}
-                    recommended={t.recommended}
-                    readOnly={readOnly}
-                    onToggle={() => toggleTier(t.key)}
-                  />
+                  <RevealItem key={t.key}>
+                    <TierCard
+                      name={t.name}
+                      description={t.description}
+                      price={t.price}
+                      selected={selected.maintenance_tier === t.key}
+                      recommended={t.recommended}
+                      readOnly={readOnly}
+                      onToggle={() => toggleTier(t.key)}
+                    />
+                  </RevealItem>
                 ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">אפשר להצטרף גם אחרי העלייה לאוויר.</p>
+              </RevealStagger>
+              <p className="mt-2 text-sm text-muted-foreground">אפשר להצטרף גם אחרי העלייה לאוויר.</p>
             </div>
           )}
 
           <div id="pricing-summary" className="scroll-mt-24 rounded-3xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
             <h3 className="text-sm font-semibold text-foreground">סיכום</h3>
-            <div className="mt-4 space-y-2 border-b border-border/60 pb-4">
+
+            <div className="mt-4 space-y-2 rounded-2xl bg-background/50 p-4">
               <SummaryRow label="מחיר הפרויקט" value={shekel(content.final_price)} />
               {extrasTotal > 0 && <SummaryRow label="+ תוספות שבחרת" value={`+${shekel(extrasTotal)}`} />}
               {totals.discount > 0 && (
@@ -277,18 +281,25 @@ export function PricingSection({
               <SummaryRow label='לפני מע"מ' value={shekel(totals.net)} />
               <SummaryRow label={`מע"מ (${content.vat_pct}%)`} value={shekel(totals.vat)} muted />
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="font-heading text-lg font-black text-foreground">סה"כ</span>
-              <span className="font-heading text-3xl font-black text-primary">{shekel(totals.total)}</span>
+
+            <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
+              <p className="text-xs font-medium text-muted-foreground">סה"כ כולל מע"מ</p>
+              <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.total)}</p>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)} · יתרה: {shekel(totals.split.rest)}
-            </p>
-            {selectedTier && (
-              <p className="mt-1.5 text-xs font-medium text-primary">
-                + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
-              </p>
-            )}
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
+                מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)}
+              </span>
+              <span className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
+                יתרה: {shekel(totals.split.rest)}
+              </span>
+              {selectedTier && (
+                <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary">
+                  + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </QuoteSection>
@@ -296,9 +307,9 @@ export function PricingSection({
       {/* Mobile sticky summary bar , always visible on small screens so the
          total + sign CTA (or, once signed, the approval recap) are reachable
          without scrolling back up. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-primary/20 bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 rounded-xl bg-primary/10 px-3 py-1.5">
             <p className="text-[11px] text-muted-foreground">סה"כ כולל מע"מ</p>
             <p className="truncate font-heading text-lg font-black text-primary">{shekel(totals.total)}</p>
           </div>

@@ -25,7 +25,7 @@ function IncludedRow({ item, price }: { item: ScopeItem; price: number | null })
         </span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">{item.label}</p>
-          {item.desc && <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>}
+          {item.desc && <p className="mt-0.5 text-sm text-muted-foreground">{item.desc}</p>}
         </div>
       </div>
       {item.free ? (
@@ -82,7 +82,7 @@ export function IncludedSection({
             <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">הבסיס</p>
               <p className="text-sm font-semibold text-foreground">{subtypeItem.label}</p>
-              {subtypeItem.desc && <p className="mt-0.5 text-xs text-muted-foreground">{subtypeItem.desc}</p>}
+              {subtypeItem.desc && <p className="mt-0.5 text-sm text-muted-foreground">{subtypeItem.desc}</p>}
             </div>
             {priceById.has(subtypeItem.id) && (
               <span className="shrink-0 text-sm font-semibold text-foreground">
