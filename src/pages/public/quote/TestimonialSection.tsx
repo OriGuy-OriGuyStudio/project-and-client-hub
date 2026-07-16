@@ -42,6 +42,7 @@ export function TestimonialSection({ testimonial }: { testimonial: QuoteTestimon
 
   if (!testimonial || !testimonial.quote) return null;
   return (
+    <section id="testimonial" className="scroll-mt-24">
     <Reveal className="py-8">
       <div className="relative mx-auto max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
         <Quote
@@ -74,5 +75,6 @@ export function TestimonialSection({ testimonial }: { testimonial: QuoteTestimon
         </p>
       </div>
     </Reveal>
+    </section>
   );
 }

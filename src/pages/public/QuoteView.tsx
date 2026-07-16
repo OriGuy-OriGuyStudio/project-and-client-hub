@@ -261,6 +261,7 @@ function QuoteNormalView({
     (content.differentiators ?? []).length > 0 && { id: "why", label: "למה איתי" },
     (content.phases ?? []).length > 0 && { id: "process", label: "איך זה עובד" },
     (content.bonuses ?? []).length > 0 && { id: "bonuses", label: "מתנות" },
+    !!content.testimonial?.quote && { id: "testimonial", label: "המלצה" },
     (content.faq ?? []).length > 0 && { id: "faq", label: "שאלות" },
     (content.legal ?? []).length > 0 && { id: "legal", label: "תנאים" },
     { id: "sign", label: readOnly ? "האישור שלך" : "אישור וחתימה" },
