@@ -72,8 +72,13 @@ export function ScopeSection({
                     disabled && "cursor-not-allowed opacity-60"
                   )}
                 >
-                  <span className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
-                    {row.label}
+                  <span className="flex flex-col items-start gap-0.5">
+                    <span className={cn("font-medium", selected ? "text-foreground" : "text-muted-foreground")}>
+                      {row.label}
+                    </span>
+                    {row.description && (
+                      <span className="line-clamp-2 text-xs text-muted-foreground">{row.description}</span>
+                    )}
                   </span>
                   {!selected && (
                     <span className="shrink-0 text-xs text-muted-foreground">
