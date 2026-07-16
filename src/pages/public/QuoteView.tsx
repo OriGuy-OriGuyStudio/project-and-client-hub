@@ -5,10 +5,13 @@ import { CheckCircle2, Clock, FileQuestion, MessageCircleOff } from "lucide-reac
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useMarkQuoteViewed, useQuotePublic, quoteExpiry, type QuotePublic } from "@/hooks/useQuotePublic";
-import type { QuoteSelected } from "@/lib/quote-v2";
+import { quoteTotals, type QuoteSelected } from "@/lib/quote-v2";
+import { DEFAULT_MULTIPLIERS } from "@/lib/quote-pricing";
+import { cn } from "@/lib/utils";
 import SideRays from "@/components/reactbits/SideRays";
 import { QuoteHero } from "@/pages/public/quote/QuoteHero";
 import { QuoteMiniNav, type QuoteNavItem } from "@/pages/public/quote/QuoteMiniNav";
+import { SideNav } from "@/pages/public/quote/SideNav";
 import { IncludedSection } from "@/pages/public/quote/IncludedSection";
 import { PricingSection } from "@/pages/public/quote/PricingSection";
 import { WhySection } from "@/pages/public/quote/WhySection";
@@ -96,11 +99,20 @@ function PageBackdrop() {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+/** `wide` widens the page container to fit the desktop `SideNav` alongside
+ *  the normal reading-width content (used only by `QuoteNormalView`); every
+ *  other state (loading/not-found/declined/expired) keeps the original
+ *  narrower column. */
+function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div dir="rtl" className="relative min-h-screen bg-background text-foreground">
       <PageBackdrop />
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-10">
+      <div
+        className={cn(
+          "relative z-10 mx-auto flex min-h-screen w-full flex-col px-4 py-10",
+          wide ? "max-w-5xl" : "max-w-3xl",
+        )}
+      >
         <div className="flex-1">{children}</div>
         <p className="mt-10 text-center text-xs text-muted-foreground">Ori Guy Studio</p>
       </div>
@@ -222,6 +234,17 @@ function QuoteNormalView({
   const [selected, setSelected] = useState<QuoteSelected>(() => normalizeSelected(data.selected));
   const readOnly = data.status === "signed";
 
+  // Same single `quoteTotals` call PricingSection makes (same content,
+  // selected, multipliers, floor, monthlyFor args) , the desktop SideNav's
+  // mini summary must never compute its own numbers, only mirror this one.
+  const totals = useMemo(
+    () => quoteTotals(content, selected, DEFAULT_MULTIPLIERS, 0, () => 0),
+    [content, selected],
+  );
+  const selectedTier = selected.maintenance_tier
+    ? (content.maintenance?.tiers ?? []).find((t) => t.key === selected.maintenance_tier)
+    : undefined;
+
   const validityLabel = useMemo(() => {
     const base = data.sent_at ?? data.created_at;
     const days = Number(content?.validity_days) || 0;
@@ -244,50 +267,72 @@ function QuoteNormalView({
   ].filter((x): x is QuoteNavItem => !!x);
 
   return (
-    <Shell>
-      <QuoteHero
-        clientName={data.client_name}
-        title={data.title}
-        narrative={content.narrative ?? ""}
-        validityLabel={validityLabel}
-      />
-
-      <QuoteMiniNav items={navItems} />
-
-      {hasIncluded && (
-        <IncludedSection
-          type={content.type}
-          scope={content.scope ?? []}
-          finalPrice={content.final_price ?? 0}
-          showBreakdown={!!content.show_breakdown}
+    <Shell wide>
+      {/* Aside FIRST in DOM order , under `dir="rtl"` (set on Shell's outer
+         div) that lands it on the visual right, matching the reference
+         layout, with zero explicit `flex-row-reverse`. `lg:` only: below
+         that breakpoint this is a plain block stack and SideNav renders
+         nothing (`hidden ... lg:block`). */}
+      <div className="lg:flex lg:items-start lg:gap-8">
+        <SideNav
+          items={navItems}
+          net={totals.net}
+          total={totals.total}
+          tierName={selectedTier?.name}
+          tierPrice={selectedTier?.price}
+          signed={readOnly}
         />
-      )}
 
-      <PricingSection
-        content={content}
-        selected={selected}
-        onSelectedChange={setSelected}
-        readOnly={readOnly}
-      />
+        <div className="min-w-0 flex-1">
+          <QuoteHero
+            clientName={data.client_name}
+            title={data.title}
+            narrative={content.narrative ?? ""}
+            validityLabel={validityLabel}
+          />
 
-      <WhySection items={content.differentiators ?? []} />
-      <ProcessSection phases={content.phases ?? []} />
-      <BonusesSection bonuses={content.bonuses ?? []} />
-      <TestimonialSection testimonial={content.testimonial ?? null} />
-      <FaqSection faq={content.faq ?? []} />
-      <NextStepsSection steps={content.next_steps ?? []} />
-      <LegalSection legal={content.legal ?? []} />
+          {/* Mobile/tablet nav only , the desktop SideNav replaces it at
+             `lg`, never both at once. */}
+          <div className="lg:hidden">
+            <QuoteMiniNav items={navItems} />
+          </div>
 
-      {/* SignSection , Task 6 */}
-      {readOnly ? (
-        <SignedSuccessCard signedName={data.signed_name} signedAt={data.signed_at} />
-      ) : (
-        <SignSection token={token} content={content} selected={selected} />
-      )}
+          {hasIncluded && (
+            <IncludedSection
+              type={content.type}
+              scope={content.scope ?? []}
+              finalPrice={content.final_price ?? 0}
+              showBreakdown={!!content.show_breakdown}
+            />
+          )}
 
-      {/* Reserves space so the mobile sticky pricing bar (rendered by
-         PricingSection, position: fixed) never overlaps the last section. */}
-      <div aria-hidden className="h-20 sm:hidden" />
+          <PricingSection
+            content={content}
+            selected={selected}
+            onSelectedChange={setSelected}
+            readOnly={readOnly}
+          />
+
+          <WhySection items={content.differentiators ?? []} />
+          <ProcessSection phases={content.phases ?? []} />
+          <BonusesSection bonuses={content.bonuses ?? []} />
+          <TestimonialSection testimonial={content.testimonial ?? null} />
+          <FaqSection faq={content.faq ?? []} />
+          <NextStepsSection steps={content.next_steps ?? []} />
+          <LegalSection legal={content.legal ?? []} />
+
+          {/* SignSection , Task 6 */}
+          {readOnly ? (
+            <SignedSuccessCard signedName={data.signed_name} signedAt={data.signed_at} />
+          ) : (
+            <SignSection token={token} content={content} selected={selected} />
+          )}
+
+          {/* Reserves space so the mobile sticky pricing bar (rendered by
+             PricingSection, position: fixed) never overlaps the last section. */}
+          <div aria-hidden className="h-20 sm:hidden" />
+        </div>
+      </div>
     </Shell>
   );
 }
