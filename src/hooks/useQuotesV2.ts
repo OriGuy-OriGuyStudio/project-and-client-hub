@@ -172,8 +172,8 @@ export type CatalogItemInput = {
  *  after the current highest `sort` for that (kind, type) pair (10, then 20,
  *  30…) and default to `default_mult: 1`. Existing rows only ever update
  *  label/description/base_price/recommended , kind/type/sort don't change
- *  after creation in this UI. Powers both the per-type scope-item editors
- *  (QuoteDefaultsV2) and, via delegation, the upsell catalog CRUD below. */
+ *  after creation in this UI. Powers the per-type scope-item editors in
+ *  QuoteDefaultsV2; the upsell catalog CRUD keeps its own separate hooks. */
 export function useSaveCatalogItem() {
   const qc = useQueryClient();
   return useMutation({
