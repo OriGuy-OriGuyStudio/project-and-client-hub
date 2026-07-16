@@ -13,6 +13,9 @@ export type ScopeItem = {
   /** Included in the package (shown to the client) but adds ₪0 to the anchor,
    *  a value-stack , mutually exclusive with `optional`. */
   free?: boolean;
+  /** Snapshot of the catalog row's description at pick time (never re-read
+   *  live , the client page can't see the catalog, only the quote snapshot). */
+  desc?: string;
 };
 export type QuoteScope = { type: QuoteType; subtype?: WebsiteSubtype; items: ScopeItem[] };
 

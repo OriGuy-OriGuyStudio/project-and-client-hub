@@ -1,9 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { CheckCircle2, Clock, FileQuestion, MessageCircleOff, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock, FileQuestion, MessageCircleOff } from "lucide-react";
 import { CenteredLoader } from "@/components/ui/brand-spinner";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useMarkQuoteViewed, useQuotePublic, quoteExpiry } from "@/hooks/useQuotePublic";
+import { QuoteHero } from "@/pages/public/quote/QuoteHero";
+import { QuoteMiniNav, type QuoteNavItem } from "@/pages/public/quote/QuoteMiniNav";
+import { IncludedSection } from "@/pages/public/quote/IncludedSection";
+import { WhySection } from "@/pages/public/quote/WhySection";
+import { ProcessSection } from "@/pages/public/quote/ProcessSection";
+import { BonusesSection } from "@/pages/public/quote/BonusesSection";
+import { TestimonialSection } from "@/pages/public/quote/TestimonialSection";
+import { FaqSection } from "@/pages/public/quote/FaqSection";
+import { NextStepsSection } from "@/pages/public/quote/NextStepsSection";
+import { LegalSection } from "@/pages/public/quote/LegalSection";
 
 const STUDIO_WHATSAPP = import.meta.env.VITE_STUDIO_WHATSAPP as string | undefined;
 
@@ -157,24 +167,67 @@ export default function QuoteView() {
     );
   }
 
-  // Normal (draft/sent, not expired): minimal hero for now, content sections
-  // land in Task 4, pricing in Task 5, signing in Task 6.
-  const greeting = data.client_name ? `שלום, ${data.client_name}` : "שלום";
+  // Normal (draft/sent, not expired): full content sections. Interactive
+  // pricing (Task 5) and signing (Task 6) mount at the marked points below.
+  return <QuoteNormalView data={data} />;
+}
+
+/** The "normal" (draft/sent, not expired) render: hero, mini-nav, and every
+ *  content section that actually has content. Split out from the state
+ *  switch above purely so hooks (the nav-items memo) don't run conditionally. */
+function QuoteNormalView({ data }: { data: NonNullable<ReturnType<typeof useQuotePublic>["data"]> }) {
+  const content = data.content;
+
+  const validityLabel = useMemo(() => {
+    const base = data.sent_at ?? data.created_at;
+    const days = Number(content?.validity_days) || 0;
+    if (!base || days <= 0) return null;
+    const until = new Date(new Date(base).getTime() + days * 86_400_000);
+    const dateHe = until.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+    return `ההצעה בתוקף עד ${dateHe}`;
+  }, [data.sent_at, data.created_at, content?.validity_days]);
+
+  const hasIncluded = (content.scope ?? []).some((it) => !it.optional);
+  const navItems: QuoteNavItem[] = [
+    hasIncluded && { id: "included", label: "מה מקבלים" },
+    (content.differentiators ?? []).length > 0 && { id: "why", label: "למה איתי" },
+    (content.phases ?? []).length > 0 && { id: "process", label: "איך זה עובד" },
+    (content.bonuses ?? []).length > 0 && { id: "bonuses", label: "מתנות" },
+    (content.faq ?? []).length > 0 && { id: "faq", label: "שאלות" },
+    (content.legal ?? []).length > 0 && { id: "legal", label: "תנאים" },
+  ].filter((x): x is QuoteNavItem => !!x);
+
   return (
     <Shell>
-      <div className="pt-6">
-        <div className="text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Sparkles className="size-3.5" /> הצעת מחיר
-          </span>
-          <h1 className="mt-4 font-heading text-3xl font-black sm:text-4xl">{greeting}</h1>
-          <p className="mt-2 text-lg text-foreground">{data.title}</p>
-        </div>
+      <QuoteHero
+        clientName={data.client_name}
+        title={data.title}
+        narrative={content.narrative ?? ""}
+        validityLabel={validityLabel}
+      />
 
-        <div className="mt-10 rounded-3xl border border-dashed border-border bg-card/40 p-8 text-center">
-          <p className="text-sm text-muted-foreground">תוכן ההצעה נטען בשלבים הבאים (בבנייה)</p>
-        </div>
-      </div>
+      <QuoteMiniNav items={navItems} />
+
+      {hasIncluded && (
+        <IncludedSection
+          type={content.type}
+          scope={content.scope ?? []}
+          finalPrice={content.final_price ?? 0}
+          showBreakdown={!!content.show_breakdown}
+        />
+      )}
+
+      {/* PricingSection , Task 5 */}
+
+      <WhySection items={content.differentiators ?? []} />
+      <ProcessSection phases={content.phases ?? []} />
+      <BonusesSection bonuses={content.bonuses ?? []} />
+      <TestimonialSection testimonial={content.testimonial ?? null} />
+      <FaqSection faq={content.faq ?? []} />
+      <NextStepsSection steps={content.next_steps ?? []} />
+      <LegalSection legal={content.legal ?? []} />
+
+      {/* SignSection , Task 6 */}
     </Shell>
   );
 }

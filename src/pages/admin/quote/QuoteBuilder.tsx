@@ -446,6 +446,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
         kind: "subtype",
         label: row.label,
         value: Number(row.base_price ?? 0) * Number(row.default_mult ?? 1),
+        desc: row.description ?? undefined,
       };
       let scope = [...withoutSubtype, item];
 
@@ -465,6 +466,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
               kind: "page",
               label: catalogRow.label,
               value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+              desc: catalogRow.description ?? undefined,
             });
           }
         }
@@ -476,6 +478,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
               kind: "feature",
               label: catalogRow.label,
               value: Number(catalogRow.base_price ?? 0) * Number(catalogRow.default_mult ?? 1),
+              desc: catalogRow.description ?? undefined,
             });
           }
         }
@@ -497,6 +500,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
         kind,
         label: row.label,
         value: Number(row.base_price ?? 0) * Number(row.default_mult ?? 1),
+        desc: row.description ?? undefined,
       };
       return { ...prev, scope: [...prev.scope, item] };
     });
