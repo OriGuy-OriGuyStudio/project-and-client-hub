@@ -549,17 +549,28 @@ export function StepsEditor({
       onAdd={() => onChange([...items, { id: newId("step"), text: "" }])}
     >
       {items.map((it, i) => (
-        <div key={it.id} className="flex items-center gap-2 rounded-xl border border-border bg-background/30 p-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+        <div key={it.id} className="flex items-start gap-2 rounded-xl border border-border bg-background/30 p-2">
+          <span className="mt-1.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
             {i + 1}
           </span>
-          <Input
-            value={it.text}
-            onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
-            placeholder="צעד"
-            className="h-9 flex-1"
-            disabled={disabled}
-          />
+          <div className="flex-1 space-y-1.5">
+            <Input
+              value={it.text}
+              onChange={(e) => onChange(items.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
+              placeholder="כותרת הצעד"
+              className="h-9"
+              disabled={disabled}
+            />
+            <Input
+              value={it.desc ?? ""}
+              onChange={(e) =>
+                onChange(items.map((x, j) => (j === i ? { ...x, desc: e.target.value || undefined } : x)))
+              }
+              placeholder="משפט הסבר (מוצג מתחת לכותרת בעמוד הלקוח)"
+              className="h-9"
+              disabled={disabled}
+            />
+          </div>
           <DelBtn disabled={disabled} onClick={() => onChange(items.filter((_, j) => j !== i))} />
         </div>
       ))}

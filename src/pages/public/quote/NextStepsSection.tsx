@@ -3,8 +3,8 @@ import { QuoteSection } from "./Reveal";
 import { Timeline } from "./Timeline";
 
 /** "השלבים הבאים" , what happens right after signing, as the same numbered
- *  vertical timeline as ProcessSection (shared `Timeline` component), just
- *  with plain-text node content instead of name+desc+duration. */
+ *  vertical timeline as ProcessSection (shared `Timeline` component): step
+ *  title + optional desc line (bare titles read empty, per Ori). */
 export function NextStepsSection({ steps }: { steps: QuoteStep[] }) {
   if (!steps || steps.length === 0) return null;
   return (
@@ -13,7 +13,10 @@ export function NextStepsSection({ steps }: { steps: QuoteStep[] }) {
         <Timeline
           items={steps}
           renderItem={(s) => (
-            <p className="pt-1.5 text-lg font-medium text-foreground">{s.text}</p>
+            <div className="pt-1">
+              <p className="text-lg font-semibold text-foreground">{s.text}</p>
+              {s.desc && <p className="mt-1.5 text-base leading-relaxed text-muted-foreground">{s.desc}</p>}
+            </div>
           )}
         />
       </div>
