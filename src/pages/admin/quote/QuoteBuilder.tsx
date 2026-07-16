@@ -52,7 +52,13 @@ import {
   DEFAULT_QUOTE_MULTIPLIERS,
 } from "@/hooks/useQuotesV2";
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
-import { applyPlatformClause, emptyQuoteV2, optionalExtras, type QuoteContentV2 } from "@/lib/quote-v2";
+import {
+  applyPlatformClause,
+  emptyQuoteV2,
+  optionalExtras,
+  quoteTotals,
+  type QuoteContentV2,
+} from "@/lib/quote-v2";
 import type { PriceQuote, QuoteCatalogRow } from "@/types/database";
 import { ScopeSection } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
@@ -673,7 +679,10 @@ function QuoteBuilderShell({ id }: { id: string }) {
       )}
 
       {tab === "price" && mult && (
-        <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
+        <>
+          <PricePanel content={content} multipliers={mult} disabled={locked} onSetFinal={setFinalPrice} />
+          <PriceSummaryCard content={content} mult={mult} />
+        </>
       )}
 
       {tab === "proposal" && <ProposalEditors content={content} onChange={setContent} disabled={locked} />}
@@ -709,5 +718,77 @@ function QuoteBuilderShell({ id }: { id: string }) {
         </Button>
       </Card>
     </div>
+  );
+}
+
+/** Price-tab summary card , shows the final price minus discount plus VAT as
+ *  an actual total, so entering a discount or changing VAT% has a visible
+ *  effect (before this, the builder only ever rendered the 3 price options +
+ *  the manual final price, never the computed bottom line). Uses an empty
+ *  client selection (no upsells/maintenance chosen) , the base figure a
+ *  client pays before picking any optional extras, which is the right
+ *  admin-facing number here. */
+function PriceSummaryCard({
+  content,
+  mult,
+}: {
+  content: QuoteContentV2;
+  mult: { fair: number; recommended: number; premium: number; floor: number };
+}) {
+  const totals = quoteTotals(content, { upsell_ids: [], maintenance_tier: null }, mult, mult.floor, () => 0);
+  const extras = optionalExtras(content);
+  const lowestTierPrice =
+    content.maintenance?.offer && content.maintenance.tiers.length > 0
+      ? Math.min(...content.maintenance.tiers.map((t) => t.price))
+      : null;
+
+  return (
+    <Card className="space-y-3 p-5">
+      <p className="text-sm font-semibold text-foreground">סיכום מחיר</p>
+
+      {content.final_price <= 0 ? (
+        <p className="text-sm text-muted-foreground">בחר מחיר סופי כדי לראות את הסיכום</p>
+      ) : (
+        <>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">מחיר סופי</span>
+              <span className="font-medium text-foreground">{shekel(content.final_price)}</span>
+            </div>
+
+            {totals.discount > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">
+                  הנחה{content.discount?.label ? ` (${content.discount.label})` : ""}
+                </span>
+                <span className="font-medium text-warning">- {shekel(totals.discount)}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">מע״מ ({content.vat_pct}%)</span>
+              <span className="font-medium text-foreground">+ {shekel(totals.vat)}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border pt-3">
+            <span className="text-sm font-semibold text-foreground">סה״כ לתשלום</span>
+            <span className="font-heading text-2xl font-bold text-primary">{shekel(totals.total)}</span>
+          </div>
+
+          {lowestTierPrice !== null && (
+            <p className="text-xs text-muted-foreground">
+              + תחזוקה חודשית: מ-{shekel(lowestTierPrice)}/חודש
+            </p>
+          )}
+
+          {extras.subtotal > 0 && (
+            <p className="text-xs text-muted-foreground">
+              בנוסף: תוספות אופציונליות לבחירת הלקוח ({shekel(extras.subtotal)})
+            </p>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
