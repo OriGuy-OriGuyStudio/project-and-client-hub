@@ -54,6 +54,7 @@ import {
 import { anchorValue, shekel, type QuoteType, type ScopeItem, type ScopeItemKind } from "@/lib/quote-pricing";
 import {
   applyPlatformClause,
+  discountAmount,
   emptyQuoteV2,
   optionalExtras,
   quoteTotals,
@@ -783,8 +784,12 @@ function QuoteBuilderShell({ id }: { id: string }) {
           )}
           {content.final_price > 0 && (
             <div>
-              <p className="text-xs text-muted-foreground">מחיר סופי</p>
-              <p className="font-heading text-2xl font-bold text-foreground">{shekel(content.final_price)}</p>
+              <p className="text-xs text-muted-foreground">
+                מחיר סופי{discountAmount(content.final_price, content.discount) > 0 ? " (אחרי הנחה)" : ""}
+              </p>
+              <p className="font-heading text-2xl font-bold text-foreground">
+                {shekel(content.final_price - discountAmount(content.final_price, content.discount))}
+              </p>
             </div>
           )}
         </div>
