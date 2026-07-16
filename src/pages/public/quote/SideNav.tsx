@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { shekel } from "@/lib/quote-pricing";
 import { cn } from "@/lib/utils";
+import { burstDots } from "@/lib/burst-dots";
 import type { QuoteNavItem } from "./QuoteMiniNav";
 
 /** One icon per section anchor id (see QuoteSection id props across the
@@ -83,9 +84,12 @@ export function SideNav({
 
   // Nav click updates the highlight immediately (don't wait on IO, which can
   // lag a smooth-scroll's whole duration) and scrolls smoothly to the anchor,
-  // falling back to an instant jump under prefers-reduced-motion.
+  // falling back to an instant jump under prefers-reduced-motion. Also fires
+  // the Osmo-style physics click-dot burst from the click point (`burstDots`
+  // no-ops under prefers-reduced-motion, same as the smooth-scroll fallback).
   function goTo(id: string, e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
+    burstDots(e.clientX, e.clientY);
     setActive(id);
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   }

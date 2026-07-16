@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { burstDots } from "@/lib/burst-dots";
 
 export type QuoteNavItem = { id: string; label: string };
 
@@ -45,6 +46,7 @@ export function QuoteMiniNav({ items }: { items: QuoteNavItem[] }) {
             <a
               href={`#${it.id}`}
               aria-current={active === it.id ? "true" : undefined}
+              onClick={(e) => burstDots(e.clientX, e.clientY)}
               className={cn(
                 "flex min-h-10 items-center whitespace-nowrap rounded-full px-3 py-1.5 font-medium transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",

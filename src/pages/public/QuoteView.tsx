@@ -10,6 +10,7 @@ import { DEFAULT_MULTIPLIERS } from "@/lib/quote-pricing";
 import { cn } from "@/lib/utils";
 import SideRays from "@/components/reactbits/SideRays";
 import { QuoteHero } from "@/pages/public/quote/QuoteHero";
+import { BackToTop } from "@/pages/public/quote/BackToTop";
 import { QuoteMiniNav, type QuoteNavItem } from "@/pages/public/quote/QuoteMiniNav";
 import { SideNav } from "@/pages/public/quote/SideNav";
 import { IncludedSection } from "@/pages/public/quote/IncludedSection";
@@ -337,6 +338,8 @@ function QuoteNormalView({
           <div aria-hidden className="h-20 sm:hidden" />
         </div>
       </div>
+
+      <BackToTop />
     </Shell>
   );
 }

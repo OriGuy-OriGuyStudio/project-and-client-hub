@@ -3,7 +3,7 @@ import { Check, Circle, CheckCircle2 } from "lucide-react";
 import { DEFAULT_MULTIPLIERS, shekel } from "@/lib/quote-pricing";
 import { quoteTotals, type QuoteContentV2, type QuoteSelected } from "@/lib/quote-v2";
 import { cn } from "@/lib/utils";
-import { sparkBurst } from "@/lib/confetti";
+import { burstDots } from "@/lib/burst-dots";
 import BorderGlow from "@/components/reactbits/BorderGlow";
 import { QuoteSection, RevealItem, RevealStagger } from "./Reveal";
 
@@ -21,16 +21,17 @@ const SUMMARY_CARD_BG = "#161520"; // --card (dark theme)
  *  or a ref). */
 let lastCelebrationAt = 0;
 
-/** Fires a small, contained confetti burst from the toggled row's own
- *  position (not a full-screen blast) when the client SELECTS an extra or
- *  maintenance tier, never on deselect. `sparkBurst` already no-ops under
+/** Fires a small, contained physics click-dot burst (Osmo-style, see
+ *  `lib/burst-dots.ts`) from the toggled row's own position (not a
+ *  full-screen blast) when the client SELECTS an extra or maintenance tier,
+ *  never on deselect. `burstDots` already no-ops under
  *  `prefers-reduced-motion`. */
 function celebrateSelection(e: React.MouseEvent<HTMLButtonElement>) {
   const now = Date.now();
   if (now - lastCelebrationAt < 800) return;
   lastCelebrationAt = now;
   const rect = e.currentTarget.getBoundingClientRect();
-  sparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  burstDots(rect.left + rect.width / 2, rect.top + rect.height / 2);
 }
 
 /** Shared row for both the optional-extras list and the maintenance-tier
