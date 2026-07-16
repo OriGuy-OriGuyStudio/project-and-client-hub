@@ -62,6 +62,10 @@ export type QuoteContentV2 = {
   payment: QuotePayment;
   validity_days: number;
   version?: string;
+  /** Internal discovery-call summary that feeds the AI assists (price/copy/
+   *  scope-fill/upsells). Admin-only , `get_quote_public` strips this key
+   *  (`content - 'notes'`), so it is never sent to the client. */
+  notes?: string;
 };
 
 /** A short, reasonably-unique id for editor-local list items (upsells, phases, ...). */
