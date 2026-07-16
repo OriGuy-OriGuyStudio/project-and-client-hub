@@ -33,77 +33,22 @@ function celebrateSelection(e: React.MouseEvent<HTMLButtonElement>) {
   sparkBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
 }
 
-/** A single toggleable extra row (optional scope item or upsell). Same shape
- *  for both so the picker reads as one list, not two. Clean module row: text
- *  on the start side, price + a circular check indicator on the end side.
- *  Selected state is an emphasized border (never a filled background , the
- *  "noisy background" the redesign moved away from). */
-function ExtraCard({
-  label,
-  desc,
-  price,
-  selected,
-  recommended,
-  readOnly,
-  onToggle,
-}: {
-  label: string;
-  desc?: string;
-  price: number;
-  selected: boolean;
-  recommended?: boolean;
-  readOnly: boolean;
-  onToggle: (e: React.MouseEvent<HTMLButtonElement>) => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      disabled={readOnly}
-      onClick={onToggle}
-      className={cn(
-        "flex w-full items-center justify-between gap-4 rounded-2xl border bg-card p-4 text-start transition-colors sm:p-5",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        selected ? "border-primary ring-1 ring-primary/50" : "border-border",
-        !readOnly && !selected && "hover:border-primary/40",
-        readOnly ? "cursor-default" : "cursor-pointer",
-      )}
-    >
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-base font-medium text-foreground">{label}</p>
-          {recommended && (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
-              מומלץ
-            </span>
-          )}
-        </div>
-        {desc && <p className="mt-0.5 text-base leading-relaxed text-muted-foreground">{desc}</p>}
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <span className="text-sm font-semibold text-foreground">{shekel(price)}</span>
-        <span
-          aria-hidden="true"
-          className={cn(
-            "grid size-6 shrink-0 place-items-center rounded-full border transition-colors",
-            selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-transparent",
-          )}
-        >
-          <Check className="size-3.5" />
-        </span>
-      </div>
-    </button>
-  );
-}
-
-/** A single maintenance tier row, radio-style (single select, deselectable).
- *  Selected tier inverts to a high-contrast light card (bg-primary, dark
- *  text) so it reads as clearly "chosen" against the otherwise-dark rows;
- *  unselected tiers stay the normal dark card. */
-function TierCard({
+/** Shared row for both the optional-extras list and the maintenance-tier
+ *  list, unified into one visual language (item 3 of design round 4):
+ *  selected state INVERTS to a high-contrast light card (bg-primary, dark
+ *  text) , previously only tiers did this, extras used a subtle ring.
+ *  Unselected rows stay the normal dark card. A radio-style indicator
+ *  (Circle/CheckCircle2) sits on the inline-start side (right in RTL,
+ *  first in DOM order) next to the label; price sits on the inline-end
+ *  side , so extras and tiers read as one system, not two patterns for
+ *  "toggle this on". `priceSuffix` (e.g. "/חודש") distinguishes a
+ *  recurring tier price from a one-off extra's "+₪X"; extras omit it and
+ *  get the "+" prefix instead. */
+function SelectableCard({
   name,
   description,
   price,
+  priceSuffix,
   selected,
   recommended,
   readOnly,
@@ -112,6 +57,7 @@ function TierCard({
   name: string;
   description?: string;
   price: number;
+  priceSuffix?: string;
   selected: boolean;
   recommended?: boolean;
   readOnly: boolean;
@@ -124,14 +70,19 @@ function TierCard({
       disabled={readOnly}
       onClick={onToggle}
       className={cn(
-        "flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-start transition-colors sm:p-5",
+        "flex w-full items-center gap-3 rounded-2xl border p-4 text-start transition-colors sm:p-5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground",
         !readOnly && !selected && "hover:border-primary/40",
         readOnly ? "cursor-default" : "cursor-pointer",
       )}
     >
-      <div className="min-w-0">
+      {selected ? (
+        <CheckCircle2 aria-hidden="true" className="size-5 shrink-0" />
+      ) : (
+        <Circle aria-hidden="true" className="size-5 shrink-0 text-muted-foreground/70" />
+      )}
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-base font-semibold">{name}</p>
           {recommended && (
@@ -151,19 +102,14 @@ function TierCard({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <span className="text-sm font-semibold">
-          {shekel(price)}
+      <span className="shrink-0 text-sm font-semibold">
+        {priceSuffix ? shekel(price) : `+${shekel(price)}`}
+        {priceSuffix && (
           <span className={cn("text-xs font-normal", selected ? "text-primary-foreground/70" : "text-muted-foreground")}>
-            /חודש
+            {priceSuffix}
           </span>
-        </span>
-        {selected ? (
-          <CheckCircle2 aria-hidden="true" className="size-5" />
-        ) : (
-          <Circle aria-hidden="true" className="size-5 text-muted-foreground/70" />
         )}
-      </div>
+      </span>
     </button>
   );
 }
@@ -291,9 +237,9 @@ export function PricingSection({
               <RevealStagger className="mt-3 space-y-2.5">
                 {optionalScopeItems.map((it) => (
                   <RevealItem key={it.id}>
-                    <ExtraCard
-                      label={it.label}
-                      desc={it.desc}
+                    <SelectableCard
+                      name={it.label}
+                      description={it.desc}
                       price={Number(it.value) || 0}
                       selected={(selected.optional_ids ?? []).includes(it.id)}
                       readOnly={readOnly}
@@ -303,9 +249,9 @@ export function PricingSection({
                 ))}
                 {upsells.map((u) => (
                   <RevealItem key={u.id}>
-                    <ExtraCard
-                      label={u.title}
-                      desc={u.desc}
+                    <SelectableCard
+                      name={u.title}
+                      description={u.desc}
                       price={Number(u.price) || 0}
                       selected={(selected.upsell_ids ?? []).includes(u.id)}
                       recommended={u.recommended}
@@ -327,10 +273,11 @@ export function PricingSection({
               <RevealStagger className="mt-3 space-y-2.5">
                 {tiers.map((t) => (
                   <RevealItem key={t.key}>
-                    <TierCard
+                    <SelectableCard
                       name={t.name}
                       description={t.description}
                       price={t.price}
+                      priceSuffix="/חודש"
                       selected={selected.maintenance_tier === t.key}
                       recommended={t.recommended}
                       readOnly={readOnly}

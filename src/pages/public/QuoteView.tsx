@@ -77,7 +77,7 @@ function PageBackdrop() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[70vh]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[80vh]"
       style={{
         maskImage: "linear-gradient(to bottom, black, transparent)",
         WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
@@ -87,13 +87,13 @@ function PageBackdrop() {
         speed={1.2}
         rayColor1="#b4d670"
         rayColor2="#96c8ff"
-        intensity={1.1}
+        intensity={1.6}
         spread={1.6}
         origin="top-right"
         saturation={1.1}
         blend={0.6}
         falloff={1.8}
-        opacity={0.25}
+        opacity={0.5}
       />
     </div>
   );
