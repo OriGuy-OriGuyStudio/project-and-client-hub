@@ -19,6 +19,7 @@ import {
   Plus,
   Send,
   Settings2,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -26,6 +27,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -66,6 +68,7 @@ import { ScopeSection, type ScopeItemMode } from "./ScopeSection";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 import { AutomationGuide } from "./AutomationGuide";
+import { quoteAiScopeFill, type QuoteAiCatalogEntry } from "@/lib/quote-ai";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -388,6 +391,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const [clientBusiness, setClientBusiness] = useState("");
   const [tab, setTab] = useState<BuilderTab>("setup");
   const [switchingType, setSwitchingType] = useState(false);
+  const [scopeFillPending, setScopeFillPending] = useState(false);
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -579,6 +583,67 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const subtypeRows = catalogFor(catalogRows, "subtype", "website");
   const sections = KIND_SECTIONS[content.type];
 
+  /** "מלא היקף עם AI" (setup tab): sends the discovery notes + this type's
+   *  catalog (subtype rows for website + every scope-section kind) to
+   *  quoteAiScopeFill, then applies the result through the SAME handlers the
+   *  admin uses manually (selectSubtype/toggleScopeItem) , additive only,
+   *  never overrides an item already in scope. Ids the AI returns are already
+   *  filtered against the catalog passed in (quote-ai.ts), so any lookup miss
+   *  here just means "not in this quote's own catalog snapshot" and is
+   *  silently skipped. */
+  async function handleAiScopeFill() {
+    if (!content) return;
+    const notes = (content.notes ?? "").trim();
+    if (!notes || locked) return;
+    setScopeFillPending(true);
+    try {
+      const entries: { row: QuoteCatalogRow; kind: ScopeItemKind }[] = [];
+      if (content.type === "website") {
+        for (const row of subtypeRows) entries.push({ row, kind: "subtype" });
+      }
+      for (const s of sections) {
+        for (const row of catalogFor(catalogRows, s.kind, content.type)) {
+          entries.push({ row, kind: s.kind });
+        }
+      }
+      const catalog: QuoteAiCatalogEntry[] = entries.map(({ row, kind }) => ({
+        id: row.id,
+        kind,
+        label: row.label,
+        desc: row.description ?? undefined,
+      }));
+
+      const result = await quoteAiScopeFill({ type: content.type, catalog, notes });
+
+      let addedCount = 0;
+      if (result.subtype_id && content.type === "website") {
+        const already = content.scope.some((it) => it.id === result.subtype_id && it.kind === "subtype");
+        const row = subtypeRows.find((r) => r.id === result.subtype_id);
+        if (!already && row) {
+          selectSubtype(row);
+          addedCount++;
+        }
+      }
+      for (const id of result.item_ids) {
+        if (content.scope.some((it) => it.id === id)) continue;
+        const found = entries.find((e) => e.row.id === id);
+        if (!found) continue;
+        toggleScopeItem(found.row, found.kind);
+        addedCount++;
+      }
+
+      toast({
+        title: addedCount > 0 ? `ה-AI סימן ${addedCount} פריטים` : "ה-AI לא מצא פריטים חדשים להוסיף",
+        description: result.reasoning?.trim() || undefined,
+        variant: "success",
+      });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "מילוי ההיקף עם AI נכשל.");
+    } finally {
+      setScopeFillPending(false);
+    }
+  }
+
   return (
     <div className="space-y-5 pb-24">
       {quote && (
@@ -756,6 +821,35 @@ function QuoteBuilderShell({ id }: { id: string }) {
             </Card>
           )}
 
+          <Card className="space-y-3 p-5">
+            <div>
+              <p className="text-sm font-semibold text-foreground">סיכום אפיון (פנימי, לא מוצג ללקוח)</p>
+              <p className="text-xs text-muted-foreground">
+                מזין ל-AI: עוזר לו למלא היקף, לנסח את ההצעה ולהציע תוספות מתאימות.
+              </p>
+            </div>
+            <Textarea
+              value={content.notes ?? ""}
+              disabled={locked}
+              onChange={(e) => setContent((prev) => (prev ? { ...prev, notes: e.target.value } : prev))}
+              placeholder="מה עלה בשיחה עם הלקוח? המטרות, הצרכים, מה חשוב לו..."
+              rows={4}
+            />
+            <button
+              type="button"
+              disabled={locked || scopeFillPending || !(content.notes ?? "").trim()}
+              onClick={() => void handleAiScopeFill()}
+              className={cn(
+                "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary/15 px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/25",
+                (locked || scopeFillPending || !(content.notes ?? "").trim()) &&
+                  "cursor-not-allowed opacity-60 hover:bg-primary/15"
+              )}
+            >
+              {scopeFillPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {scopeFillPending ? "חושב על זה…" : "מלא היקף עם AI"}
+            </button>
+          </Card>
+
           {sections.map((s) => (
             <ScopeSection
               key={s.kind}
@@ -786,10 +880,24 @@ function QuoteBuilderShell({ id }: { id: string }) {
         </>
       )}
 
-      {tab === "proposal" && <ProposalEditors content={content} onChange={setContent} disabled={locked} />}
+      {tab === "proposal" && (
+        <ProposalEditors
+          content={content}
+          onChange={setContent}
+          disabled={locked}
+          clientName={clientName}
+          clientBusiness={clientBusiness}
+        />
+      )}
 
       {tab === "addons" && (
-        <AddonsEditors content={content} onChange={setContent} disabled={locked} upsellCatalog={upsellCatalog ?? []} />
+        <AddonsEditors
+          content={content}
+          onChange={setContent}
+          disabled={locked}
+          upsellCatalog={upsellCatalog ?? []}
+          clientBusiness={clientBusiness}
+        />
       )}
 
       {tab === "terms" && <TermsEditors content={content} onChange={setContent} disabled={locked} />}

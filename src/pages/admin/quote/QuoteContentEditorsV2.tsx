@@ -8,9 +8,9 @@
 // (see git show b1a5a79~1:...) to the v2 content shape.
 // See .superpowers/sdd/task-6-brief.md and lib/quote-v2.ts.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Star, Trash2 } from "lucide-react";
+import { Loader2, Plus, Sparkles, Star, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ import {
   type QuoteUpsell,
 } from "@/lib/quote-v2";
 import { useMaintenanceTiers } from "@/hooks/useQuotesV2";
+import { quoteAiCopy, quoteAiUpsells } from "@/lib/quote-ai";
+import { toast, toastError } from "@/hooks/use-toast";
 import type { QuoteCatalogRow, QuoteMaintenanceTierRow } from "@/types/database";
 
 /* ---------- shared row-editor primitives (reused by QuoteDefaultsV2) ---------- */
@@ -846,17 +848,60 @@ export function ProposalEditors({
   content,
   onChange,
   disabled,
+  clientName,
+  clientBusiness,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
   disabled: boolean;
+  /** Client identity , top-level DB columns in QuoteBuilderShell (not part of
+   *  `content`) , passed through only to give the AI narrative assist a hint
+   *  about who the quote is for. Optional; the prompt still works without them. */
+  clientName?: string;
+  clientBusiness?: string;
 }) {
+  const [aiPending, setAiPending] = useState(false);
+
+  async function handleAiCopy() {
+    setAiPending(true);
+    try {
+      const scope_labels = content.scope.filter((it) => !it.optional && !it.free).map((it) => it.label);
+      const result = await quoteAiCopy({
+        type: content.type,
+        subtype: content.subtype,
+        client_name: clientName,
+        client_business: clientBusiness,
+        scope_labels,
+        notes: content.notes,
+      });
+      onChange({ ...content, narrative: result.narrative });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "ה-AI לא הצליח לנסח את הטקסט, נסה שוב.");
+    } finally {
+      setAiPending(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <Card className="space-y-2 p-5">
-        <Label htmlFor="quote-narrative" className="text-sm font-semibold text-foreground">
-          תיאור / ניסוח פתיחה
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="quote-narrative" className="text-sm font-semibold text-foreground">
+            תיאור / ניסוח פתיחה
+          </Label>
+          <button
+            type="button"
+            disabled={disabled || aiPending}
+            onClick={() => void handleAiCopy()}
+            className={cn(
+              "inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary/15 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/25",
+              (disabled || aiPending) && "cursor-not-allowed opacity-60 hover:bg-primary/15"
+            )}
+          >
+            {aiPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+            {aiPending ? "מנסח…" : "נסח עם AI"}
+          </button>
+        </div>
         <Textarea
           id="quote-narrative"
           value={content.narrative}
@@ -890,15 +935,85 @@ export function AddonsEditors({
   onChange,
   disabled,
   upsellCatalog,
+  clientBusiness,
 }: {
   content: QuoteContentV2;
   onChange: (next: QuoteContentV2) => void;
   disabled: boolean;
   upsellCatalog: QuoteCatalogRow[];
+  /** Client business name, top-level DB column in QuoteBuilderShell (not part
+   *  of `content`) , passed through only to give the AI upsell assist a hint
+   *  about who the quote is for. Optional; the prompt still works without it. */
+  clientBusiness?: string;
 }) {
   const { data: maintenanceTiers } = useMaintenanceTiers(content.type);
+  const [aiPending, setAiPending] = useState(false);
+  const notes = (content.notes ?? "").trim();
+
+  // The picks quote_ai returns are already filtered against the `upsells`
+  // catalog passed to it (quote-ai.ts); we still dedupe against what's
+  // already in content.upsells before turning a pick into a snapshot, same
+  // additive-only rule as the scope-fill assist , never re-adds or removes
+  // an upsell the admin already toggled.
+  async function handleAiUpsells() {
+    setAiPending(true);
+    try {
+      const scoped = upsellCatalog.filter((row) => row.type === null || row.type === content.type);
+      const scope_labels = content.scope.filter((it) => !it.optional && !it.free).map((it) => it.label);
+      const result = await quoteAiUpsells({
+        upsells: scoped.map((row) => ({ id: row.id, label: row.label, desc: row.description ?? undefined })),
+        scope_labels,
+        client_business: clientBusiness,
+        notes: content.notes,
+      });
+
+      const existingIds = new Set(content.upsells.map((u) => u.id));
+      const toAdd = result.picks.filter((p) => !existingIds.has(p.id));
+      if (toAdd.length > 0) {
+        const byId = new Map(scoped.map((row) => [row.id, row]));
+        const newSnapshots: QuoteUpsell[] = toAdd
+          .map((p) => byId.get(p.id))
+          .filter((row): row is QuoteCatalogRow => !!row)
+          .map((row) => ({
+            id: row.id,
+            title: row.label,
+            desc: row.description ?? undefined,
+            price: Number(row.base_price ?? 0),
+            recommended: row.recommended,
+          }));
+        onChange({ ...content, upsells: [...content.upsells, ...newSnapshots] });
+      }
+
+      const reasons = toAdd.map((p) => p.reason).filter(Boolean).join(" · ");
+      toast({
+        title: toAdd.length > 0 ? `ה-AI הציע ${toAdd.length} תוספות` : "ה-AI לא מצא תוספות חדשות להציע",
+        description: reasons || undefined,
+        variant: "success",
+      });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "ה-AI לא הצליח להציע תוספות, נסה שוב.");
+    } finally {
+      setAiPending(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          disabled={disabled || aiPending || !notes}
+          onClick={() => void handleAiUpsells()}
+          className={cn(
+            "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary/15 px-3.5 text-xs font-medium text-primary transition-colors hover:bg-primary/25",
+            (disabled || aiPending || !notes) && "cursor-not-allowed opacity-60 hover:bg-primary/15"
+          )}
+        >
+          {aiPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+          {aiPending ? "מחפש תוספות…" : "הצע תוספות עם AI"}
+        </button>
+      </div>
+
       <UpsellsPicker
         catalog={upsellCatalog}
         type={content.type}
