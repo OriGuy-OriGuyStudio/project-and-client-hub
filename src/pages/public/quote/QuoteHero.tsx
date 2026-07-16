@@ -22,9 +22,11 @@ export function QuoteHero({
       </span>
 
       {clientName && (
-        <h1 className="mt-4 font-heading text-3xl font-black sm:text-4xl">שלום {clientName},</h1>
+        <h1 className="mt-4 break-words font-heading text-3xl font-black sm:text-4xl">שלום {clientName},</h1>
       )}
-      <p className={`font-heading text-xl font-bold text-foreground sm:text-2xl ${clientName ? "mt-2" : "mt-4"}`}>
+      <p
+        className={`break-words font-heading text-xl font-bold text-foreground sm:text-2xl ${clientName ? "mt-2" : "mt-4"}`}
+      >
         {title}
       </p>
 

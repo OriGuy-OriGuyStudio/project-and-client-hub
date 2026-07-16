@@ -1,9 +1,9 @@
-// Quote system v2 , admin builder SHELL (Task 4 of the v2 rebuild).
-// Scope: type/subtype selection, itemized scope (separated by kind) and a
-// live price anchor. Price options (fair/recommended/premium), the content
-// editors (narrative, bonuses, upsells...) and the quotes list/send flow are
-// later tasks , this page intentionally stops at "anchor".
-// See .superpowers/sdd/task-4-brief.md and lib/quote-v2.ts / lib/quote-pricing.ts.
+// Quote system v2 , admin builder. Covers type/subtype selection, itemized
+// scope (separated by kind), the live price anchor, price options
+// (fair/recommended/premium), the content editors (narrative, bonuses,
+// upsells...) and the quotes list/send flow. The client-facing page lives at
+// src/pages/public/QuoteView.tsx (see docs/superpowers/plans/2026-07-16-quote-v2-plan3-client-page.md).
+// See lib/quote-v2.ts / lib/quote-pricing.ts for the pricing engine.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -12,6 +12,7 @@ import {
   Calculator,
   ChevronDown,
   Copy,
+  ExternalLink,
   List,
   Loader2,
   Lock,
@@ -98,10 +99,15 @@ const STATUS_BADGE: Record<PriceQuote["status"], { label: string; variant: Badge
   declined: { label: "נדחתה", variant: "destructive" },
 };
 
-/** Client-facing quote URL. The client page itself is a later plan; until
- *  then this link 404s, which we tell whoever copies it. */
+/** Client-facing quote URL (the public page at src/pages/public/QuoteView.tsx). */
 function quoteShareUrl(token: string): string {
   return `${window.location.origin}/quote/${token}`;
+}
+
+/** Opens the client-facing quote page in a new tab, e.g. so Ori can preview
+ *  exactly what he's about to send. */
+function openClientView(token: string) {
+  window.open(quoteShareUrl(token), "_blank", "noopener");
 }
 
 async function copyQuoteLink(token: string) {
@@ -110,7 +116,7 @@ async function copyQuoteLink(token: string) {
     await navigator.clipboard.writeText(url);
     toast({
       title: "הקישור הועתק",
-      description: "עמוד הלקוח עוד לא בנוי, אז הקישור יחזיר 404 בינתיים.",
+      description: "אפשר לשלוח אותו ללקוח.",
       variant: "success",
     });
   } catch {
@@ -317,6 +323,10 @@ function QuotesList({ onOpen }: { onOpen: (id: string) => void }) {
                 <Button size="sm" variant="ghost" onClick={() => void copyQuoteLink(q.share_token)}>
                   <Copy className="size-3.5" />
                   העתק קישור
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => openClientView(q.share_token)}>
+                  <ExternalLink className="size-3.5" />
+                  פתח תצוגת לקוח
                 </Button>
                 {q.status === "draft" && (
                   <Button
@@ -578,6 +588,10 @@ function QuoteBuilderShell({ id }: { id: string }) {
             <Button size="sm" variant="ghost" onClick={() => void copyQuoteLink(quote.share_token)}>
               <Copy className="size-3.5" />
               העתק קישור ללקוח
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => openClientView(quote.share_token)}>
+              <ExternalLink className="size-3.5" />
+              פתח תצוגת לקוח
             </Button>
             {quote.status === "draft" && (
               <Button size="sm" variant="ghost" disabled={markSent.isPending} onClick={handleMarkSent}>
