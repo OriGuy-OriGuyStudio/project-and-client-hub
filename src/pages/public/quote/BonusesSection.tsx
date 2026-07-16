@@ -13,9 +13,14 @@ export function BonusesSection({ bonuses }: { bonuses: QuoteBonus[] }) {
   if (!bonuses || bonuses.length === 0) return null;
   return (
     <QuoteSection id="bonuses" title="מתנות שכבר בפנים" intro="כמה דברים שאני מוסיף בלי חיוב נוסף.">
-      <RevealStagger className="grid gap-4 sm:grid-cols-2">
+      {/* flex-wrap + justify-center instead of a 2-col grid, so an odd last
+         card sits centered under the row instead of hanging alone on one
+         side (Ori: "מצב כזה של מתנות צריך להיות ממורכז"). Each card takes
+         half the row minus half the 1rem gap, i.e. the same width the grid
+         gave it. */}
+      <RevealStagger className="flex flex-wrap justify-center gap-4">
         {bonuses.map((b) => (
-          <RevealItem key={b.id}>
+          <RevealItem key={b.id} className="w-full sm:w-[calc(50%-0.5rem)]">
             <div className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:p-6">
               <div className="flex items-center gap-3">
                 <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
