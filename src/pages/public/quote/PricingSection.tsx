@@ -3,7 +3,15 @@ import { Check, Circle, CheckCircle2 } from "lucide-react";
 import { DEFAULT_MULTIPLIERS, shekel } from "@/lib/quote-pricing";
 import { quoteTotals, type QuoteContentV2, type QuoteSelected } from "@/lib/quote-v2";
 import { cn } from "@/lib/utils";
+import BorderGlow from "@/components/reactbits/BorderGlow";
 import { QuoteSection, RevealItem, RevealStagger } from "./Reveal";
+
+/** Pointer-driven glow on the summary card. Brand green (`--primary`, dark
+ *  theme) in the three shapes BorderGlow's own API expects: "H S L" numbers
+ *  for the glow itself, and hex shades for the gradient sweep. */
+const SUMMARY_GLOW_COLOR = "80 53 64"; // #B4D670 as H S L
+const SUMMARY_GLOW_SHADES = ["#B4D670", "#8fb84f", "#d3ec9f"];
+const SUMMARY_CARD_BG = "#161520"; // --card (dark theme)
 
 /** A single toggleable extra card (optional scope item or upsell). Same shape
  *  for both so the picker reads as one list, not two. */
@@ -269,42 +277,53 @@ export function PricingSection({
             </div>
           )}
 
-          <div id="pricing-summary" className="scroll-mt-24 rounded-3xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
-            <h3 className="text-lg font-semibold text-foreground">סיכום</h3>
+          <div id="pricing-summary" className="scroll-mt-24">
+            <BorderGlow
+              backgroundColor={SUMMARY_CARD_BG}
+              borderRadius={16}
+              glowColor={SUMMARY_GLOW_COLOR}
+              glowIntensity={0.8}
+              edgeSensitivity={30}
+              colors={SUMMARY_GLOW_SHADES}
+            >
+              <div className="p-5 sm:p-6">
+                <h3 className="text-lg font-semibold text-foreground">סיכום</h3>
 
-            {/* Math rows , project price, extras, discount only. The
-               ex-VAT/incl-VAT split moves to the hero strip below so the
-               single number the client anchors on is the ex-VAT price
-               (the market-standard convention), never the incl-VAT total. */}
-            <div className="mt-4 space-y-2 rounded-2xl bg-background/50 p-4">
-              <SummaryRow label="מחיר הפרויקט" value={shekel(content.final_price)} />
-              {extrasTotal > 0 && <SummaryRow label="+ תוספות שבחרת" value={`+${shekel(extrasTotal)}`} />}
-              {totals.discount > 0 && (
-                <SummaryRow
-                  label={`- הנחה${content.discount?.label ? ` (${content.discount.label})` : ""}`}
-                  value={`-${shekel(totals.discount)}`}
-                />
-              )}
-            </div>
+                {/* Math rows , project price, extras, discount only. The
+                   ex-VAT/incl-VAT split moves to the hero strip below so the
+                   single number the client anchors on is the ex-VAT price
+                   (the market-standard convention), never the incl-VAT total. */}
+                <div className="mt-4 space-y-2 rounded-2xl bg-background/50 p-4">
+                  <SummaryRow label="מחיר הפרויקט" value={shekel(content.final_price)} />
+                  {extrasTotal > 0 && <SummaryRow label="+ תוספות שבחרת" value={`+${shekel(extrasTotal)}`} />}
+                  {totals.discount > 0 && (
+                    <SummaryRow
+                      label={`- הנחה${content.discount?.label ? ` (${content.discount.label})` : ""}`}
+                      value={`-${shekel(totals.discount)}`}
+                    />
+                  )}
+                </div>
 
-            <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
-              <p className="text-xs font-medium text-muted-foreground">סה"כ (לפני מע"מ)</p>
-              <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.net)}</p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                מע"מ ({content.vat_pct}%): {shekel(totals.vat)} · סה"כ לתשלום כולל מע"מ: {shekel(totals.total)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)} · יתרה: {shekel(totals.split.rest)} (כולל מע"מ)
-              </p>
-            </div>
+                <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
+                  <p className="text-xs font-medium text-muted-foreground">סה"כ (לפני מע"מ)</p>
+                  <p className="mt-1 font-heading text-3xl font-black text-primary sm:text-4xl">{shekel(totals.net)}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    מע"מ ({content.vat_pct}%): {shekel(totals.vat)} · סה"כ לתשלום כולל מע"מ: {shekel(totals.total)}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    מקדמה {totals.split.depositPct}%: {shekel(totals.split.deposit)} · יתרה: {shekel(totals.split.rest)} (כולל מע"מ)
+                  </p>
+                </div>
 
-            {selectedTier && (
-              <div className="mt-4 flex justify-center">
-                <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary">
-                  + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
-                </span>
+                {selectedTier && (
+                  <div className="mt-4 flex justify-center">
+                    <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1.5 text-sm font-semibold text-primary">
+                      + {selectedTier.name}: {shekel(selectedTier.price)}/חודש
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+            </BorderGlow>
           </div>
         </div>
       </QuoteSection>

@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useReducedMotion } from "framer-motion";
 import { Input } from "@/components/ui/input";
+import SpecularButton from "@/components/reactbits/SpecularButton";
 import { toastError } from "@/hooks/use-toast";
 import { useSignQuote } from "@/hooks/useQuotePublic";
 import { celebrate } from "@/lib/confetti";
@@ -32,6 +33,7 @@ export function SignSection({
 }) {
   const qc = useQueryClient();
   const signQuote = useSignQuote();
+  const reduceMotion = useReducedMotion();
 
   const [name, setName] = useState("");
   const [approved, setApproved] = useState(false);
@@ -238,9 +240,25 @@ export function SignSection({
           <span className="text-base text-muted-foreground">קראתי את ההצעה והתנאים ואני מאשר/ת אותם.</span>
         </button>
 
-        <Button type="button" size="lg" className="w-full" onClick={handleSubmit} disabled={!canSubmit}>
+        <SpecularButton
+          type="button"
+          size="md"
+          className="w-full"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          tint="#b4d670" // --primary (dark theme)
+          tintOpacity={1}
+          textColor="#0a0623" // --primary-foreground (dark theme)
+          lineColor="#ffffff"
+          // ~60% primary blended toward black. ogl's Color only parses hex/
+          // named colors (no CSS color-mix()), so this is precomputed.
+          baseColor="#6c8043"
+          intensity={1}
+          autoAnimate={!reduceMotion}
+          radius={14}
+        >
           {signQuote.isPending ? "רגע…" : justSigned ? "נחתם ✓" : "אישור וחתימה על ההצעה"}
-        </Button>
+        </SpecularButton>
       </div>
     </QuoteSection>
   );
