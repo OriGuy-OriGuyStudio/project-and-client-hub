@@ -24,7 +24,7 @@ function IncludedRow({ item, price }: { item: ScopeItem; price: number | null })
           <Check className="size-3" />
         </span>
         <div className="min-w-0">
-          <p className="text-base font-medium text-foreground">{item.label}</p>
+          <p className="text-lg font-semibold text-foreground">{item.label}</p>
           {item.desc && <p className="mt-0.5 text-base text-muted-foreground">{item.desc}</p>}
         </div>
       </div>
@@ -68,7 +68,7 @@ export function IncludedSection({
   }
 
   return (
-    <QuoteSection id="included" title="מה אתם מקבלים" intro="ככה נראה ההיקף שסיכמנו.">
+    <QuoteSection id="included" title="החבילה המלאה שלכם" intro="ככה נראה ההיקף שסיכמנו.">
       <div className="space-y-4">
         {subtypeItem && (
           <div className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3.5">
@@ -90,7 +90,7 @@ export function IncludedSection({
 
         {groups.map((g) => (
           <div key={g.kind} className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <h3 className="mb-3 text-lg font-semibold text-foreground">{g.title}</h3>
+            <h3 className="mb-3 text-lg font-semibold sm:text-xl text-foreground">{g.title}</h3>
             <ul className="space-y-2">
               {g.items.map((it) => (
                 <IncludedRow key={it.id} item={it} price={priceById.get(it.id) ?? null} />

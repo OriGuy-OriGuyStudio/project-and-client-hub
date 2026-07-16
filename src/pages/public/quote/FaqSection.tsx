@@ -22,7 +22,7 @@ function FaqItem({ faq, reduceMotion }: { faq: QuoteFaq; reduceMotion: boolean }
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg text-start text-base font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 rounded-lg text-start text-lg font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {faq.q}
         <ChevronDown
@@ -59,7 +59,7 @@ export function FaqSection({ faq }: { faq: QuoteFaq[] }) {
   const reduceMotion = useReducedMotion();
   if (!faq || faq.length === 0) return null;
   return (
-    <QuoteSection id="faq" title="שאלות ותשובות">
+    <QuoteSection id="faq" title="שאלות ששואלים אותי הרבה">
       <div className="space-y-2">
         {faq.map((f) => (
           <FaqItem key={f.id} faq={f} reduceMotion={!!reduceMotion} />

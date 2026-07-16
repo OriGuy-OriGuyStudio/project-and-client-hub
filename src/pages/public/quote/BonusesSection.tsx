@@ -12,7 +12,7 @@ import { QuoteSection, RevealItem, RevealStagger } from "./Reveal";
 export function BonusesSection({ bonuses }: { bonuses: QuoteBonus[] }) {
   if (!bonuses || bonuses.length === 0) return null;
   return (
-    <QuoteSection id="bonuses" title="מתנות" intro="כמה דברים שאני מוסיף בלי חיוב נוסף.">
+    <QuoteSection id="bonuses" title="מתנות שכבר בפנים" intro="כמה דברים שאני מוסיף בלי חיוב נוסף.">
       <RevealStagger className="grid gap-4 sm:grid-cols-2">
         {bonuses.map((b) => (
           <RevealItem key={b.id}>

@@ -126,7 +126,7 @@ export function QuoteSection({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-24 py-16 sm:py-24">
+    <section id={id} className="scroll-mt-24 py-12 sm:py-16">
       <Reveal>
         <div className="mb-8 text-center sm:mb-10">
           <h2 className="font-heading text-3xl font-black sm:text-4xl">{title}</h2>

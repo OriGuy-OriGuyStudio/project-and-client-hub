@@ -8,12 +8,12 @@ import { Timeline } from "./Timeline";
 export function NextStepsSection({ steps }: { steps: QuoteStep[] }) {
   if (!steps || steps.length === 0) return null;
   return (
-    <QuoteSection id="next-steps" title="השלבים הבאים">
+    <QuoteSection id="next-steps" title="מה קורה אחרי שחותמים?" intro="ככה זה ממשיך אחרי החתימה, צעד אחרי צעד.">
       <div className="mx-auto max-w-xl">
         <Timeline
           items={steps}
           renderItem={(s) => (
-            <p className="pt-1.5 text-base font-medium text-foreground">{s.text}</p>
+            <p className="pt-1.5 text-lg font-medium text-foreground">{s.text}</p>
           )}
         />
       </div>

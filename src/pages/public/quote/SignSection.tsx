@@ -170,7 +170,7 @@ export function SignSection({
         </div>
 
         <div>
-          <label htmlFor="sign-name" className="mb-1.5 block text-base font-medium text-foreground">
+          <label htmlFor="sign-name" className="mb-1.5 block text-lg font-semibold text-foreground">
             שם מלא
           </label>
           <Input
@@ -185,7 +185,7 @@ export function SignSection({
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label htmlFor="sign-canvas" className="text-base font-medium text-foreground">
+            <label htmlFor="sign-canvas" className="text-lg font-semibold text-foreground">
               חתימה
             </label>
             <button
@@ -238,11 +238,13 @@ export function SignSection({
           <span
             aria-hidden="true"
             className={cn(
-              "mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border transition-colors",
-              approved ? "border-primary bg-primary text-[color:var(--ink,#0a0623)]" : "border-border text-transparent",
+              "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 transition-colors",
+              approved
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-muted-foreground/70 bg-field text-transparent",
             )}
           >
-            <Check className="size-3" />
+            <Check className="size-4" />
           </span>
           {/* The terms/privacy links are siblings of the checkbox row, not
              descendants of a <button> (nesting an <a> inside a <button> is

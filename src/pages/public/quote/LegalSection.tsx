@@ -16,12 +16,12 @@ export function LegalSection({ legal }: { legal: string[] }) {
   const shown = expanded ? legal : legal.slice(0, COLLAPSED_COUNT);
 
   return (
-    <QuoteSection id="legal" title="התנאים">
+    <QuoteSection id="legal" title="התנאים, בגובה העיניים">
       <div className="mx-auto max-w-xl rounded-2xl border border-border bg-card p-5">
         <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
           <ScrollText aria-hidden="true" className="size-4 text-primary" /> תנאי ההתקשרות
         </h3>
-        <ol className="list-decimal space-y-2 ps-5 text-base leading-relaxed text-muted-foreground">
+        <ol className="list-decimal space-y-2 ps-5 text-base leading-relaxed text-foreground/90 marker:text-primary marker:font-semibold">
           {shown.map((clause, i) => (
             <li key={i}>{clause}</li>
           ))}

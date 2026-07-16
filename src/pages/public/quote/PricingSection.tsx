@@ -85,7 +85,7 @@ function SelectableCard({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-base font-semibold">{name}</p>
+          <p className="text-lg font-semibold">{name}</p>
           {recommended && (
             <span
               className={cn(
@@ -229,11 +229,11 @@ export function PricingSection({
 
   return (
     <>
-      <QuoteSection id="pricing" title="המחיר" intro="ככה זה נראה במספרים, בלי הפתעות.">
+      <QuoteSection id="pricing" title="המספרים, בלי הפתעות" intro="שקוף עד השקל האחרון.">
         <div className="space-y-8">
           {hasExtras && (
             <div>
-              <h3 className="text-lg font-semibold text-foreground">תוספות לבחירה</h3>
+              <h3 className="text-lg font-semibold sm:text-xl text-foreground">תוספות לבחירה</h3>
               <p className="mt-1 text-base text-muted-foreground">כל תוספת כאן היא בחירה שלך, אין חובה לסמן כלום.</p>
               <RevealStagger className="mt-3 space-y-2.5">
                 {optionalScopeItems.map((it) => (
@@ -267,7 +267,7 @@ export function PricingSection({
 
           {hasMaintenance && (
             <div>
-              <h3 className="text-lg font-semibold text-foreground">ליווי אחרי ההשקה</h3>
+              <h3 className="text-lg font-semibold sm:text-xl text-foreground">ליווי אחרי ההשקה</h3>
               <p className="mt-1 text-base text-muted-foreground">
                 אם תרצו שאני אמשיך לתחזק, לעדכן ולגבות אחרי שהפרויקט עולה לאוויר.
               </p>

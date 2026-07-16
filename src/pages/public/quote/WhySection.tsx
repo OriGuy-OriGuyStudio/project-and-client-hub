@@ -18,7 +18,7 @@ export function WhySection({ items }: { items: QuoteDiff[] }) {
               <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Sparkle className="size-4" />
               </span>
-              <p className="mt-2.5 text-base font-semibold text-foreground">{d.title}</p>
+              <p className="mt-2.5 text-lg font-semibold text-foreground">{d.title}</p>
               {d.desc && <p className="mt-1 text-base leading-relaxed text-muted-foreground">{d.desc}</p>}
             </div>
           </RevealItem>
