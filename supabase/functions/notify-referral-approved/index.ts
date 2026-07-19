@@ -1,6 +1,6 @@
 // notify-referral-approved — tells a client that their referral program is
-// open: what they get (5% of the deal as studio credit), how to refer, and a
-// link straight to the program page. Fired by a DB trigger when a row lands in
+// open: what they get (5% of the deal, paid in cash, plus loyalty coins), how
+// to refer, and a link straight to the program page. Fired by a DB trigger when a row lands in
 // `partner_enrollments`, and also on demand from the admin UI via the
 // `resend_referral_welcome` RPC (the "שלח שוב" button).
 // verify_jwt is OFF; authenticated by the shared `lead_notify` secret in
@@ -14,7 +14,14 @@ const PORTAL = "https://orion.origuystudio.com";
 // The client's referral program lives at /partner ("תוכנית שותפים" in the
 // client nav), not /referrals , that path is the admin rewards store.
 const PROGRAM_PATH = "/partner";
-const CREDIT_PCT = 5;
+// The commission is paid out in CASH (Bit or bank transfer), not as store
+// credit. The coins are a separate, smaller loyalty layer on top, and the
+// numbers below are the ones the DB actually grants: +1 on submission
+// (grant_referral_credit) and +5 more when the deal closes (the admin close
+// flow in Referrals.tsx). Keep them in sync if those change.
+const COMMISSION_PCT = 5;
+const COINS_ON_SUBMIT = 1;
+const COINS_ON_CLOSE = 5;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,7 +152,8 @@ Deno.serve(async (req) => {
   const steps = [
     g("ממלא פרטים של מישהו שאתה חושב שיתאים לי", "ממלאת פרטים של מישהו שאת חושבת שיתאים לי"),
     "אני יוצר קשר, ומעדכן אותך בכל שלב במייל",
-    g("העסקה נסגרה? הקרדיט נכנס לך אוטומטית", "העסקה נסגרה? הקרדיט נכנס לך אוטומטית"),
+    g(`נסגרה עסקה? אתה מקבל ${COMMISSION_PCT}% ממנה, ואנחנו מסכמים איך נוח לך לקבל`,
+      `נסגרה עסקה? את מקבלת ${COMMISSION_PCT}% ממנה, ואנחנו מסכמים איך נוח לך לקבל`),
   ];
 
   const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
@@ -161,11 +169,17 @@ Deno.serve(async (req) => {
           g("פתחתי לך את תוכנית ההפניות שלי בפורטל. אם אתה מכיר מישהו שצריך אתר, מערכת או אוטומציה, אתה יכול להפנות אותו אליי ישירות משם.",
             "פתחתי לך את תוכנית ההפניות שלי בפורטל. אם את מכירה מישהו שצריך אתר, מערכת או אוטומציה, את יכולה להפנות אותו אליי ישירות משם.")
         )}</p>
-        <div style="background:#0f0e14;border:1px solid #2a2a33;border-radius:12px;padding:16px;margin:0 0 16px;text-align:center">
-          <p style="margin:0;color:#B4D670;font-size:22px;font-weight:800">${CREDIT_PCT}% מהעסקה</p>
+        <div style="background:#0f0e14;border:1px solid #2a2a33;border-radius:12px;padding:16px;margin:0 0 12px;text-align:center">
+          <p style="margin:0;color:#B4D670;font-size:22px;font-weight:800">${COMMISSION_PCT}% מסך העסקה, במזומן</p>
           <p style="margin:6px 0 0;color:#cfcfd4;font-size:14px">${escapeHtml(
-            g("נכנסים אליך כקרדיט אצלי על כל הפניה שנסגרת. אפשר לממש אותו בכל עבודה עתידית.",
-              "נכנסים אליך כקרדיט אצלי על כל הפניה שנסגרת. אפשר לממש אותו בכל עבודה עתידית.")
+            "על כל הפניה שנסגרת. העברה בביט או העברה בנקאית, מה שנוח לך."
+          )}</p>
+        </div>
+        <div style="background:#0f0e14;border:1px solid #2a2a33;border-radius:12px;padding:14px 16px;margin:0 0 16px">
+          <p style="margin:0 0 6px;font-weight:700;color:#fff">ובנוסף, מטבעות לחנות הפרסים</p>
+          <p style="margin:0;color:#cfcfd4;font-size:14px">${escapeHtml(
+            g(`${COINS_ON_SUBMIT} מטבע על כל הפניה שאתה מגיש, ועוד ${COINS_ON_CLOSE} מטבעות כשהעסקה נסגרת.`,
+              `${COINS_ON_SUBMIT} מטבע על כל הפניה שאת מגישה, ועוד ${COINS_ON_CLOSE} מטבעות כשהעסקה נסגרת.`)
           )}</p>
         </div>
         <p style="margin:0 0 8px;font-weight:700">איך זה עובד</p>
@@ -192,7 +206,7 @@ Deno.serve(async (req) => {
         html,
         ok: false,
         error: `gmail ${res.status}: ${detail}`.slice(0, 500),
-        context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
+        context: { client_id: clientId, commission_pct: COMMISSION_PCT, coins_submit: COINS_ON_SUBMIT, coins_close: COINS_ON_CLOSE, resent: b?.resent === true },
       });
       return json({ ok: false, error: `gmail ${res.status}` }, 502);
     }
@@ -202,7 +216,7 @@ Deno.serve(async (req) => {
       subject,
       html,
       ok: true,
-      context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
+      context: { client_id: clientId, commission_pct: COMMISSION_PCT, coins_submit: COINS_ON_SUBMIT, coins_close: COINS_ON_CLOSE, resent: b?.resent === true },
     });
     return json({ ok: true });
   } catch (e) {
@@ -214,7 +228,7 @@ Deno.serve(async (req) => {
       html,
       ok: false,
       error: String(e).slice(0, 500),
-      context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
+      context: { client_id: clientId, commission_pct: COMMISSION_PCT, coins_submit: COINS_ON_SUBMIT, coins_close: COINS_ON_CLOSE, resent: b?.resent === true },
     });
     return json({ ok: false, error: String(e) }, 500);
   }
