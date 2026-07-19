@@ -922,27 +922,42 @@
   }
 }
 
-/* Printing a document page (the project-spec export): drop the app chrome so
-   the PDF contains the document alone, on white, at full width. Anything the
-   page itself must not print carries Tailwind's `print:hidden`. */
+/* Printing a document page (the project-spec export). That page is routed
+   OUTSIDE AppShell, so there is no sidebar or header to hide; these rules
+   just make the paper output behave: white background, real colors, and no
+   block split across a page boundary. Anything on-screen-only carries
+   Tailwind's `print:hidden`. */
 @media print {
-  aside,
-  header nav,
-  [data-app-chrome] {
-    display: none !important;
-  }
   html,
   body,
   #root {
     background: #fff !important;
     color: #14131a !important;
   }
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
-    max-width: none !important;
+  /* Keep the brand green and the light document surface in the PDF instead of
+     letting the browser drop backgrounds to save ink. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+  p,
+  li,
+  dd,
+  dt {
+    orphans: 3;
+    widows: 3;
+  }
+  .break-inside-avoid {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
   @page {
-    margin: 14mm;
+    margin: 16mm 14mm;
   }
 }

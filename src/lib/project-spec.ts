@@ -83,19 +83,25 @@ export function personaLines(p: PersonaContent, audience: SpecAudience): string[
   return out.filter((l, i, arr) => !(l === "" && arr[i - 1] === ""));
 }
 
+/** One journey stage on its own , the print view renders each stage as an
+ *  unbreakable block so a stage never splits across two PDF pages. */
+export function journeyStageLines(s: JourneyContent["stages"][number], index: number): string[] {
+  const out: string[] = [`${index + 1}. ${s.name}`];
+  out.push(
+    ...([line("מטרה", s.goal), line("תחושה", s.emotion), line("באתר", s.on_site)].filter(
+      Boolean,
+    ) as string[]),
+  );
+  out.push(...block("נקודות מגע", s.touchpoints));
+  out.push(...block("כאבים", s.pains));
+  out.push(...block("מה אנחנו עושים", s.actions));
+  return out;
+}
+
 export function journeyLines(j: JourneyContent, audience: SpecAudience): string[] {
   const out: string[] = [];
   (j.stages ?? []).forEach((s, i) => {
-    out.push(`${i + 1}. ${s.name}`);
-    const rows = [
-      line("מטרה", s.goal),
-      line("תחושה", s.emotion),
-      line("באתר", s.on_site),
-    ].filter(Boolean) as string[];
-    out.push(...rows);
-    out.push(...block("נקודות מגע", s.touchpoints));
-    out.push(...block("כאבים", s.pains));
-    out.push(...block("מה אנחנו עושים", s.actions));
+    out.push(...journeyStageLines(s, i));
     out.push("");
   });
   if (audience === "full") {
@@ -103,6 +109,12 @@ export function journeyLines(j: JourneyContent, audience: SpecAudience): string[
     if (notes) out.push(notes);
   }
   return out;
+}
+
+/** One top-level sitemap page (with its sub-pages), for the same unbreakable
+ *  print blocks as the journey stages. */
+export function sitemapTopPageLines(page: SitemapPage, audience: SpecAudience): string[] {
+  return sitemapPageLines(page, 0, audience);
 }
 
 function sitemapPageLines(page: SitemapPage, depth: number, audience: SpecAudience): string[] {

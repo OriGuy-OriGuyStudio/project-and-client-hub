@@ -141,7 +141,6 @@ function App() {
                   <Route path="/admin/tools/brief" element={<BriefTool />} />
                   <Route path="/admin/tools/seo" element={<SeoTool />} />
                   <Route path="/admin/tools/emails" element={<EmailLog />} />
-                  <Route path="/admin/projects/:id/spec" element={<ProjectSpecExport />} />
                   <Route path="/admin/tools/quote" element={<QuoteBuilder />} />
                   <Route path="/admin/tools/quote/defaults" element={<QuoteDefaultsV2 />} />
                   <Route path="/admin/clients" element={<Clients />} />
@@ -163,6 +162,21 @@ function App() {
                   <Route path="/admin/maintenance/:projectId/view" element={<ServiceMirror />} />
                   <Route path="/admin/plans" element={<PlansEditor />} />
                 </Route>
+              </Route>
+
+              {/* The project-spec document lives OUTSIDE AppShell on purpose:
+                 it is printed / saved as PDF, and inside the shell the sidebar
+                 and the clipped main column bled into the printout and cut
+                 content. Still admin-gated, just without app chrome. */}
+              <Route element={<RequireAdmin />}>
+                <Route
+                  path="/admin/projects/:id/spec"
+                  element={
+                    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                      <ProjectSpecExport />
+                    </Suspense>
+                  }
+                />
               </Route>
             </Route>
 

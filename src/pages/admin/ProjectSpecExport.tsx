@@ -25,8 +25,8 @@ import {
   specToMarkdown,
   specIsEmpty,
   personaLines,
-  journeyLines,
-  sitemapLines,
+  journeyStageLines,
+  sitemapTopPageLines,
   type SpecAudience,
   type SpecInput,
 } from "@/lib/project-spec";
@@ -75,9 +75,11 @@ export default function ProjectSpecExport() {
   }
 
   return (
-    <div className="space-y-5">
+    // Standalone page (routed outside AppShell): the document is the whole
+    // screen, so nothing from the app frame can bleed into the printout.
+    <div className="min-h-screen bg-background p-4 sm:p-6 print:bg-white print:p-0">
       {/* Toolbar , never printed. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="mx-auto mb-5 flex max-w-3xl flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="icon" className="size-8">
             <Link to={`/projects/${id}`} aria-label="חזרה לפרויקט">
@@ -172,13 +174,37 @@ export default function ProjectSpecExport() {
 
           {input.journey && (input.journey.stages ?? []).length > 0 && (
             <Section title="מסע לקוח">
-              <Lines lines={journeyLines(input.journey, audience)} />
+              {/* Each stage is its own unbreakable block, so the PDF never
+                 splits a stage across two pages. */}
+              <div className="space-y-4">
+                {(input.journey.stages ?? []).map((s, i) => (
+                  <div key={i} className="break-inside-avoid">
+                    <Lines lines={journeyStageLines(s, i)} />
+                  </div>
+                ))}
+                {audience === "full" && (input.journey.design_notes ?? "").trim() && (
+                  <p className="break-inside-avoid text-sm text-[#4b4a55]">
+                    המלצות עיצוב (פנימי): {input.journey.design_notes.trim()}
+                  </p>
+                )}
+              </div>
             </Section>
           )}
 
           {input.sitemap && (input.sitemap.pages ?? []).length > 0 && (
             <Section title="מפת אתר">
-              <Lines lines={sitemapLines(input.sitemap, audience)} />
+              <div className="space-y-4">
+                {(input.sitemap.pages ?? []).map((p, i) => (
+                  <div key={i} className="break-inside-avoid">
+                    <Lines lines={sitemapTopPageLines(p, audience)} />
+                  </div>
+                ))}
+                {audience === "full" && (input.sitemap.design_notes ?? "").trim() && (
+                  <p className="break-inside-avoid text-sm text-[#4b4a55]">
+                    המלצות עיצוב (פנימי): {input.sitemap.design_notes.trim()}
+                  </p>
+                )}
+              </div>
             </Section>
           )}
 
