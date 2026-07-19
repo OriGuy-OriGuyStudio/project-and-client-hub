@@ -10,7 +10,8 @@
 
 import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, Copy, Printer } from "lucide-react";
+import { ArrowRight, Copy, Download, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast, toastError } from "@/hooks/use-toast";
@@ -45,6 +46,37 @@ export default function ProjectSpecExport() {
   const { data: sitemapRow } = usePublishedSitemap(id);
   const { data: disc } = useProjectDiscoveryItems(id);
   const [copied, setCopied] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  /** Server-side PDF: headless Chromium renders the document with our own page
+   *  box, margins and footer. The browser's print dialog clipped the RTL text
+   *  at the page edge and stamped its own header/URL onto every page, which is
+   *  why this does not just call window.print(). */
+  async function downloadPdf() {
+    setPdfBusy(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("no session");
+      const res = await fetch(`/api/spec-pdf?project=${encodeURIComponent(id)}&mode=${audience}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`pdf ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `אפיון-${project?.title || "פרויקט"}${audience === "full" ? "-פנימי" : ""}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toastError("יצירת ה-PDF נכשלה. נסה שוב.");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   const input: SpecInput = useMemo(
     () => ({
@@ -107,9 +139,9 @@ export default function ProjectSpecExport() {
             <Copy className="size-4" />
             {copied ? "הועתק ✓" : "העתק ל-AI"}
           </Button>
-          <Button size="sm" onClick={() => window.print()} disabled={empty}>
-            <Printer className="size-4" />
-            הדפסה / שמירה כ-PDF
+          <Button size="sm" onClick={() => void downloadPdf()} disabled={empty || pdfBusy}>
+            {pdfBusy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {pdfBusy ? "מכין PDF…" : "הורדת PDF"}
           </Button>
         </div>
       </div>
