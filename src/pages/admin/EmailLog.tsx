@@ -16,7 +16,15 @@ import { SelectMenu } from "@/components/ui/select-menu";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toastError } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useEmailLog, useDeleteEmailLogRow, type EmailLogRow } from "@/hooks/useEmailLog";
+import {
+  useEmailLog,
+  useEmailRecipients,
+  useDeleteEmailLogRow,
+  type EmailLogRow,
+  type RecipientInfo,
+} from "@/hooks/useEmailLog";
+
+const ROLE_HE: Record<string, string> = { client: "לקוח", partner: "שותף", admin: "אדמין" };
 
 /** Hebrew label per mailer (the `kind` column is the function's directory
  *  name). An unknown kind falls back to the raw value so a new mailer still
@@ -53,9 +61,32 @@ function formatWhen(iso: string) {
 
 export default function EmailLog() {
   const { data: rows, isLoading, refetch, isFetching } = useEmailLog();
+  const { data: recipients } = useEmailRecipients();
   const [kind, setKind] = useState("");
   const [status, setStatus] = useState("");
+  const [person, setPerson] = useState("");
   const [q, setQ] = useState("");
+
+  /** Recipient options, built from the addresses that actually appear in the
+   *  log so the list only ever offers people who were really mailed. Known
+   *  addresses show the person's name and role; unknown ones (the studio's own
+   *  inbox, a lead's address) show the raw address. */
+  const personOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows ?? []) {
+      const email = (r.to_email ?? "").trim().toLowerCase();
+      if (!email || seen.has(email)) continue;
+      const p: RecipientInfo | undefined = recipients?.[email];
+      const roleHe = p?.role ? ROLE_HE[p.role] ?? p.role : "";
+      seen.set(email, p ? (roleHe ? `${p.name} (${roleHe})` : p.name) : email);
+    }
+    return [
+      { value: "", label: "כל הנמענים" },
+      ...Array.from(seen.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "he")),
+    ];
+  }, [rows, recipients]);
 
   const kindOptions = useMemo(() => {
     const kinds = Array.from(new Set((rows ?? []).map((r) => r.kind))).sort();
@@ -66,12 +97,13 @@ export default function EmailLog() {
     const needle = q.trim().toLowerCase();
     return (rows ?? []).filter((r) => {
       if (kind && r.kind !== kind) return false;
+      if (person && (r.to_email ?? "").trim().toLowerCase() !== person) return false;
       if (status === "ok" && !r.ok) return false;
       if (status === "failed" && r.ok) return false;
       if (needle && !`${r.to_email} ${r.subject}`.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [rows, kind, status, q]);
+  }, [rows, kind, person, status, q]);
 
   const failedCount = (rows ?? []).filter((r) => !r.ok).length;
 
@@ -90,7 +122,8 @@ export default function EmailLog() {
       </div>
 
       <Card className="space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <SelectMenu variant="field" ariaLabel="נמען" value={person} onChange={setPerson} options={personOptions} />
           <SelectMenu variant="field" ariaLabel="סוג מייל" value={kind} onChange={setKind} options={kindOptions} />
           <SelectMenu
             variant="field"
@@ -130,7 +163,7 @@ export default function EmailLog() {
       ) : (
         <div className="space-y-2">
           {filtered.map((row) => (
-            <EmailRow key={row.id} row={row} />
+            <EmailRow key={row.id} row={row} recipient={recipients?.[(row.to_email ?? "").trim().toLowerCase()]} />
           ))}
         </div>
       )}
@@ -138,7 +171,7 @@ export default function EmailLog() {
   );
 }
 
-function EmailRow({ row }: { row: EmailLogRow }) {
+function EmailRow({ row, recipient }: { row: EmailLogRow; recipient?: RecipientInfo }) {
   const [open, setOpen] = useState(false);
   const del = useDeleteEmailLogRow();
 
@@ -154,7 +187,7 @@ function EmailRow({ row }: { row: EmailLogRow }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{row.subject}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {kindLabel(row.kind)} · אל {row.to_email}
+            {kindLabel(row.kind)} · אל {recipient ? `${recipient.name} (${row.to_email})` : row.to_email}
           </p>
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">{formatWhen(row.created_at)}</span>

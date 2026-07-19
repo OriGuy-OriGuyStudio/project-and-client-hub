@@ -32,6 +32,28 @@ export function useEmailLog(limit = 300) {
   });
 }
 
+/** email → who that is, so the log can be filtered by person instead of by a
+ *  raw address. Covers clients, partners and the admin alike (one profiles
+ *  fetch, matched case-insensitively since mail addresses are). */
+export type RecipientInfo = { id: string; name: string; role: string };
+
+export function useEmailRecipients() {
+  return useQuery({
+    queryKey: ["email-recipients"],
+    queryFn: async (): Promise<Record<string, RecipientInfo>> => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, email, role");
+      if (error) throw error;
+      const map: Record<string, RecipientInfo> = {};
+      for (const p of data ?? []) {
+        const email = (p.email ?? "").trim().toLowerCase();
+        if (!email) continue;
+        map[email] = { id: p.id, name: (p.full_name ?? "").trim() || email, role: p.role ?? "" };
+      }
+      return map;
+    },
+  });
+}
+
 export function useDeleteEmailLogRow() {
   const qc = useQueryClient();
   return useMutation({
