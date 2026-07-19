@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UsersRound, Route as RouteIcon, Network, PenLine, ClipboardList, Search, Calculator, Sparkles } from "lucide-react";
+import { UsersRound, Route as RouteIcon, Network, PenLine, ClipboardList, Search, Calculator, Mail, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,13 @@ const TOOLS = [
     icon: Search,
     title: "בסיס SEO ו-AEO",
     desc: "לכל עמוד: מטא, מילות מפתח, פסקת AEO, שאלות נפוצות ו-JSON-LD. כלי פנימי לבנייה, לא מוצג ללקוח.",
+    ready: true,
+  },
+  {
+    to: "/admin/tools/emails",
+    icon: Mail,
+    title: "יומן מיילים",
+    desc: "כל מייל שהמערכת שלחה: למי, מתי, אם השליחה הצליחה, והתוכן המדויק כפי שנשלח.",
     ready: true,
   },
   {

@@ -58,6 +58,27 @@ async function sendGmail(accessToken: string, to: string, subject: string, html:
   });
 }
 
+/** Records the send attempt in email_log. Never throws: logging must not
+ *  break or fail an email that was actually delivered. */
+async function logEmail(
+  client: any,
+  row: { kind: string; to_email: string; subject: string; html: string; ok: boolean; error?: string; context?: Record<string, unknown> },
+) {
+  try {
+    await client.from("email_log").insert({
+      kind: row.kind,
+      to_email: row.to_email,
+      subject: row.subject,
+      html: row.html,
+      ok: row.ok,
+      error: row.error ?? null,
+      context: row.context ?? {},
+    });
+  } catch (e) {
+    console.error("email_log insert failed", String(e));
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -128,17 +149,45 @@ Deno.serve(async (req: Request) => {
     <div style="text-align:center;color:#6a6a72;font-size:12px;margin-top:14px">Orion · Ori Guy Studio</div>
   </div></body></html>`;
 
+  const logContext = { project_id: projectId };
+
   try {
     const accessTok = await getAccessToken(clientIdEnv, clientSecret, refreshToken);
     const res = await sendGmail(accessTok, to, subject, html);
     if (!res.ok) {
       const detail = await res.text();
       console.error("gmail send failed", res.status, detail);
+      await logEmail(admin, {
+        kind: "notify-service-welcome",
+        to_email: to,
+        subject,
+        html,
+        ok: false,
+        error: `gmail ${res.status}: ${detail}`,
+        context: logContext,
+      });
       return json({ ok: false, error: `gmail ${res.status}`, detail }, 502);
     }
+    await logEmail(admin, {
+      kind: "notify-service-welcome",
+      to_email: to,
+      subject,
+      html,
+      ok: true,
+      context: logContext,
+    });
     return json({ ok: true });
   } catch (e) {
     console.error("notify-service-welcome error", String(e), NL);
+    await logEmail(admin, {
+      kind: "notify-service-welcome",
+      to_email: to,
+      subject,
+      html,
+      ok: false,
+      error: String(e),
+      context: logContext,
+    });
     return json({ ok: false, error: String(e) }, 500);
   }
 });

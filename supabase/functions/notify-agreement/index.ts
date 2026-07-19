@@ -72,6 +72,27 @@ async function sendGmail(accessToken: string, subject: string, html: string): Pr
   });
 }
 
+/** Records the send attempt in email_log. Never throws: logging must not
+ *  break or fail an email that was actually delivered. */
+async function logEmail(
+  client: any,
+  row: { kind: string; to_email: string; subject: string; html: string; ok: boolean; error?: string; context?: Record<string, unknown> },
+) {
+  try {
+    await client.from("email_log").insert({
+      kind: row.kind,
+      to_email: row.to_email,
+      subject: row.subject,
+      html: row.html,
+      ok: row.ok,
+      error: row.error ?? null,
+      context: row.context ?? {},
+    });
+  } catch (e) {
+    console.error("email_log insert failed", String(e));
+  }
+}
+
 // deno-lint-ignore no-explicit-any
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -155,17 +176,45 @@ Deno.serve(async (req: Request) => {
     </div>
   </div></body></html>`;
 
+  const logContext = { client_id: clientId, project_title: projectTitle, tier_name: tierName };
+
   try {
     const accessTok = await getAccessToken(clientIdEnv, clientSecret, refreshToken);
     const res = await sendGmail(accessTok, subject, html);
     if (!res.ok) {
       const detail = await res.text();
       console.error("gmail send failed", res.status, detail);
+      await logEmail(admin, {
+        kind: "notify-agreement",
+        to_email: TO_EMAIL,
+        subject,
+        html,
+        ok: false,
+        error: `gmail ${res.status}: ${detail}`,
+        context: logContext,
+      });
       return json({ ok: false, error: `gmail ${res.status}`, detail }, 502);
     }
+    await logEmail(admin, {
+      kind: "notify-agreement",
+      to_email: TO_EMAIL,
+      subject,
+      html,
+      ok: true,
+      context: logContext,
+    });
     return json({ ok: true });
   } catch (e) {
     console.error("notify-agreement error", String(e), NL);
+    await logEmail(admin, {
+      kind: "notify-agreement",
+      to_email: TO_EMAIL,
+      subject,
+      html,
+      ok: false,
+      error: String(e),
+      context: logContext,
+    });
     return json({ ok: false, error: String(e) }, 500);
   }
 });

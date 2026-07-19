@@ -67,12 +67,34 @@ async function sendGmail(accessToken: string, subject: string, html: string): Pr
   });
 }
 
+/** Records the send attempt in email_log. Never throws: logging must not
+ *  break or fail an email that was actually delivered. */
+async function logEmail(
+  client: any,
+  row: { kind: string; to_email: string; subject: string; html: string; ok: boolean; error?: string; context?: Record<string, unknown> },
+) {
+  try {
+    await client.from("email_log").insert({
+      kind: row.kind,
+      to_email: row.to_email,
+      subject: row.subject,
+      html: row.html,
+      ok: row.ok,
+      error: row.error ?? null,
+      context: row.context ?? {},
+    });
+  } catch (e) {
+    console.error("email_log insert failed", String(e));
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader) return json({ error: "unauthorized" }, 401);
   // Any signed-in user may notify the studio (fixed recipient).
@@ -97,6 +119,9 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Gmail credentials not configured" }, 503);
   }
 
+  const admin = createClient(supabaseUrl, serviceKey);
+  const subject = `🔔 ${title}`;
+
   const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:540px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
@@ -116,15 +141,41 @@ Deno.serve(async (req) => {
 
   try {
     const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
-    const res = await sendGmail(accessToken, `🔔 ${title}`, html);
+    const res = await sendGmail(accessToken, subject, html);
     if (!res.ok) {
       const detail = await res.text();
       console.error("gmail send failed", res.status, detail);
+      await logEmail(admin, {
+        kind: "notify-admin-task",
+        to_email: TO_EMAIL,
+        subject,
+        html,
+        ok: false,
+        error: `gmail ${res.status}: ${detail}`,
+        context: { title, body },
+      });
       return json({ ok: false, error: `gmail ${res.status}`, detail }, 502);
     }
+    await logEmail(admin, {
+      kind: "notify-admin-task",
+      to_email: TO_EMAIL,
+      subject,
+      html,
+      ok: true,
+      context: { title, body },
+    });
     return json({ ok: true });
   } catch (e) {
     console.error("notify-admin-task error", String(e));
+    await logEmail(admin, {
+      kind: "notify-admin-task",
+      to_email: TO_EMAIL,
+      subject,
+      html,
+      ok: false,
+      error: String(e),
+      context: { title, body },
+    });
     return json({ ok: false, error: String(e) }, 500);
   }
 });

@@ -57,6 +57,7 @@ const SitemapTool = lazy(() => import("@/pages/admin/SitemapTool"));
 const CopyTool = lazy(() => import("@/pages/admin/CopyTool"));
 const BriefTool = lazy(() => import("@/pages/admin/BriefTool"));
 const SeoTool = lazy(() => import("@/pages/admin/SeoTool"));
+const EmailLog = lazy(() => import("@/pages/admin/EmailLog"));
 const QuoteBuilder = lazy(() => import("@/pages/admin/quote/QuoteBuilder"));
 const QuoteDefaultsV2 = lazy(() => import("@/pages/admin/quote/QuoteDefaultsV2"));
 const ProjectDetail = lazy(() => import("@/pages/shared/ProjectDetail"));
@@ -138,6 +139,7 @@ function App() {
                   <Route path="/admin/tools/copy" element={<CopyTool />} />
                   <Route path="/admin/tools/brief" element={<BriefTool />} />
                   <Route path="/admin/tools/seo" element={<SeoTool />} />
+                  <Route path="/admin/tools/emails" element={<EmailLog />} />
                   <Route path="/admin/tools/quote" element={<QuoteBuilder />} />
                   <Route path="/admin/tools/quote/defaults" element={<QuoteDefaultsV2 />} />
                   <Route path="/admin/clients" element={<Clients />} />

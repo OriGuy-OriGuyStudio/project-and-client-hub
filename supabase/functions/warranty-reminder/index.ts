@@ -183,6 +183,27 @@ async function sendGmail(
   );
 }
 
+/** Records the send attempt in email_log. Never throws: logging must not
+ *  break or fail an email that was actually delivered. */
+async function logEmail(
+  client: any,
+  row: { kind: string; to_email: string; subject: string; html: string; ok: boolean; error?: string; context?: Record<string, unknown> },
+) {
+  try {
+    await client.from("email_log").insert({
+      kind: row.kind,
+      to_email: row.to_email,
+      subject: row.subject,
+      html: row.html,
+      ok: row.ok,
+      error: row.error ?? null,
+      context: row.context ?? {},
+    });
+  } catch (e) {
+    console.error("email_log insert failed", String(e));
+  }
+}
+
 Deno.serve(async (req) => {
   // --- Auth: shared secret from pg_cron --------------------------------------
   const cronSecret = Deno.env.get("CRON_SECRET");
@@ -284,19 +305,25 @@ Deno.serve(async (req) => {
     const projectName = brandName.get(p.client_id) || p.title;
     const firstName = (p.profiles?.full_name || "").trim().split(/\s+/)[0] || "";
     const personalBody = personalize(bodyText, firstName, genderMap.get(p.client_id) ?? null);
+    const html = buildHtml(personalBody, projectName, endHe, contact);
+    const logContext = { project_id: p.id, client_id: p.client_id };
 
     try {
-      const res = await sendGmail(
-        accessToken,
-        to,
-        subject,
-        buildHtml(personalBody, projectName, endHe, contact)
-      );
+      const res = await sendGmail(accessToken, to, subject, html);
       if (!res.ok) {
         const t = await res.text();
         console.error("gmail send failed", p.id, res.status, t);
         errors.push(`${res.status}: ${t}`);
         failed++;
+        await logEmail(supabase, {
+          kind: "warranty-reminder",
+          to_email: to,
+          subject,
+          html,
+          ok: false,
+          error: `gmail ${res.status}: ${t}`,
+          context: logContext,
+        });
         continue;
       }
 
@@ -317,11 +344,29 @@ Deno.serve(async (req) => {
         project_id: p.id,
       });
 
+      await logEmail(supabase, {
+        kind: "warranty-reminder",
+        to_email: to,
+        subject,
+        html,
+        ok: true,
+        context: logContext,
+      });
+
       sent++;
     } catch (e) {
       console.error("send error", p.id, String(e));
       errors.push(String(e));
       failed++;
+      await logEmail(supabase, {
+        kind: "warranty-reminder",
+        to_email: to,
+        subject,
+        html,
+        ok: false,
+        error: String(e),
+        context: logContext,
+      });
     }
   }
 
