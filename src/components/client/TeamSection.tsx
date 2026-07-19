@@ -70,6 +70,7 @@ function TeamMemberCard({ row }: { row: OrgMemberRow }) {
     serviceCalls: row.can_service_calls,
     approve: row.can_approve,
     files: row.can_files,
+    serviceView: row.can_service_view,
   };
   return (
     <Card className={cn("p-4", row.is_pending && "border-warning/40 bg-warning/[0.06]")}>

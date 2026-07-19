@@ -91,6 +91,7 @@ export const adminNav: NavItem[] = [
 
 export const partnerNav: NavItem[] = [
   { to: "/partner-portal", label: "לוח בקרה", icon: LayoutDashboard, end: true },
+  { to: "/partner-portal/businesses", label: "העסקים שלי", icon: Building2, tourId: "partner-businesses" },
   { to: "/partner-portal/new-lead", label: "הגשת ליד", icon: UserPlus },
   { to: "/partner-portal/resources", label: "חומרי מכירה", icon: FileText },
 ];

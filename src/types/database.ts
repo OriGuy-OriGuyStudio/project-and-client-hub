@@ -1225,13 +1225,42 @@ export type OrgMemberRow = {
   user_id: string | null;
   full_name: string;
   email: string;
+  /** 'client' | 'partner' (pending rows are always 'client' - a partner invite has a live profile already). */
+  role: string;
   is_manager: boolean;
   can_finance: boolean;
   can_service_calls: boolean;
   can_approve: boolean;
   can_files: boolean;
+  can_service_view: boolean;
   is_pending: boolean;
   created_at: string;
+};
+
+/** Row of admin_attach_candidates: everyone attachable to an org (client or
+ *  partner profiles), flagged when already a member so the picker can show
+ *  "כבר משויך" instead of hiding them. */
+export type OrgAttachCandidate = {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: "client" | "partner";
+  already_member: boolean;
+};
+
+/** Row of my_member_orgs: the CALLER's own org memberships (any role),
+ *  driving the partner portal's "העסקים שלי" tab. project_id/title are the
+ *  org's most recent project, or null for a business with none yet. */
+export type MemberOrgRow = {
+  org_id: string;
+  org_name: string;
+  can_service_view: boolean;
+  can_service_calls: boolean;
+  can_files: boolean;
+  can_approve: boolean;
+  can_finance: boolean;
+  project_id: string | null;
+  project_title: string | null;
 };
 
 export interface Database {
@@ -1493,10 +1522,33 @@ export interface Database {
           p_service_calls: boolean;
           p_approve: boolean;
           p_files: boolean;
+          /** null keeps the member's current value. */
+          p_service_view?: boolean | null;
         };
         Returns: undefined;
       };
       remove_org_member: { Args: { p_member_id: string }; Returns: undefined };
+      /** Everyone (client or partner) attachable to an org, for the admin
+       *  "הוסף חבר" picker. */
+      admin_attach_candidates: { Args: { p_org: string }; Returns: OrgAttachCandidate[] };
+      /** Attaches an existing user (client or partner) to an org by id.
+       *  { ok:false, error } for 'partner_cannot_manage' | 'is_admin' | 'no_profile'. */
+      admin_attach_org_member: {
+        Args: {
+          p_org: string;
+          p_user_id: string;
+          p_is_manager: boolean;
+          p_finance: boolean;
+          p_service_calls: boolean;
+          p_approve: boolean;
+          p_files: boolean;
+          p_service_view: boolean;
+        };
+        Returns: { ok: boolean; role?: string; error?: string };
+      };
+      /** The caller's own org memberships (any role) - the partner portal's
+       *  "העסקים שלי" tab. */
+      my_member_orgs: { Args: Record<string, never>; Returns: MemberOrgRow[] };
       request_member_invite: {
         Args: {
           p_full_name?: string | null;

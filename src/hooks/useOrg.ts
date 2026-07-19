@@ -4,6 +4,8 @@ import type {
   AdminClientNote,
   ClientCallLog,
   MemberInviteRequest,
+  MemberOrgRow,
+  OrgAttachCandidate,
   OrgMemberRow,
   Project,
 } from "@/types/database";
@@ -190,6 +192,33 @@ export function useMyOrgMembers() {
   });
 }
 
+/** Admin: everyone (client or partner) attachable to an org, for the "הוסף
+ *  חבר" picker's "לקוח קיים" / "שותף" modes. */
+export function useAttachCandidates(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["admin-attach-candidates", orgId],
+    enabled: !!orgId,
+    queryFn: async (): Promise<OrgAttachCandidate[]> => {
+      const { data, error } = await supabase.rpc("admin_attach_candidates", { p_org: orgId! });
+      if (error) throw error;
+      return (data ?? []) as OrgAttachCandidate[];
+    },
+  });
+}
+
+/** The current user's own org memberships (any role) - drives the partner
+ *  portal's "העסקים שלי" tab, but works for any role. */
+export function useMyMemberOrgs() {
+  return useQuery({
+    queryKey: ["my-member-orgs"],
+    queryFn: async (): Promise<MemberOrgRow[]> => {
+      const { data, error } = await supabase.rpc("my_member_orgs");
+      if (error) throw error;
+      return (data ?? []) as MemberOrgRow[];
+    },
+  });
+}
+
 /** Admin inbox: pending member-invite requests from managers, newest first. */
 export function usePendingMemberInvites() {
   return useQuery({
@@ -237,6 +266,23 @@ export async function setMemberCaps(memberId: string, caps: CapValues) {
     p_service_calls: caps.serviceCalls,
     p_approve: caps.approve,
     p_files: caps.files,
+    p_service_view: caps.serviceView,
+  });
+}
+
+/** Admin: attach an existing user (client or partner) to an org by id - the
+ *  "לקוח קיים" / "שותף" picker modes on the "הוסף חבר" sheet. Returns
+ *  { ok:false, error } for 'partner_cannot_manage' | 'is_admin' | 'no_profile'. */
+export async function attachOrgMember(params: { orgId: string; userId: string; caps: CapValues }) {
+  return supabase.rpc("admin_attach_org_member", {
+    p_org: params.orgId,
+    p_user_id: params.userId,
+    p_is_manager: params.caps.isManager,
+    p_finance: params.caps.finance,
+    p_service_calls: params.caps.serviceCalls,
+    p_approve: params.caps.approve,
+    p_files: params.caps.files,
+    p_service_view: params.caps.serviceView,
   });
 }
 
@@ -252,7 +298,9 @@ export async function requestMemberInvite(params: {
   email: string;
   phone?: string | null;
   note?: string | null;
-  caps: Omit<CapValues, "isManager">;
+  // request_member_invite has no p_service_view param - a manager's own
+  // invite request can't set it, only the admin approving it can.
+  caps: Omit<CapValues, "isManager" | "serviceView">;
 }) {
   return supabase.rpc("request_member_invite", {
     p_full_name: params.fullName ?? null,

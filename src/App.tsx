@@ -74,6 +74,8 @@ const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
 const NewLead = lazy(() => import("@/pages/partner/NewLead"));
 const PartnerResources = lazy(() => import("@/pages/partner/Resources"));
+const PartnerBusinesses = lazy(() => import("@/pages/partner/Businesses"));
+const PartnerBusinessService = lazy(() => import("@/pages/partner/BusinessService"));
 // DEV-ONLY visual harnesses. The ternary is statically false in a production
 // build, so Rollup drops the imports — the chunks never ship.
 const TimerLab = import.meta.env.DEV ? lazy(() => import("@/pages/dev/TimerLab")) : null;
@@ -123,6 +125,8 @@ function App() {
                 {/* Partner-only (שת"פ) */}
                 <Route element={<RequirePartner />}>
                   <Route path="/partner-portal" element={<PartnerDashboard />} />
+                  <Route path="/partner-portal/businesses" element={<PartnerBusinesses />} />
+                  <Route path="/partner-portal/businesses/:orgId" element={<PartnerBusinessService />} />
                   <Route path="/partner-portal/new-lead" element={<NewLead />} />
                   <Route path="/partner-portal/resources" element={<PartnerResources />} />
                 </Route>

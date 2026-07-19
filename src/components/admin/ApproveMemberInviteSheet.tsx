@@ -38,6 +38,8 @@ export function ApproveMemberInviteSheet({
       serviceCalls: request.reqServiceCalls,
       approve: request.reqApprove,
       files: request.reqFiles,
+      // Not part of the manager's invite request - keeps the DB default (true).
+      serviceView: true,
     });
   }, [request]);
 
