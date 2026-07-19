@@ -187,6 +187,35 @@ export async function generateJourney(payload: {
   }
 }
 
+/** Generate ONE persona from the admin's own free-text description. The
+ *  discovery call is optional background (a project without one still works);
+ *  `existing_names` keeps the AI from reusing a name already in the project.
+ *  Additive by design , the caller appends the result, never replacing. */
+export async function generatePersonaSingle(payload: {
+  title: string;
+  description: string;
+  items?: { question: string; answer: string }[];
+  existingNames?: string[];
+}): Promise<{ ok: boolean; persona?: PersonaContent; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: {
+        mode: "persona_single",
+        title: payload.title,
+        description: payload.description,
+        items: payload.items ?? [],
+        existing_names: payload.existingNames ?? [],
+      },
+    });
+    if (error) return { ok: false, error: await fnErrorMessage(error) };
+    if (data && data.ok === false) return { ok: false, error: data.error || "generation failed" };
+    if (!data?.persona) return { ok: false, error: "לא נוצרה פרסונה. נסה שוב." };
+    return { ok: true, persona: data.persona as PersonaContent };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Generate an array of personas from a discovery call (senior-UX AI brief). */
 export async function generatePersonas(payload: {
   title: string;

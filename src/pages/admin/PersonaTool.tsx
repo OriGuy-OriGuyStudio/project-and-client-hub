@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { useProjects } from "@/hooks/useProjects";
 import { useBusinesses } from "@/hooks/useBusinesses";
 import { useProjectDeliverables, useProjectDiscoveryItems } from "@/hooks/useDeliverables";
-import { generatePersonas, generatePersonaImage } from "@/lib/deliverables";
+import { generatePersonas, generatePersonaSingle, generatePersonaImage } from "@/lib/deliverables";
 import type { PersonaContent, ProjectDeliverable } from "@/types/database";
 
 export default function PersonaTool() {
@@ -36,6 +36,8 @@ export default function PersonaTool() {
   const [orgId, setOrgId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [manualDesc, setManualDesc] = useState("");
+  const [manualBusy, setManualBusy] = useState(false);
 
   const { data: disc, isLoading: discLoading } = useProjectDiscoveryItems(projectId || null);
   const { data: deliverables } = useProjectDeliverables(projectId || null);
@@ -103,6 +105,55 @@ export default function PersonaTool() {
     }
   }
 
+  /** Adds ONE persona from Ori's own description. Appends with the next
+   *  sort_order like `generate` does, so nothing existing is touched , this is
+   *  the "add another one" path, callable as many times as he wants, and it
+   *  works even for a project with no discovery call. */
+  async function addManual() {
+    const description = manualDesc.trim();
+    if (!description) return toastError("תאר את הפרסונה קודם.");
+    setManualBusy(true);
+    const project = projects?.find((p) => p.id === projectId);
+    const r = await generatePersonaSingle({
+      title: disc?.title || project?.title || "",
+      description,
+      items: disc?.found ? disc.items : [],
+      existingNames: personas.map((p) => p.title).filter(Boolean) as string[],
+    });
+    if (!r.ok || !r.persona) {
+      setManualBusy(false);
+      return toastError(r.error || "יצירת הפרסונה נכשלה.");
+    }
+    const { data: inserted, error } = await supabase
+      .from("project_deliverables")
+      .insert({
+        project_id: projectId,
+        org_id: project?.org_id ?? null,
+        kind: "persona",
+        title: r.persona.name,
+        content: r.persona as unknown as Record<string, unknown>,
+        status: "draft",
+        sort_order: personas.length,
+      })
+      .select("id, content")
+      .single();
+    setManualBusy(false);
+    if (error) return toastError("שמירת הפרסונה נכשלה.");
+    setManualDesc("");
+    toast({ title: `נוספה הפרסונה ${r.persona.name}. מייצר תמונה…`, variant: "success" });
+    qc.invalidateQueries({ queryKey: ["deliverables", projectId] });
+
+    const persona = inserted.content as unknown as PersonaContent;
+    generatePersonaImage(persona, projectId).then(async (url) => {
+      if (!url) return;
+      await supabase
+        .from("project_deliverables")
+        .update({ content: { ...persona, avatar_url: url } })
+        .eq("id", inserted.id);
+      qc.invalidateQueries({ queryKey: ["deliverables", projectId] });
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -167,12 +218,41 @@ export default function PersonaTool() {
         )}
       </Card>
 
+      {/* Manual path: Ori describes a persona in his own words, the AI fleshes
+         it out into the full structure, and it's APPENDED , repeatable, and
+         available even without a discovery call. */}
+      {projectId && (
+        <Card className="space-y-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">הוספת פרסונה ידנית</p>
+            <p className="text-xs text-muted-foreground">
+              תאר פרסונה במילים שלך, וה-AI יחולל אותה לפרסונה מלאה. נוספת לרשימה בלי לדרוס את הקיימות, ואפשר לחזור על זה כמה
+              פעמים שצריך.
+            </p>
+          </div>
+          <Textarea
+            value={manualDesc}
+            onChange={(e) => setManualDesc(e.target.value)}
+            rows={4}
+            maxLength={4000}
+            disabled={manualBusy}
+            placeholder="למשל: בעל עסק קטן בן 45 מהצפון, מגיע מהמלצות, לא סבלן לטפסים ארוכים, רוצה לראות מחיר מיד ומחליט בטלפון."
+          />
+          <div className="flex justify-end">
+            <Button onClick={addManual} disabled={manualBusy || !manualDesc.trim()}>
+              {manualBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {manualBusy ? "מחולל פרסונה…" : "הוסף פרסונה"}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {projectId &&
         (personas.length === 0 ? (
           <EmptyState
             icon={UserRound}
             title="אין עדיין פרסונות לפרויקט הזה"
-            description="לחץ 'צור פרסונות' כדי לייצר טיוטות מתוך שיחת האפיון."
+            description="צור פרסונות משיחת האפיון, או תאר פרסונה בעצמך והוסף אותה ידנית."
           />
         ) : (
           <div className="space-y-4">

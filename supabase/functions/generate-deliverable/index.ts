@@ -100,6 +100,103 @@ const PERSONA_ITEM_SCHEMA = {
   ],
 };
 
+/** Same senior-UX brief, but for ONE persona the admin describes in free text
+ *  (mode "persona_single"). The discovery call is optional background here ,
+ *  the admin's description is the source of truth, so a persona can be added
+ *  to a project that has no discovery call at all. */
+function personaSinglePrompt(title: string, description: string, items: Item[], existingNames: string[]): string {
+  const data = items
+    .filter((i) => (i.answer ?? "").trim().length > 0)
+    .map((i) => "- " + i.question + " " + i.answer.trim())
+    .join(NL);
+
+  return [
+    "אתה מעצב UX/UI בכיר מאוד עם ניסיון של 15+ שנים, שבונה פרסונת משתמש אחת לקראת עיצוב אתר. אתה חושב כל הזמן איך כל פרט בפרסונה ישפיע בפועל על החלטות העיצוב והקופי.",
+    "עקרונות עבודה (best practices לפרסונות UX):",
+    "1. התיאור שהאדמין כתב הוא מקור האמת. הרחב אותו לפרסונה מלאה, אל תסתור אותו ואל תמציא עובדות שסותרות אותו. מה שחסר, גזור בזהירות מהתחום ומקהל היעד.",
+    "2. כל שדה חייב להיות רלוונטי להחלטת עיצוב או קופי. בלי פרטים דקורטיביים.",
+    "3. שלוש שכבות: זכירה (שם, גיל, ציטוט), הקשר ודמוגרפיה (תפקיד, מיקום, איך ומאיזה מכשיר הוא מגיע, תדירות), והתנהגות ופסיכולוגיה (מטרות, כאבים, מניעים, סגנון קבלת החלטות, רמת נוחות טכנולוגית).",
+    "4. ריאליסטי וספציפי, לא קריקטורה ולא סטריאוטיפ.",
+    "5. שם: בחר שם פרטי ומשפחה ריאליסטיים ומגוונים. אסור להשתמש בשמות המשפחה הנפוצים והקלישאתיים כהן ולוי, ואסור שמות פלייסהולדר (ישראל ישראלי, יוסי כהן, דני לוי, ישראלה). יש מאות שמות משפחה ישראליים מכל העדות. דוגמאות למגוון (לא רק אלה): אלקיים, שגב, בן שושן, הראל, נחמיאס, טולדנו, אזולאי, רוזנברג, שטרן, עמר, זהבי, גולן, שריקי, אבירם, ברנע.",
+    existingNames.length
+      ? "אסור לחזור על השמות של הפרסונות שכבר קיימות בפרויקט: " + existingNames.join(", ") + "."
+      : "",
+    "6. עברית מדוברת וטבעית. אסור: מקף ארוך (—); באזזוורדס ('ערך מוסף', 'סינרגיה'); שלשות תארים; סימני קריאה מוגזמים; האנשה.",
+    "מלא גם:",
+    "- gender: 'male' או 'female' (אם התיאור לא מציין, בחר מה שמתאים לתיאור).",
+    "- context: איך ומאיזה מכשיר הפרסונה מגיעה לאתר, ובאיזו תדירות.",
+    "- design_notes: המלצות עיצוב וקופי קונקרטיות עבור הפרסונה הזו. לשימוש המעצב בלבד, לא ללקוח.",
+    "- how_we_help: פסקה קצרה בקול הסטודיו (לשון 'אני'/'אנחנו') על איך פותרים לפרסונה את הכאב.",
+    "- quote: משפט אחד בגוף ראשון, בקול הפרסונה.",
+    "פרטי העסק: " + title,
+    "התיאור שהאדמין כתב על הפרסונה (מקור האמת):",
+    description,
+    data ? "רקע נוסף משיחת האפיון של הפרויקט (לא לסתור את התיאור למעלה):\n" + data : "",
+    "החזר אובייקט JSON יחיד של פרסונה אחת לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+async function generatePersonaSingle(
+  apiKey: string,
+  title: string,
+  description: string,
+  items: Item[],
+  existingNames: string[],
+) {
+  const prompt = personaSinglePrompt(title, description, items, existingNames);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.9,
+      maxOutputTokens: 4000,
+      responseMimeType: "application/json",
+      responseSchema: PERSONA_ITEM_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let persona: any;
+      try {
+        persona = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!persona || typeof persona !== "object" || Array.isArray(persona) || !persona.name) {
+        return { ok: false, status: 502, error: "לא נוצרה פרסונה. נסה שוב." };
+      }
+      return { ok: true, persona };
+    }
+    const detail = await res.text();
+    console.error("gemini persona_single error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + String(lastReason).slice(0, 300),
+  };
+}
+
 async function generatePersonas(apiKey: string, title: string, items: Item[]) {
   const prompt = personaPrompt(title, items);
   const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
@@ -1409,11 +1506,32 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const mode = ["image", "journey", "sitemap", "sitemap_assist", "copy", "brief", "seo", "quote_ai"].includes(
-      body?.mode,
-    )
+  const mode = [
+      "image", "journey", "sitemap", "sitemap_assist", "copy", "brief", "seo", "quote_ai", "persona_single",
+    ].includes(body?.mode)
     ? body.mode
     : "personas";
+
+  // One persona from the admin's own description. Unlike "personas" this does
+  // NOT require a discovery call (the description is the source of truth), so
+  // it's handled before the shared items-required guard below.
+  if (mode === "persona_single") {
+    const description = String(body?.description ?? "").trim().slice(0, 4000);
+    if (!description) return json({ ok: false, error: "צריך לתאר את הפרסונה קודם." }, 400);
+    const bg: Item[] = Array.isArray(body?.items) ? body.items : [];
+    const names: string[] = Array.isArray(body?.existing_names)
+      ? body.existing_names.map((n: any) => String(n ?? "").trim()).filter(Boolean).slice(0, 20)
+      : [];
+    const r = await generatePersonaSingle(
+      apiKey,
+      String(body?.title ?? "").slice(0, 200),
+      description,
+      bg.filter((i) => (i?.answer ?? "").trim().length > 0),
+      names,
+    );
+    if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+    return json({ ok: true, persona: r.persona });
+  }
 
   if (mode === "quote_ai") {
     const action = String(body?.action ?? "");
