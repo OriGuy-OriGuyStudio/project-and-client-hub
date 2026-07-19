@@ -366,7 +366,7 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
               <Textarea value={s.pains} onChange={(e) => patchStage(i, { pains: e.target.value })} rows={3} autoGrow />
             </div>
             <div className="space-y-1.5">
-              <Label>מה אנחנו עושים</Label>
+              <Label>מה אני עושה</Label>
               <Textarea value={s.actions} onChange={(e) => patchStage(i, { actions: e.target.value })} rows={3} autoGrow />
             </div>
           </div>

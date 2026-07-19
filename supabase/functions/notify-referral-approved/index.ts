@@ -152,8 +152,8 @@ Deno.serve(async (req) => {
   const steps = [
     g("ממלא פרטים של מישהו שאתה חושב שיתאים לי", "ממלאת פרטים של מישהו שאת חושבת שיתאים לי"),
     "אני יוצר קשר, ומעדכן אותך בכל שלב במייל",
-    g(`נסגרה עסקה? אתה מקבל ${COMMISSION_PCT}% ממנה, ואנחנו מסכמים איך נוח לך לקבל`,
-      `נסגרה עסקה? את מקבלת ${COMMISSION_PCT}% ממנה, ואנחנו מסכמים איך נוח לך לקבל`),
+    g(`נסגרה עסקה? אתה מקבל ${COMMISSION_PCT}% ממנה, ונסכם איך נוח לך לקבל`,
+      `נסגרה עסקה? את מקבלת ${COMMISSION_PCT}% ממנה, ונסכם איך נוח לך לקבל`),
   ];
 
   const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">

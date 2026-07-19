@@ -16,12 +16,12 @@ const PORTAL = "https://orion.origuystudio.com";
 // referrer is a partner or a client, not an operator of the funnel.
 const STATUS_HE: Record<string, { label: string; line: string }> = {
   submitted: { label: "התקבל", line: "הליד התקבל אצלי ואני מתחיל לטפל בו." },
-  awaiting_intro: { label: "ממתין לשיחת היכרות", line: "יצרתי קשר ואנחנו מתאמים שיחת היכרות." },
+  awaiting_intro: { label: "ממתין לשיחת היכרות", line: "יצרתי קשר ואני מתאם איתו שיחת היכרות." },
   intro_done: { label: "שיחת היכרות בוצעה", line: "שיחת ההיכרות בוצעה, ואני בונה עכשיו את ההצעה." },
-  quote_sent: { label: "הצעת מחיר נשלחה", line: "שלחתי הצעת מחיר, ואנחנו ממתינים לתשובה." },
+  quote_sent: { label: "הצעת מחיר נשלחה", line: "שלחתי הצעת מחיר, ואני ממתין לתשובה." },
   client_approved: { label: "הלקוח אישר", line: "הלקוח אישר את ההצעה. מתקדמים." },
   closed: { label: "נסגר", line: "העסקה נסגרה בהצלחה. תודה על ההפניה." },
-  not_relevant: { label: "לא רלוונטי", line: "הפעם זה לא התקדם, אבל ההפניה מוערכת מאוד. נשמח לבאה." },
+  not_relevant: { label: "לא רלוונטי", line: "הפעם זה לא התקדם, אבל ההפניה מוערכת מאוד. אשמח לבאה." },
 };
 
 const corsHeaders = {

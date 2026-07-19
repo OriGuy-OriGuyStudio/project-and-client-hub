@@ -1260,7 +1260,7 @@ const ORION_TABS = [
   {
     key: "roadmap",
     label: "מפת דרכים",
-    title: "תמיד ברור לך באיזה שלב אנחנו.",
+    title: "תמיד ברור לך באיזה שלב אני.",
     body: "כל שלב בפרויקט מסומן וברור. אתה רואה מה הסתיים, מה בעבודה ומה הבא בתור, בלי לשאול.",
     render: () => (
       <div className="space-y-3">
@@ -1323,7 +1323,7 @@ const ORION_TABS = [
           מתי עולים לאוויר?
         </div>
         <div className="me-auto max-w-[80%] rounded-2xl rounded-tl-sm border border-border bg-background px-3.5 py-2 text-sm text-foreground">
-          השלב האחרון בפיתוח, סוף השבוע אתה מאשר ואנחנו באוויר 🚀
+          השלב האחרון בפיתוח, סוף השבוע אתה מאשר ואני מעלה לאוויר 🚀
         </div>
         <div className="me-auto flex max-w-[80%] items-center gap-1.5 rounded-2xl rounded-tl-sm border border-primary/30 bg-primary/5 px-3.5 py-2 text-xs text-muted-foreground">
           <Sparkles className="size-3.5 text-primary" /> פיקסל מקליד…

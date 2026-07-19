@@ -430,7 +430,7 @@ function PersonaEditorCard({ d, projectId }: { d: ProjectDeliverable; projectId:
         <Field label="מניעים (שורה לכל אחד)" value={form.motivations} onChange={(v) => set("motivations", v)} rows={3} />
       </div>
 
-      <Field label="איך אנחנו עוזרים (מוצג ללקוח)" value={form.how_we_help} onChange={(v) => set("how_we_help", v)} rows={3} />
+      <Field label="איך אני עוזר (מוצג ללקוח)" value={form.how_we_help} onChange={(v) => set("how_we_help", v)} rows={3} />
 
       <div className="space-y-1.5">
         <Label className="flex items-center gap-2">

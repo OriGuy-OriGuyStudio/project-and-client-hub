@@ -229,8 +229,8 @@ function ServiceCallSheet({ projectId, projectName }: { projectId: string; proje
           <SheetDescription>
             {gendered(
               profile?.gender,
-              "ספר לנו מה צריך והקריאה תגיע ישר לסטודיו. נטפל בהקדם לפי זמן התגובה של החבילה שלך.",
-              "ספרי לנו מה צריך והקריאה תגיע ישר לסטודיו. נטפל בהקדם לפי זמן התגובה של החבילה שלך.",
+              "ספר לי מה צריך והקריאה תגיע ישר אליי. אטפל בהקדם לפי זמן התגובה של החבילה שלך.",
+              "ספרי לי מה צריך והקריאה תגיע ישר אליי. אטפל בהקדם לפי זמן התגובה של החבילה שלך.",
             )}
           </SheetDescription>
         </SheetHeader>
@@ -707,7 +707,7 @@ export function ServiceBoard({
       {showMoney && (
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-          <Sparkles className="size-5 text-primary" /> הערך שקיבלת מאיתנו
+          <Sparkles className="size-5 text-primary" /> הערך שקיבלת ממני
         </h3>
         <div className={cn("grid grid-cols-2 gap-4", showSecurity ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
           <div className="text-center">
@@ -949,8 +949,8 @@ function ServiceTeaser() {
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
             {gendered(
               profile?.gender,
-              "האתר באוויר, ומכאן אנחנו שומרים עליו מהיר, מאובטח ומעודכן, בלי שתצטרך לגעת בכלום.",
-              "האתר באוויר, ומכאן אנחנו שומרים עליו מהיר, מאובטח ומעודכן, בלי שתצטרכי לגעת בכלום.",
+              "האתר באוויר, ומכאן אני שומר עליו מהיר, מאובטח ומעודכן, בלי שתצטרך לגעת בכלום.",
+              "האתר באוויר, ומכאן אני שומר עליו מהיר, מאובטח ומעודכן, בלי שתצטרכי לגעת בכלום.",
             )}
           </p>
           <ul className="mx-auto mt-5 grid max-w-md gap-2.5 text-start sm:grid-cols-2">

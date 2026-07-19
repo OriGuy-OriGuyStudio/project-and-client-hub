@@ -73,7 +73,7 @@ export function personaLines(p: PersonaContent, audience: SpecAudience): string[
 
   const ctx = line("הקשר שימוש", p.context);
   if (ctx) out.push(ctx);
-  const help = line("איך אנחנו עוזרים", p.how_we_help);
+  const help = line("איך אני עוזר", p.how_we_help);
   if (help) out.push(help);
 
   if (audience === "full") {
@@ -94,7 +94,7 @@ export function journeyStageLines(s: JourneyContent["stages"][number], index: nu
   );
   out.push(...block("נקודות מגע", s.touchpoints));
   out.push(...block("כאבים", s.pains));
-  out.push(...block("מה אנחנו עושים", s.actions));
+  out.push(...block("מה אני עושה", s.actions));
   return out;
 }
 

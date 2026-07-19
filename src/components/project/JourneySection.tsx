@@ -136,7 +136,7 @@ function StageCard({ s }: { s: JourneyStage }) {
 
       {s.actions?.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <BlockLabel icon={Lightbulb} title="מה אנחנו עושים" className="text-primary" />
+          <BlockLabel icon={Lightbulb} title="מה אני עושה" className="text-primary" />
           <ul className="space-y-1 text-sm text-foreground/90">
             {s.actions.map((a, i) => (
               <li key={i} className="flex gap-1.5">
