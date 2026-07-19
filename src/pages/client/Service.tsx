@@ -511,7 +511,7 @@ export function ServiceBoard({
       {/* what we did this month */}
       <div>
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
-          <Activity className="size-5 text-primary" /> מה עשינו החודש
+          <Activity className="size-5 text-primary" /> מה עשיתי החודש
         </h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric
@@ -708,11 +708,12 @@ export function ServiceBoard({
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
         <h3 className="mb-3 flex items-center gap-2 font-heading text-lg font-semibold text-foreground">
           <Sparkles className="size-5 text-primary" /> הערך שקיבלת ממני
+          <span className="text-xs font-normal text-muted-foreground">מאז תחילת הליווי</span>
         </h3>
         <div className={cn("grid grid-cols-2 gap-4", showSecurity ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
           <div className="text-center">
             <p className="font-heading text-2xl font-black text-primary">{summary?.updates_total ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">{wp ? "עדכונים" : "פריסות"}</p>
+            <p className="text-[11px] text-muted-foreground">{wp ? "עדכונים ופריסות" : "פריסות"}</p>
           </div>
           <div className="text-center">
             <p className="font-heading text-2xl font-black text-primary">{summary?.backups_total ?? 0}</p>
@@ -888,7 +889,7 @@ function TeaserBackdrop() {
 
       {/* what we did this month */}
       <div>
-        <h3 className="mb-3 font-heading text-lg font-semibold text-foreground">מה עשינו החודש</h3>
+        <h3 className="mb-3 font-heading text-lg font-semibold text-foreground">מה עשיתי החודש</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric icon={RefreshCw} label="עדכונים שבוצעו" value="12" sub="ליבה + תוספים" />
           <Metric icon={DatabaseBackup} label="גיבויים" value="30" sub="החודש" tone="cyan" />

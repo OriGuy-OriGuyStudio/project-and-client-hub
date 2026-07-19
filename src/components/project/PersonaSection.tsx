@@ -106,7 +106,7 @@ function PersonaCard({ p, defaultOpen }: { p: PersonaContent; defaultOpen?: bool
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                 <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
                   <HeartHandshake className="size-4" />
-                  איך אני עוזר
+                  איך העסק עוזר לו
                 </p>
                 <p className="text-sm leading-relaxed text-foreground/90">{p.how_we_help}</p>
               </div>

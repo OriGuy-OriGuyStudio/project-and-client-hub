@@ -73,7 +73,7 @@ export function personaLines(p: PersonaContent, audience: SpecAudience): string[
 
   const ctx = line("הקשר שימוש", p.context);
   if (ctx) out.push(ctx);
-  const help = line("איך אני עוזר", p.how_we_help);
+  const help = line("איך העסק עוזר לו", p.how_we_help);
   if (help) out.push(help);
 
   if (audience === "full") {
