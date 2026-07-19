@@ -15,9 +15,12 @@ import { createClient } from "@supabase/supabase-js";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 // Underscore-prefixed, so Vercel treats it as a helper module and not as a
-// route of its own. Extensionless import: the function is bundled at build
-// time, which is how Vercel's TypeScript runtime resolves sibling modules.
-import { buildSpecHtml, type SpecDoc } from "./_spec-html";
+// route of its own. The ".js" specifier is required: Vercel compiles each file
+// separately rather than bundling them, and this package is ESM ("type":
+// "module"), where Node will not resolve an extensionless relative import.
+// (Verified the hard way: extensionless produced ERR_MODULE_NOT_FOUND at
+// runtime while the build itself passed.)
+import { buildSpecHtml, type SpecDoc } from "./_spec-html.js";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY ?? "";
