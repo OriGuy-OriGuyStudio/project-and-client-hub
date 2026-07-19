@@ -340,6 +340,7 @@ function SeoEditor({ d, projectId }: { d: ProjectDeliverable; projectId: string 
             onChange={(e) => setBusinessJsonLd(e.target.value)}
             rows={4}
             className="font-mono text-xs"
+            autoGrow
           />
         </div>
       </Card>
@@ -411,6 +412,7 @@ function CopyField({
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
           className={mono ? "font-mono text-xs" : undefined}
+          autoGrow
         />
       ) : (
         <Input value={value} onChange={(e) => onChange(e.target.value)} className="h-9" />
@@ -478,11 +480,12 @@ function PageSeoCard({
             {page.faqs.map((f, fi) => (
               <div key={fi} className="space-y-1.5 border-t border-border pt-2 first:border-0 first:pt-0">
                 <div className="flex items-center gap-2">
-                  <Input
+                  <Textarea
                     value={f.q}
                     onChange={(e) => onPatchFaq(fi, { q: e.target.value })}
                     placeholder="שאלה"
-                    className="h-9"
+                    rows={2}
+                    autoGrow
                   />
                   <Button
                     type="button"
@@ -500,6 +503,7 @@ function PageSeoCard({
                   onChange={(e) => onPatchFaq(fi, { a: e.target.value })}
                   placeholder="תשובה"
                   rows={2}
+                  autoGrow
                 />
               </div>
             ))}

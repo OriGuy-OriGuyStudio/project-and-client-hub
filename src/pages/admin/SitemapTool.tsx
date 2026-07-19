@@ -481,11 +481,23 @@ function SitemapEditor({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>מטרת העמוד</Label>
-              <Input value={p.purpose} onChange={(e) => patchPage(i, { purpose: e.target.value })} maxLength={200} />
+              <Textarea
+                value={p.purpose}
+                onChange={(e) => patchPage(i, { purpose: e.target.value })}
+                rows={2}
+                maxLength={200}
+                autoGrow
+              />
             </div>
             <div className="space-y-1.5">
               <Label>משרת (שלב במסע / פרסונה)</Label>
-              <Input value={p.serves} onChange={(e) => patchPage(i, { serves: e.target.value })} maxLength={120} />
+              <Textarea
+                value={p.serves}
+                onChange={(e) => patchPage(i, { serves: e.target.value })}
+                rows={2}
+                maxLength={120}
+                autoGrow
+              />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -524,7 +536,12 @@ function SitemapEditor({
                 </Button>
               </div>
             </div>
-            <Textarea value={p.sections} onChange={(e) => patchPage(i, { sections: e.target.value })} rows={3} />
+            <Textarea
+              value={p.sections}
+              onChange={(e) => patchPage(i, { sections: e.target.value })}
+              rows={3}
+              autoGrow
+            />
             {(assist[i]?.suggestions ?? []).length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2">
                 <span className="text-xs text-muted-foreground">לחץ להוספה:</span>
@@ -552,6 +569,7 @@ function SitemapEditor({
               rows={2}
               placeholder="ההיגיון מאחורי סדר הסקשנים בעמוד (מוצג ללקוח). כפתור 'סדר עם AI' ממלא את זה אוטומטית."
               className="bg-muted/30 text-sm"
+              autoGrow
             />
           </div>
 
@@ -594,10 +612,30 @@ function SitemapEditor({
                   </Button>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Input value={c2.purpose} onChange={(e) => patchChild(i, ci, { purpose: e.target.value })} placeholder="מטרה" maxLength={200} className="h-9" />
-                  <Input value={c2.serves} onChange={(e) => patchChild(i, ci, { serves: e.target.value })} placeholder="משרת" maxLength={120} className="h-9" />
+                  <Textarea
+                    value={c2.purpose}
+                    onChange={(e) => patchChild(i, ci, { purpose: e.target.value })}
+                    placeholder="מטרה"
+                    maxLength={200}
+                    rows={2}
+                    autoGrow
+                  />
+                  <Textarea
+                    value={c2.serves}
+                    onChange={(e) => patchChild(i, ci, { serves: e.target.value })}
+                    placeholder="משרת"
+                    maxLength={120}
+                    rows={2}
+                    autoGrow
+                  />
                 </div>
-                <Textarea value={c2.sections} onChange={(e) => patchChild(i, ci, { sections: e.target.value })} placeholder="סקשנים (שורה לכל אחד)" rows={2} />
+                <Textarea
+                  value={c2.sections}
+                  onChange={(e) => patchChild(i, ci, { sections: e.target.value })}
+                  placeholder="סקשנים (שורה לכל אחד)"
+                  rows={2}
+                  autoGrow
+                />
               </div>
             ))}
             <button
@@ -624,7 +662,13 @@ function SitemapEditor({
           המלצות עיצוב וקופי
           <Badge variant="secondary">פנימי, לא מוצג ללקוח</Badge>
         </Label>
-        <Textarea value={designNotes} onChange={(e) => setDesignNotes(e.target.value)} rows={3} className="bg-muted/40" />
+        <Textarea
+          value={designNotes}
+          onChange={(e) => setDesignNotes(e.target.value)}
+          rows={3}
+          className="bg-muted/40"
+          autoGrow
+        />
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-2">

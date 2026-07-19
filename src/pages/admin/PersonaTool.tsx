@@ -237,6 +237,7 @@ export default function PersonaTool() {
             maxLength={4000}
             disabled={manualBusy}
             placeholder="למשל: בעל עסק קטן בן 45 מהצפון, מגיע מהמלצות, לא סבלן לטפסים ארוכים, רוצה לראות מחיר מיד ומחליט בטלפון."
+            autoGrow
           />
           <div className="flex justify-end">
             <Button onClick={addManual} disabled={manualBusy || !manualDesc.trim()}>
@@ -441,6 +442,7 @@ function PersonaEditorCard({ d, projectId }: { d: ProjectDeliverable; projectId:
           onChange={(e) => set("design_notes", e.target.value)}
           rows={3}
           className="bg-muted/40"
+          autoGrow
         />
       </div>
 
@@ -481,7 +483,7 @@ function Field({
   return (
     <div className={cn("space-y-1.5")}>
       <Label>{label}</Label>
-      <Textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} />
+      <Textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} autoGrow />
     </div>
   );
 }

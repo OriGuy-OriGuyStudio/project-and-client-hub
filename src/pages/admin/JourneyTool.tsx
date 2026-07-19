@@ -342,26 +342,37 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
             </div>
             <div className="space-y-1.5">
               <Label>מטרה בשלב</Label>
-              <Input value={s.goal} onChange={(e) => patchStage(i, { goal: e.target.value })} maxLength={160} />
+              <Textarea
+                value={s.goal}
+                onChange={(e) => patchStage(i, { goal: e.target.value })}
+                rows={2}
+                maxLength={160}
+                autoGrow
+              />
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>נקודות מגע (שורה לכל אחת)</Label>
-              <Textarea value={s.touchpoints} onChange={(e) => patchStage(i, { touchpoints: e.target.value })} rows={3} />
+              <Textarea
+                value={s.touchpoints}
+                onChange={(e) => patchStage(i, { touchpoints: e.target.value })}
+                rows={3}
+                autoGrow
+              />
             </div>
             <div className="space-y-1.5">
               <Label>כאבים (שורה לכל אחד)</Label>
-              <Textarea value={s.pains} onChange={(e) => patchStage(i, { pains: e.target.value })} rows={3} />
+              <Textarea value={s.pains} onChange={(e) => patchStage(i, { pains: e.target.value })} rows={3} autoGrow />
             </div>
             <div className="space-y-1.5">
               <Label>מה אנחנו עושים</Label>
-              <Textarea value={s.actions} onChange={(e) => patchStage(i, { actions: e.target.value })} rows={3} />
+              <Textarea value={s.actions} onChange={(e) => patchStage(i, { actions: e.target.value })} rows={3} autoGrow />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label>מה קורה באתר בשלב הזה (המסע בתוך האתר)</Label>
-            <Textarea value={s.on_site} onChange={(e) => patchStage(i, { on_site: e.target.value })} rows={2} />
+            <Textarea value={s.on_site} onChange={(e) => patchStage(i, { on_site: e.target.value })} rows={2} autoGrow />
           </div>
         </Card>
       ))}
@@ -379,7 +390,13 @@ function JourneyEditor({ d, projectId }: { d: ProjectDeliverable; projectId: str
           המלצות עיצוב וקופי
           <Badge variant="secondary">פנימי, לא מוצג ללקוח</Badge>
         </Label>
-        <Textarea value={designNotes} onChange={(e) => setDesignNotes(e.target.value)} rows={3} className="bg-muted/40" />
+        <Textarea
+          value={designNotes}
+          onChange={(e) => setDesignNotes(e.target.value)}
+          rows={3}
+          className="bg-muted/40"
+          autoGrow
+        />
       </Card>
 
       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -454,6 +454,7 @@ function PageBriefCard({
                 onChange={(e) => onPatch(ii, { help: e.target.value })}
                 placeholder="הסבר קצר ללקוח (מה בדיוק לספק)"
                 rows={2}
+                autoGrow
               />
               {it.kind === "text" && (
                 <Textarea
@@ -461,6 +462,7 @@ function PageBriefCard({
                   onChange={(e) => onPatch(ii, { prefill: e.target.value })}
                   placeholder="מולא מראש מהאפיון (הלקוח יאשר או יתקן), אופציונלי"
                   rows={2}
+                  autoGrow
                 />
               )}
               <div className="flex items-center justify-between gap-2">

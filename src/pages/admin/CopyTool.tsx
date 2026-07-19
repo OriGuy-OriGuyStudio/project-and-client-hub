@@ -407,6 +407,7 @@ function PagePromptsCard({
                 onChange={(e) => onPatch(si, { prompt: e.target.value })}
                 placeholder="פרומפט לסקשן"
                 rows={5}
+                autoGrow
               />
             </div>
           ))}
