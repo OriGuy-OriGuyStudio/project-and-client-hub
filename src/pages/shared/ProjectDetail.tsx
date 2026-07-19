@@ -187,7 +187,7 @@ export default function ProjectDetail() {
             <BrandGuidelines brand={brand} colors={colors} />
           </div>
           <div data-reveal data-section className="scroll-mt-20">
-            <SiteBlueprintPanel projectId={project.id} />
+            <SiteBlueprintPanel projectId={project.id} isAdmin={isAdmin} />
           </div>
           <div data-reveal data-section className="scroll-mt-20">
             <ContentBriefSection projectId={project.id} />

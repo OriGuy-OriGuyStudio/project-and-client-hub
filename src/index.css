@@ -921,3 +921,28 @@
     box-shadow: 0 0 0 1.5px rgba(180, 214, 112, 0.5);
   }
 }
+
+/* Printing a document page (the project-spec export): drop the app chrome so
+   the PDF contains the document alone, on white, at full width. Anything the
+   page itself must not print carries Tailwind's `print:hidden`. */
+@media print {
+  aside,
+  header nav,
+  [data-app-chrome] {
+    display: none !important;
+  }
+  html,
+  body,
+  #root {
+    background: #fff !important;
+    color: #14131a !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
