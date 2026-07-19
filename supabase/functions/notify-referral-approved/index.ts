@@ -1,28 +1,20 @@
-// notify-lead-status — emails the person who REFERRED a lead (partner or
-// client) whenever the studio moves that lead to a new stage. Called by DB
-// triggers (after update of status on partner_leads / referrals) via pg_net,
-// so it fires no matter where the change came from (admin leads page, partner
-// detail, client detail) and a mail failure never blocks the update.
+// notify-referral-approved — tells a client that their referral program is
+// open: what they get (5% of the deal as studio credit), how to refer, and a
+// link straight to the program page. Fired by a DB trigger when a row lands in
+// `partner_enrollments`, and also on demand from the admin UI via the
+// `resend_referral_welcome` RPC (the "שלח שוב" button).
 // verify_jwt is OFF; authenticated by the shared `lead_notify` secret in
-// public.webhook_secrets, same as notify-lead. Sends via the Gmail API.
+// public.webhook_secrets, like the other DB-invoked mailers.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const FROM_NAME = "Orion";
 const FROM_EMAIL = "origuy@origuystudio.com";
 const PORTAL = "https://orion.origuystudio.com";
-
-// Client-facing wording per stage. Deliberately warm and non-technical: the
-// referrer is a partner or a client, not an operator of the funnel.
-const STATUS_HE: Record<string, { label: string; line: string }> = {
-  submitted: { label: "התקבל", line: "הליד התקבל אצלי ואני מתחיל לטפל בו." },
-  awaiting_intro: { label: "ממתין לשיחת היכרות", line: "יצרתי קשר ואנחנו מתאמים שיחת היכרות." },
-  intro_done: { label: "שיחת היכרות בוצעה", line: "שיחת ההיכרות בוצעה, ואני בונה עכשיו את ההצעה." },
-  quote_sent: { label: "הצעת מחיר נשלחה", line: "שלחתי הצעת מחיר, ואנחנו ממתינים לתשובה." },
-  client_approved: { label: "הלקוח אישר", line: "הלקוח אישר את ההצעה. מתקדמים." },
-  closed: { label: "נסגר", line: "העסקה נסגרה בהצלחה. תודה על ההפניה." },
-  not_relevant: { label: "לא רלוונטי", line: "הפעם זה לא התקדם, אבל ההפניה מוערכת מאוד. נשמח לבאה." },
-};
+// The client's referral program lives at /partner ("תוכנית שותפים" in the
+// client nav), not /referrals , that path is the admin rewards store.
+const PROGRAM_PATH = "/partner";
+const CREDIT_PCT = 5;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,9 +98,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const got = req.headers.get("x-webhook-secret") ?? "";
   const { data: secretRow } = await admin
@@ -127,106 +117,104 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "bad request" }, 400);
   }
 
-  const referrerId = String(b?.referrer_id ?? "").trim();
-  const status = String(b?.status ?? "").trim();
-  const leadName = String(b?.lead_name ?? "").trim() || "הליד שהפנית";
-  // "partner" → the partner portal's leads view, "client" → the client's
-  // referral program page. Anything else falls back to the portal root.
-  const audience = String(b?.audience ?? "").trim();
-  const info = STATUS_HE[status];
-  if (!referrerId || !info) return json({ ok: true, skipped: "unknown status or referrer" });
+  const clientId = String(b?.client_id ?? "").trim();
+  if (!clientId) return json({ ok: false, error: "missing client_id" }, 400);
 
   const { data: profile } = await admin
     .from("profiles")
     .select("full_name, email, gender")
-    .eq("id", referrerId)
+    .eq("id", clientId)
     .maybeSingle();
   const to = (profile?.email ?? "").trim();
-  if (!to) return json({ ok: true, skipped: "referrer has no email" });
+  if (!to) return json({ ok: true, skipped: "client has no email" });
 
   const female = profile?.gender === "female";
-  const greetName = (profile?.full_name ?? "").trim();
-  const hello = greetName ? `היי ${greetName},` : "היי,";
-  const closing = female
-    ? "תודה שאת מפנה אליי אנשים, זה שווה לי המון."
-    : "תודה שאתה מפנה אליי אנשים, זה שווה לי המון.";
+  const name = (profile?.full_name ?? "").trim();
+  const hello = name ? `היי ${name},` : "היי,";
+  // Gendered second person: the whole mail speaks directly to the client.
+  const g = (m: string, f: string) => (female ? f : m);
 
-  // The client's referral program lives at /partner ("תוכנית שותפים" in the
-  // client nav). /referrals is an ADMIN route, so sending a client there was a
-  // dead link.
-  const link = audience === "partner" ? `${PORTAL}/partner-portal/leads` : `${PORTAL}/partner`;
-  const cta = audience === "partner" ? "מעבר ללידים שלך" : "מעבר לתוכנית ההפניות";
-
-  const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-  const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+  const googleId = Deno.env.get("GOOGLE_CLIENT_ID");
+  const googleSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
   const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (!googleId || !googleSecret || !refreshToken) {
     return json({ ok: false, error: "Gmail credentials not configured" }, 503);
   }
 
-  // Short subject, single RFC2047 encoded-word (same as the other mailers) so
-  // Hebrew never renders as "???". Details live in the body.
-  const subject = "עדכון על ליד שהפנית";
+  const subject = "פתחתי לך את תוכנית ההפניות";
+  const steps = [
+    g("ממלא פרטים של מישהו שאתה חושב שיתאים לי", "ממלאת פרטים של מישהו שאת חושבת שיתאים לי"),
+    "אני יוצר קשר, ומעדכן אותך בכל שלב במייל",
+    g("העסקה נסגרה? הקרדיט נכנס לך אוטומטית", "העסקה נסגרה? הקרדיט נכנס לך אוטומטית"),
+  ];
+
   const html = `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:540px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:20px 26px;border-bottom:1px solid #2a2a33;text-align:right">
         <span style="font-size:20px;font-weight:800;color:#fff">Orion</span>
-        <span style="font-size:13px;color:#B4D670"> · עדכון סטטוס ליד</span>
+        <span style="font-size:13px;color:#B4D670"> · תוכנית ההפניות</span>
       </div>
       <div dir="rtl" style="padding:26px;text-align:right;color:#e8e8ea;font-size:15px;line-height:1.7">
         <p style="margin:0 0 14px">${escapeHtml(hello)}</p>
-        <p style="margin:0 0 14px">יש עדכון על <strong style="color:#fff">${escapeHtml(leadName)}</strong>:</p>
-        <div style="background:#0f0e14;border:1px solid #2a2a33;border-radius:12px;padding:14px 16px;margin:0 0 14px">
-          <p style="margin:0 0 6px;color:#B4D670;font-weight:700">${escapeHtml(info.label)}</p>
-          <p style="margin:0;color:#cfcfd4">${escapeHtml(info.line)}</p>
+        <p style="margin:0 0 14px">${escapeHtml(
+          g("פתחתי לך את תוכנית ההפניות שלי בפורטל. אם אתה מכיר מישהו שצריך אתר, מערכת או אוטומציה, אתה יכול להפנות אותו אליי ישירות משם.",
+            "פתחתי לך את תוכנית ההפניות שלי בפורטל. אם את מכירה מישהו שצריך אתר, מערכת או אוטומציה, את יכולה להפנות אותו אליי ישירות משם.")
+        )}</p>
+        <div style="background:#0f0e14;border:1px solid #2a2a33;border-radius:12px;padding:16px;margin:0 0 16px;text-align:center">
+          <p style="margin:0;color:#B4D670;font-size:22px;font-weight:800">${CREDIT_PCT}% מהעסקה</p>
+          <p style="margin:6px 0 0;color:#cfcfd4;font-size:14px">${escapeHtml(
+            g("נכנסים אליך כקרדיט אצלי על כל הפניה שנסגרת. אפשר לממש אותו בכל עבודה עתידית.",
+              "נכנסים אליך כקרדיט אצלי על כל הפניה שנסגרת. אפשר לממש אותו בכל עבודה עתידית.")
+          )}</p>
         </div>
-        <p style="margin:0 0 18px;color:#cfcfd4">${escapeHtml(closing)}</p>
+        <p style="margin:0 0 8px;font-weight:700">איך זה עובד</p>
+        <ol style="margin:0 0 18px;padding-inline-start:18px;color:#cfcfd4">
+          ${steps.map((s) => `<li style="margin:0 0 5px">${escapeHtml(s)}</li>`).join("")}
+        </ol>
         <div style="text-align:center">
-          <a href="${link}" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:999px">${escapeHtml(cta)}</a>
+          <a href="${PORTAL}${PROGRAM_PATH}" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:999px">מעבר לתוכנית ההפניות</a>
         </div>
       </div>
     </div>
   </div></body></html>`;
 
-  const logContext = { referrer_id: referrerId, status, lead_name: leadName, audience };
-
   try {
-    const accessToken = await getAccessToken(clientId, clientSecret, refreshToken);
+    const accessToken = await getAccessToken(googleId, googleSecret, refreshToken);
     const res = await sendGmail(accessToken, to, subject, html);
     if (!res.ok) {
       const detail = await res.text();
       console.error("gmail send failed", res.status, detail);
       await logEmail(admin, {
-        kind: "notify-lead-status",
+        kind: "notify-referral-approved",
         to_email: to,
         subject,
         html,
         ok: false,
-        error: `gmail ${res.status}: ${detail}`,
-        context: logContext,
+        error: `gmail ${res.status}: ${detail}`.slice(0, 500),
+        context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
       });
-      return json({ ok: false, error: `gmail ${res.status}`, detail }, 502);
+      return json({ ok: false, error: `gmail ${res.status}` }, 502);
     }
     await logEmail(admin, {
-      kind: "notify-lead-status",
+      kind: "notify-referral-approved",
       to_email: to,
       subject,
       html,
       ok: true,
-      context: logContext,
+      context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
     });
     return json({ ok: true });
   } catch (e) {
-    console.error("notify-lead-status error", String(e));
+    console.error("notify-referral-approved error", String(e));
     await logEmail(admin, {
-      kind: "notify-lead-status",
+      kind: "notify-referral-approved",
       to_email: to,
       subject,
       html,
       ok: false,
-      error: String(e),
-      context: logContext,
+      error: String(e).slice(0, 500),
+      context: { client_id: clientId, credit_pct: CREDIT_PCT, resent: b?.resent === true },
     });
     return json({ ok: false, error: String(e) }, 500);
   }

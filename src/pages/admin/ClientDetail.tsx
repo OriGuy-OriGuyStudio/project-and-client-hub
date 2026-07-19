@@ -402,6 +402,7 @@ export default function ClientDetail() {
               {enrolled ? "מאושר" : "לא מאושר"}
             </Badge>
           </p>
+          {enrolled && <ResendReferralWelcome clientId={profile.id} />}
         </Card>
       </div>
 
@@ -855,5 +856,31 @@ export function Field({
         )}
       </dd>
     </div>
+  );
+}
+
+/** "שלח שוב" for the referral-program welcome mail. Goes through the
+ *  `resend_referral_welcome` RPC, which is admin-gated and refuses for a client
+ *  who is not actually enrolled, so this button can never mail the wrong
+ *  person. The mail itself is recorded in the email log like every other. */
+function ResendReferralWelcome({ clientId }: { clientId: string }) {
+  const [busy, setBusy] = useState(false);
+
+  async function resend() {
+    setBusy(true);
+    const { data, error } = await supabase.rpc("resend_referral_welcome", { p_client_id: clientId });
+    setBusy(false);
+    if (error) return toastError("השליחה נכשלה.");
+    if (data && (data as { ok?: boolean }).ok === false) {
+      return toastError("הלקוח לא מאושר לתוכנית ההפניות.");
+    }
+    toast({ title: "המייל נשלח שוב", variant: "success" });
+  }
+
+  return (
+    <Button variant="ghost" size="sm" className="mt-2 px-0" disabled={busy} onClick={() => void resend()}>
+      <Mail className="size-3.5" />
+      {busy ? "שולח…" : "שלח שוב את מייל ההצטרפות"}
+    </Button>
   );
 }

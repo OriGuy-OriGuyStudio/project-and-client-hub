@@ -1326,6 +1326,13 @@ export interface Database {
       clone_into_demo: { Args: { p_demo: string; p_source: string }; Returns: undefined };
       reset_demo_account: { Args: { p_demo: string }; Returns: undefined };
       delete_organization: { Args: { p_org_id: string }; Returns: undefined };
+      /** Re-sends the referral-program welcome mail. Admin-only; returns
+       *  { ok: false, error: 'not_enrolled' } for a client whose program was
+       *  never opened. */
+      resend_referral_welcome: {
+        Args: { p_client_id: string };
+        Returns: { ok: boolean; error?: string };
+      };
       approve_access_request_as_business: {
         Args: { p_id: string; p_business_name: string; p_manager_name: string };
         Returns: { status: string; org_id: string };
