@@ -27,7 +27,7 @@ function stat(n: string | number, label: string) {
   return `<td style="text-align:center;padding:8px 6px;font-family:Arial,Helvetica,sans-serif"><div style="font-size:24px;font-weight:800;color:#B4D670">${escapeHtml(String(n))}</div><div style="font-size:12px;color:#a7a7ad">${escapeHtml(label)}</div></td>`;
 }
 function buildHtml(o: { business: string; month: string; hi: string; stats: string; reportUrl: string; studioName: string }) {
-  return `<!doctype html><html dir="rtl" lang="he"><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
+  return `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>html,body,div,p,span,a,td,th,table,tr,h1,h2,h3,h4,h5,h6,li,ul,ol,strong,b,em,small,button{font-family:Arial,Helvetica,"Segoe UI","Helvetica Neue",sans-serif !important;}</style></head><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
   <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:600px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:18px;overflow:hidden">
       <div dir="rtl" style="padding:22px 28px;border-bottom:1px solid #2a2a33;text-align:right">
