@@ -121,15 +121,15 @@ Deno.serve(async (req: Request) => {
     ["⚡", "מהיר ומעודכן", "עדכונים שוטפים ותחזוקה שוטפת שומרים על האתר חד ובריא."],
   ];
   const benefitsHtml = benefits.map(([e, t, d]) =>
-    `<tr><td style="padding:10px 0;vertical-align:top;width:34px;font-size:20px;font-family:Arial,Helvetica,sans-serif">${e}</td>
-     <td style="padding:10px 0;text-align:right;font-family:Arial,Helvetica,sans-serif">
+    `<tr><td style="padding:10px 0;vertical-align:top;width:34px;font-size:20px;font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif">${e}</td>
+     <td style="padding:10px 0;text-align:right;font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif">
        <div style="font-weight:700;color:#fff;font-size:15px">${escapeHtml(t)}</div>
        <div style="color:#b9b9c2;font-size:13.5px;line-height:1.6">${escapeHtml(d)}</div>
      </td></tr>`).join("");
 
   const subject = g("ברוך הבא, החבילה שלך פעילה 🎉", "ברוכה הבאה, החבילה שלך פעילה 🎉");
-  const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>html,body,div,p,span,a,td,th,table,tr,h1,h2,h3,h4,h5,h6,li,ul,ol,strong,b,em,small,button{font-family:Arial,Helvetica,"Segoe UI","Helvetica Neue",sans-serif !important;}</style></head><body style="margin:0;background:#0b0a10;font-family:Arial,Helvetica,sans-serif">
-  <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Arial,Helvetica,sans-serif">
+  const html = `<!doctype html><html dir="rtl" lang="he"><head><meta charset="utf-8"><meta name="color-scheme" content="dark light"><style>html,body,div,p,span,a,td,th,table,tr,h1,h2,h3,h4,h5,h6,li,ul,ol,strong,b,em,small,button{font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif !important;}</style></head><body style="margin:0;background:#0b0a10;font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif">
+  <div dir="rtl" style="background:#0b0a10;padding:24px 16px;font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif">
     <div style="max-width:560px;margin:0 auto;background:#16151c;border:1px solid #2a2a33;border-radius:20px;overflow:hidden">
       <div dir="rtl" style="padding:26px;border-bottom:1px solid #2a2a33;text-align:center;background:linear-gradient(135deg,rgba(180,214,112,.14),rgba(34,211,238,.08))">
         <div style="font-size:34px;line-height:1">🎉</div>
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
       <div dir="rtl" style="padding:26px;text-align:right;color:#e8e8ea;font-size:15px;line-height:1.75">
         <p style="margin:0 0 14px">היי ${escapeHtml(firstName)}, שמח שהצטרפת. מהיום אני דואג לאתר שלך מאחורי הקלעים, ${g("ואתה מתפנה", "ואת מתפנה")} להתעסק בעסק.</p>
         <p style="margin:0 0 6px;color:#9a9aa4;font-size:13px">מה ${g("קיבלת", "קיבלת")} מהרגע הזה:</p>
-        <table role="presentation" style="width:100%;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif">${benefitsHtml}</table>
+        <table role="presentation" style="width:100%;border-collapse:collapse;font-family:Tahoma,"Segoe UI",Arial,Helvetica,sans-serif">${benefitsHtml}</table>
         <div style="text-align:center;margin-top:22px">
           <a href="${PORTAL}/service" style="display:inline-block;background:#B4D670;color:#0b0a10;text-decoration:none;font-weight:800;font-size:15px;padding:13px 30px;border-radius:999px">לדשבורד השירות שלך</a>
         </div>
