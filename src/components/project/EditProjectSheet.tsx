@@ -81,6 +81,8 @@ export function EditProjectSheet({ project }: { project: Project }) {
   const [svcHourly, setSvcHourly] = useState("");
   const [svcNotifyEmail, setSvcNotifyEmail] = useState("");
   const [svcTurnstileSitekey, setSvcTurnstileSitekey] = useState("");
+  const [svcCwServer, setSvcCwServer] = useState("");
+  const [svcCwApp, setSvcCwApp] = useState("");
   useEffect(() => {
     setSvcTier(service && service.active ? service.tier : "none");
     setSvcSiteType(service?.site_type ?? "wordpress");
@@ -88,6 +90,8 @@ export function EditProjectSheet({ project }: { project: Project }) {
     setSvcBillingDay(String(service?.billing_day ?? 1));
     setSvcNotifyEmail(service?.notify_email ?? "");
     setSvcTurnstileSitekey(service?.cf_turnstile_sitekey ?? "");
+    setSvcCwServer(service?.cloudways_server_id ?? "");
+    setSvcCwApp(service?.cloudways_app_id ?? "");
   }, [service]);
   useEffect(() => {
     setSvcHourly(serviceMoney?.hourly_rate != null ? String(serviceMoney.hourly_rate) : "");
@@ -168,6 +172,8 @@ export function EditProjectSheet({ project }: { project: Project }) {
           active: svcTier !== "none",
           notify_email: notifyEmail || null,
           cf_turnstile_sitekey: svcTurnstileSitekey.trim() || null,
+          cloudways_server_id: svcCwServer.trim() || null,
+          cloudways_app_id: svcCwApp.trim() || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "project_id" },
@@ -459,6 +465,29 @@ export function EditProjectSheet({ project }: { project: Project }) {
                     ה-sitekey של ווידג׳ט ה-Turnstile באתר. אם מוגדר, גרף חסימות הבוטים יתמלא מהנתונים שלו.
                   </p>
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ep-svc-cw-server">Cloudways Server ID</Label>
+                  <Input
+                    id="ep-svc-cw-server"
+                    dir="ltr"
+                    placeholder="1587884"
+                    value={svcCwServer}
+                    onChange={(e) => setSvcCwServer(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ep-svc-cw-app">Cloudways App ID</Label>
+                  <Input
+                    id="ep-svc-cw-app"
+                    dir="ltr"
+                    placeholder="6211291"
+                    value={svcCwApp}
+                    onChange={(e) => setSvcCwApp(e.target.value)}
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  מזהי Cloudways של האתר. כשמוגדרים, המערכת מגבה את האתר אוטומטית כל לילה ומתעדת רק גיבוי שבאמת הצליח. בלי זה, אין גיבוי אוטומטי לפרויקט הזה.
+                </p>
               </div>
             )}
             <p className="text-xs text-muted-foreground">

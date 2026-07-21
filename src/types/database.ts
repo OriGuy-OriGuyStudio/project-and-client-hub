@@ -425,6 +425,10 @@ export type ProjectService = {
   cf_zone_id: string | null;
   cf_zone_checked_at: string | null;
   cf_turnstile_sitekey: string | null;
+  /** Cloudways mapping for the real nightly-backup job. Both must be set for a
+   *  project to be backed up automatically. */
+  cloudways_server_id: string | null;
+  cloudways_app_id: string | null;
   updated_at: string;
 }
 
@@ -1383,6 +1387,11 @@ export interface Database {
        *  never opened. */
       resend_referral_welcome: {
         Args: { p_client_id: string };
+        Returns: { ok: boolean; error?: string };
+      };
+      /** Set/clear a project's Cloudways mapping for the nightly backup job. */
+      admin_set_cloudways_app: {
+        Args: { p_project: string; p_server_id: string; p_app_id: string };
         Returns: { ok: boolean; error?: string };
       };
       approve_access_request_as_business: {
