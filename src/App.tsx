@@ -69,6 +69,7 @@ const ServicePreview = lazy(() => import("@/pages/public/ServicePreview"));
 const ClientReport = lazy(() => import("@/pages/public/ClientReport"));
 const PackagesLanding = lazy(() => import("@/pages/public/PackagesLanding"));
 const AgreementConfirmation = lazy(() => import("@/pages/public/AgreementConfirmation"));
+const AddendumSign = lazy(() => import("@/pages/public/AddendumSign"));
 const LegalPage = lazy(() => import("@/pages/public/LegalPage"));
 const DiscoverySummary = lazy(() => import("@/pages/public/DiscoverySummary"));
 const PartnerDashboard = lazy(() => import("@/pages/partner/PartnerDashboard"));
@@ -244,6 +245,18 @@ function App() {
               element={
                 <Suspense fallback={<div className="min-h-screen bg-background" />}>
                   <AgreementConfirmation />
+                </Suspense>
+              }
+            />
+
+            {/* Public agreement-addendum sign page (no auth, token-gated share link).
+                A signed service agreement is a frozen snapshot; changing a term after
+                signing goes through a small standalone addendum with its own sign link. */}
+            <Route
+              path="/addendum/:token"
+              element={
+                <Suspense fallback={<div className="min-h-screen bg-background" />}>
+                  <AddendumSign />
                 </Suspense>
               }
             />

@@ -735,6 +735,28 @@ export type ServiceAgreement = {
   updated_at: string;
 };
 
+// A small standalone document ("נספח") linked to a signed service agreement,
+// with its own sign link + signature. A signed agreement is an immutable
+// snapshot, so changing a term after signing goes through an addendum instead
+// of rewriting the agreement. Locked (no edit/delete) once status = 'signed'.
+// See supabase/migrations/20260720120000_agreement_addenda.sql.
+export type AgreementAddendum = {
+  id: string;
+  agreement_id: string;
+  client_id: string | null;
+  sign_token: string;
+  title: string;
+  body: string;
+  status: "pending" | "signed";
+  signer_name: string | null;
+  signature: string | null;
+  signature_image: string | null;
+  consent_accepted: boolean;
+  gender: "male" | "female";
+  created_at: string;
+  signed_at: string | null;
+};
+
 // Editable package content (admin plans editor). Seeded from service-plans.ts;
 // the landing + new agreements read this live.
 export type ServicePlanContent = {
@@ -1330,6 +1352,7 @@ export interface Database {
       dev_feedback: TableShape<DevFeedback>;
       landing_invites: TableShape<LandingInvite>;
       service_agreements: TableShape<ServiceAgreement>;
+      agreement_addenda: TableShape<AgreementAddendum>;
       service_plan_content: TableShape<ServicePlanContent>;
       organizations: TableShape<Organization>;
       organization_members: TableShape<OrganizationMember>;
@@ -1427,6 +1450,49 @@ export interface Database {
         Returns: { ok: boolean; id: string; access_token: string };
       };
       get_service_agreement: { Args: { p_access_token: string }; Returns: Json };
+      // Agreement addenda ("נספחים") , a small standalone document linked to a
+      // signed service agreement, with its own sign link + signature.
+      admin_create_addendum: {
+        Args: { p_agreement_id: string; p_title: string; p_body: string };
+        Returns: { ok: boolean; id?: string; sign_token?: string };
+      };
+      admin_update_addendum: {
+        Args: { p_id: string; p_title: string; p_body: string };
+        Returns: { ok: boolean; error?: string };
+      };
+      admin_delete_addendum: {
+        Args: { p_id: string };
+        Returns: { ok: boolean; error?: string };
+      };
+      admin_agreement_addenda: {
+        Args: { p_agreement_id: string };
+        Returns: AgreementAddendum[];
+      };
+      /** Emails the client the addendum sign link. */
+      admin_send_addendum: {
+        Args: { p_id: string };
+        Returns: { ok: boolean; error?: string };
+      };
+      get_addendum_public: {
+        Args: { p_token: string };
+        Returns: {
+          id: string;
+          title: string;
+          body: string;
+          status: "pending" | "signed";
+          signer_name: string | null;
+          gender: "male" | "female";
+          created_at: string;
+          signed_at: string | null;
+          business: string | null;
+          tier: string | null;
+          client_name: string | null;
+        } | null;
+      };
+      sign_addendum: {
+        Args: { p_token: string; p_payload: Json };
+        Returns: { ok: boolean; error?: string };
+      };
       client_service_summary: {
         Args: { p_project: string };
         Returns: {

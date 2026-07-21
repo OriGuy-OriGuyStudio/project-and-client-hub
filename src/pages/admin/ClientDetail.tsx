@@ -32,6 +32,7 @@ import { ColorSwatch } from "@/components/brand/ColorSwatch";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BrandIdentityEditor } from "@/components/brand/BrandIdentityEditor";
 import { EditClientSheet, type ClientItem } from "@/components/admin/EditClientSheet";
+import { AgreementAddendaSection } from "@/components/admin/AgreementAddenda";
 import {
   iconForPlatform,
   labelForPlatform,
@@ -621,21 +622,24 @@ export default function ClientDetail() {
                 const snap = (a.terms_snapshot ?? {}) as { tier_name?: string; site_type_label?: string };
                 const annual = a.billing_cycle === "annual";
                 return (
-                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-3 py-2.5">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {snap.tier_name || a.tier}
-                        <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש · {annual ? "שנתי" : "חודשי"}</span>
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {projectTitle(a.project_id) ? `${projectTitle(a.project_id)} · ` : ""}
-                        {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        {a.signature_image ? " · חתום ✓" : ""}
-                      </p>
+                  <li key={a.id} className="rounded-lg border border-border bg-background/30 px-3 py-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {snap.tier_name || a.tier}
+                          <span className="mr-2 text-muted-foreground">₪{Number(a.monthly_price ?? 0).toLocaleString("he-IL")} / חודש · {annual ? "שנתי" : "חודשי"}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {projectTitle(a.project_id) ? `${projectTitle(a.project_id)} · ` : ""}
+                          {snap.site_type_label || a.site_type} · {new Date(a.created_at).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {a.signature_image ? " · חתום ✓" : ""}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">צפייה במסמך</a>
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <a href={`/l/agreement/${a.access_token}`} target="_blank" rel="noreferrer">צפייה במסמך</a>
-                    </Button>
+                    <AgreementAddendaSection agreementId={a.id} />
                   </li>
                 );
               })}
