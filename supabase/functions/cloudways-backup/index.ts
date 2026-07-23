@@ -30,6 +30,10 @@ function json(body: unknown, status = 200) {
 }
 
 async function cwToken(email: string, apiKey: string): Promise<string> {
+  // Cloudways' new "API Integration" Personal Access Tokens (prefixed "cw...")
+  // are used directly as the Bearer token, no OAuth exchange. The classic
+  // Account > API key still needs email + api_key exchanged for an access token.
+  if (apiKey.startsWith("cw")) return apiKey;
   const res = await fetch(`${CW}/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
