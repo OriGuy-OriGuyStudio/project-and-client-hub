@@ -685,6 +685,25 @@ export function ServiceBoard({
               <PerfChart metrics={metrics} field="pagespeed" color={GREEN} name="PageSpeed" domain={[0, 100]} />
             </div>
 
+            {/* Core Web Vitals , real-world LCP loading speed over time (seconds,
+                lower is better). Only shown once there are a couple of days. */}
+            {metrics.filter((m) => m.lcp_ms != null).length >= 2 && (
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">מגמת Core Web Vitals (LCP)</p>
+                  <span className="text-xs text-muted-foreground">שניות · נמוך = מהיר יותר</span>
+                </div>
+                <PerfChart
+                  metrics={metrics}
+                  compute={(m) => (m.lcp_ms != null ? Math.round((m.lcp_ms / 1000) * 100) / 100 : null)}
+                  color={CYAN}
+                  name="LCP"
+                  unit=" ש׳"
+                  height={150}
+                />
+              </div>
+            )}
+
             <div className="grid gap-3 lg:grid-cols-3">
               <div className="rounded-2xl border border-border bg-card p-4 lg:col-span-2">
                 <div className="mb-2 flex items-center justify-between">
