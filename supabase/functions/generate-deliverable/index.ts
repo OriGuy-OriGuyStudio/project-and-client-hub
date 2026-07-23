@@ -1581,6 +1581,118 @@ async function generateQuoteOrder(apiKey: string, payload: any) {
   };
 }
 
+// action="propose": propose BRAND-NEW pages/features (or modules/automations)
+// from the model's own knowledge of what this kind of business needs , NOT from
+// the catalog. They come back as suggestions the admin adds as editable custom
+// items (fresh ids assigned client-side), so there's no hallucinated-id risk.
+function quoteProposePrompt(payload: any): string {
+  const type = String(payload?.type ?? "website");
+  const existing: string[] = Array.isArray(payload?.existing_labels)
+    ? payload.existing_labels.map((s: any) => String(s ?? "").trim()).filter(Boolean)
+    : [];
+  const kindsByType: Record<string, string> = {
+    website: "page (עמוד) או feature (פיצ'ר)",
+    system: "module (מודול)",
+    automation: "automation (אוטומציה)",
+  };
+  const whatByType: Record<string, string> = {
+    website: "עמודים ופיצ'רים",
+    system: "מודולים",
+    automation: "אוטומציות",
+  };
+  return [
+    "אתה אסטרטג דיגיטל בכיר שעוזר לאדמין של סטודיו אתרים פרימיום. המשימה: להציע " + (whatByType[type] ?? "פריטים") + " חדשים להצעת מחיר, מתוך הידע והניסיון שלך, לא מרשימה סגורה.",
+    "כל פריט חייב לקבל kind מתוך: " + (kindsByType[type] ?? "page") + ". החזר את ה-kind באנגלית בדיוק (page/feature/module/automation).",
+    existing.length
+      ? "מה שכבר קיים בהיקף ההצעה (אל תציע כפילויות של אלה):\n" + existing.map((l) => "- " + l).join(NL)
+      : "עדיין אין פריטים בהיקף.",
+    payload?.client_business ? "העסק של הלקוח: " + String(payload.client_business) : "",
+    payload?.notes ? "סיכום שיחת האפיון:\n" + String(payload.notes).slice(0, 6000) : "",
+    "הצע בין 3 ל-8 פריטים חדשים שבאמת מוסיפים ערך לפרויקט הספציפי הזה ומתאימים לעסק הזה, שעדיין לא נמצאים בהיקף. אל תמציא פריטים גנריים סתם כדי למלא, ואל תחזור על מה שכבר קיים.",
+    "לכל פריט: label , שם קצר וברור בעברית (מוצג ללקוח); desc , משפט הסבר קצר ללקוח על מה הפריט נותן; value , מחיר מוערך בשקלים לפני מע\"מ שמתאים לסטודיו פרימיום (הערכה בלבד, האדמין יתאים; אם אתה לא בטוח, החזר 0).",
+    "כתוב בעברית, פנייה ניטרלית (הקהל מעורב, זכר ונקבה). בלי באזזוורדס.",
+    "כתוב reasoning: משפט קצר לאדמין (לא ללקוח) שמסביר את ההיגיון של ההצעות.",
+    EM_DASH_RULE,
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_PROPOSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    items: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          kind: { type: "STRING" },
+          label: { type: "STRING" },
+          desc: { type: "STRING" },
+          value: { type: "NUMBER" },
+        },
+        required: ["kind", "label"],
+      },
+    },
+    reasoning: { type: "STRING" },
+  },
+  required: ["items"],
+};
+
+async function generateQuotePropose(apiKey: string, payload: any) {
+  const prompt = quoteProposePrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.6,
+      maxOutputTokens: 4000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_PROPOSE_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!parsed || !Array.isArray(parsed.items)) {
+        return { ok: false, status: 502, error: "לא התקבלו הצעות תקינות. נסה שוב." };
+      }
+      return { ok: true, data: parsed };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai propose error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -1658,6 +1770,11 @@ Deno.serve(async (req) => {
     }
     if (action === "order") {
       const r = await generateQuoteOrder(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    if (action === "propose") {
+      const r = await generateQuotePropose(apiKey, payload);
       if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
       return json({ ok: true, data: r.data });
     }

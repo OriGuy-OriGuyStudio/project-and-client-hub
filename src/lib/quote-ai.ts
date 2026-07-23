@@ -7,7 +7,15 @@
 
 import { supabase } from "./supabase";
 import { fnErrorMessage } from "./invite";
-import type { QuoteType } from "./quote-pricing";
+import type { QuoteType, ScopeItemKind } from "./quote-pricing";
+
+/** The scope kinds the AI is allowed to propose for each quote type. Anything
+ *  else the model returns is dropped , the client picks the kind, not the AI. */
+const PROPOSABLE_KINDS: Record<QuoteType, ScopeItemKind[]> = {
+  website: ["page", "feature"],
+  system: ["module"],
+  automation: ["automation"],
+};
 
 /** Logs the underlying failure for devtools and throws a fixed, Hebrew,
  *  action-specific message , the UI toast never leaks a raw/English error. */
@@ -199,5 +207,47 @@ export async function quoteAiOrder(payload: QuoteAiOrderPayload): Promise<QuoteA
     return { ordered_ids, reasoning: raw.reasoning ?? "" };
   } catch (e) {
     return aiFail("order", "ה-AI לא הצליח לסדר את הפריטים, נסה שוב.", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// action: propose , brand-new pages/features from the model's own knowledge (NOT
+// the catalog), returned as suggestions the admin adds as editable custom items.
+// No id involved here (the builder assigns fresh ids), so the guardrails are:
+// kind must be valid for the type, label non-empty, value a non-negative number.
+
+export type QuoteAiProposePayload = {
+  type: QuoteType;
+  notes?: string;
+  client_business?: string;
+  existing_labels?: string[];
+};
+
+export type QuoteAiProposedItem = { kind: ScopeItemKind; label: string; desc?: string; value: number };
+export type QuoteAiProposeResult = { items: QuoteAiProposedItem[]; reasoning: string };
+
+export async function quoteAiPropose(payload: QuoteAiProposePayload): Promise<QuoteAiProposeResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: { mode: "quote_ai", action: "propose", payload },
+    });
+    if (error) throw new Error(await fnErrorMessage(error));
+    if (data && data.ok === false) throw new Error(data.error || "generation failed");
+    const raw = (data?.data ?? {}) as { items?: unknown; reasoning?: string };
+    const allowed = new Set<ScopeItemKind>(PROPOSABLE_KINDS[payload.type] ?? []);
+    const items: QuoteAiProposedItem[] = (Array.isArray(raw.items) ? raw.items : [])
+      .map((it) => {
+        const o = (it ?? {}) as Record<string, unknown>;
+        const kind = String(o.kind ?? "") as ScopeItemKind;
+        const label = String(o.label ?? "").trim();
+        const desc = String(o.desc ?? "").trim();
+        const value = Math.max(0, Math.round(Number(o.value) || 0));
+        return { kind, label, desc: desc || undefined, value };
+      })
+      .filter((it) => allowed.has(it.kind) && it.label.length > 0)
+      .slice(0, 12);
+    return { items, reasoning: raw.reasoning ?? "" };
+  } catch (e) {
+    return aiFail("propose", "ה-AI לא הצליח להציע פריטים חדשים, נסה שוב.", e);
   }
 }

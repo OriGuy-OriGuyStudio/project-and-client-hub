@@ -69,7 +69,7 @@ import { ScopeItemsEditor } from "./ScopeItemsEditor";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 import { AutomationGuide } from "./AutomationGuide";
-import { quoteAiScopeFill, quoteAiOrder, type QuoteAiCatalogEntry } from "@/lib/quote-ai";
+import { quoteAiScopeFill, quoteAiOrder, quoteAiPropose, type QuoteAiCatalogEntry } from "@/lib/quote-ai";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -480,6 +480,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const [switchingType, setSwitchingType] = useState(false);
   const [scopeFillPending, setScopeFillPending] = useState(false);
   const [aiOrderPending, setAiOrderPending] = useState(false);
+  const [proposePending, setProposePending] = useState(false);
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -825,6 +826,49 @@ function QuoteBuilderShell({ id }: { id: string }) {
     }
   }
 
+  /** "הצע עמודים ופיצ'רים חדשים (AI)": from the discovery notes, the AI proposes
+   *  brand-new items out of its own knowledge (not the catalog), APPENDED as
+   *  editable custom items the admin then prices/edits. Additive only, never
+   *  replaces; existing labels are sent so it doesn't repeat what's already in. */
+  async function handleAiPropose() {
+    if (!content || locked) return;
+    const notes = (content.notes ?? "").trim();
+    if (!notes) return;
+    const type = content.type;
+    setProposePending(true);
+    try {
+      const result = await quoteAiPropose({
+        type,
+        notes,
+        client_business: clientBusiness.trim() || undefined,
+        existing_labels: content.scope.map((it) => it.label).filter(Boolean),
+      });
+      let addedCount = 0;
+      setContent((prev) => {
+        if (!prev || prev.type !== type) return prev;
+        const stamp = Date.now().toString(36);
+        const newItems: ScopeItem[] = result.items.map((it, i) => ({
+          id: `custom_${stamp}${i}${Math.random().toString(36).slice(2, 6)}`,
+          kind: it.kind,
+          label: it.label,
+          value: it.value,
+          desc: it.desc,
+        }));
+        addedCount = newItems.length;
+        return { ...prev, scope: [...prev.scope, ...newItems] };
+      });
+      toast({
+        title: addedCount > 0 ? `ה-AI הציע ${addedCount} פריטים חדשים` : "ה-AI לא מצא פריטים חדשים להציע",
+        description: result.reasoning?.trim() || undefined,
+        variant: "success",
+      });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "הצעת פריטים עם AI נכשלה.");
+    } finally {
+      setProposePending(false);
+    }
+  }
+
   return (
     <div className="space-y-5 pb-24">
       {quote && (
@@ -1016,19 +1060,34 @@ function QuoteBuilderShell({ id }: { id: string }) {
               placeholder="מה עלה בשיחה עם הלקוח? המטרות, הצרכים, מה חשוב לו..."
               rows={4}
             />
-            <button
-              type="button"
-              disabled={locked || scopeFillPending || !(content.notes ?? "").trim()}
-              onClick={() => void handleAiScopeFill()}
-              className={cn(
-                "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary/15 px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/25",
-                (locked || scopeFillPending || !(content.notes ?? "").trim()) &&
-                  "cursor-not-allowed opacity-60 hover:bg-primary/15"
-              )}
-            >
-              {scopeFillPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {scopeFillPending ? "חושב על זה…" : "מלא היקף עם AI"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={locked || scopeFillPending || !(content.notes ?? "").trim()}
+                onClick={() => void handleAiScopeFill()}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary/15 px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/25",
+                  (locked || scopeFillPending || !(content.notes ?? "").trim()) &&
+                    "cursor-not-allowed opacity-60 hover:bg-primary/15"
+                )}
+              >
+                {scopeFillPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                {scopeFillPending ? "חושב על זה…" : "מלא היקף עם AI"}
+              </button>
+              <button
+                type="button"
+                disabled={locked || proposePending || !(content.notes ?? "").trim()}
+                onClick={() => void handleAiPropose()}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-primary/40 px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/10",
+                  (locked || proposePending || !(content.notes ?? "").trim()) &&
+                    "cursor-not-allowed opacity-60 hover:bg-transparent"
+                )}
+              >
+                {proposePending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                {proposePending ? "חושב על רעיונות…" : "הצע עמודים ופיצ'רים חדשים (AI)"}
+              </button>
+            </div>
           </Card>
 
           {sections.map((s) => (
