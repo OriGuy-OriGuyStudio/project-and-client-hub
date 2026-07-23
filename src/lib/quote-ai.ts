@@ -17,6 +17,19 @@ const PROPOSABLE_KINDS: Record<QuoteType, ScopeItemKind[]> = {
   automation: ["automation"],
 };
 
+/** Maps whatever the model returns for `kind` (english/hebrew, singular/plural,
+ *  any casing) to a canonical ScopeItemKind, or null if unrecognizable. Belt to
+ *  the schema enum's suspenders , a kind mismatch used to drop every item. */
+const KIND_ALIASES: Record<string, ScopeItemKind> = {
+  page: "page", pages: "page", "עמוד": "page", "עמודים": "page",
+  feature: "feature", features: "feature", "פיצר": "feature", "פיצ'ר": "feature", "פיצרים": "feature", "פיצ'רים": "feature",
+  module: "module", modules: "module", "מודול": "module", "מודולים": "module",
+  automation: "automation", automations: "automation", "אוטומציה": "automation", "אוטומציות": "automation",
+};
+function normalizeKind(raw: string): ScopeItemKind | null {
+  return KIND_ALIASES[raw.trim().toLowerCase()] ?? null;
+}
+
 /** Logs the underlying failure for devtools and throws a fixed, Hebrew,
  *  action-specific message , the UI toast never leaks a raw/English error. */
 function aiFail(action: string, fallback: string, e: unknown): never {
@@ -236,15 +249,14 @@ export async function quoteAiPropose(payload: QuoteAiProposePayload): Promise<Qu
     const raw = (data?.data ?? {}) as { items?: unknown; reasoning?: string };
     const allowed = new Set<ScopeItemKind>(PROPOSABLE_KINDS[payload.type] ?? []);
     const items: QuoteAiProposedItem[] = (Array.isArray(raw.items) ? raw.items : [])
-      .map((it) => {
+      .flatMap((it) => {
         const o = (it ?? {}) as Record<string, unknown>;
-        const kind = String(o.kind ?? "") as ScopeItemKind;
+        const kind = normalizeKind(String(o.kind ?? ""));
         const label = String(o.label ?? "").trim();
+        if (kind == null || !allowed.has(kind) || !label) return [];
         const desc = String(o.desc ?? "").trim();
-        const value = Math.max(0, Math.round(Number(o.value) || 0));
-        return { kind, label, desc: desc || undefined, value };
+        return [{ kind, label, desc: desc || undefined, value: Math.max(0, Math.round(Number(o.value) || 0)) }];
       })
-      .filter((it) => allowed.has(it.kind) && it.label.length > 0)
       .slice(0, 12);
     return { items, reasoning: raw.reasoning ?? "" };
   } catch (e) {

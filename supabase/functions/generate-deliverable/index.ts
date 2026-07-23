@@ -1600,55 +1600,70 @@ function quoteProposePrompt(payload: any): string {
     system: "מודולים",
     automation: "אוטומציות",
   };
+  const allowed = PROPOSE_KINDS[type] ?? ["page", "feature"];
   return [
-    "אתה אסטרטג דיגיטל בכיר שעוזר לאדמין של סטודיו אתרים פרימיום. המשימה: להציע " + (whatByType[type] ?? "פריטים") + " חדשים להצעת מחיר, מתוך הידע והניסיון שלך, לא מרשימה סגורה.",
-    "כל פריט חייב לקבל kind מתוך: " + (kindsByType[type] ?? "page") + ". החזר את ה-kind באנגלית בדיוק (page/feature/module/automation).",
+    "אתה אסטרטג דיגיטל בכיר שעוזר לאדמין של סטודיו אתרים פרימיום. המשימה: להציע " + (whatByType[type] ?? "פריטים") + " חדשים להצעת מחיר, מתוך הידע והניסיון שלך ומתוך מה שעלה באפיון, לא מרשימה סגורה.",
+    "לכל פריט שדה kind , השתמש אך ורק באחד מהערכים האלה, באנגלית קטנה בדיוק: " + allowed.join(" / ") + ". " + (kindsByType[type] ?? ""),
+    "אם המשתמש ציין במפורש עמודים או פיצ'רים שהוא רוצה, כלול אותם בהצעה (הם עדיין לא בהיקף).",
     existing.length
       ? "מה שכבר קיים בהיקף ההצעה (אל תציע כפילויות של אלה):\n" + existing.map((l) => "- " + l).join(NL)
-      : "עדיין אין פריטים בהיקף.",
+      : "עדיין אין פריטים בהיקף, אז יש הרבה מה להציע.",
     payload?.client_business ? "העסק של הלקוח: " + String(payload.client_business) : "",
-    payload?.notes ? "סיכום שיחת האפיון:\n" + String(payload.notes).slice(0, 6000) : "",
-    "הצע בין 3 ל-8 פריטים חדשים שבאמת מוסיפים ערך לפרויקט הספציפי הזה ומתאימים לעסק הזה, שעדיין לא נמצאים בהיקף. אל תמציא פריטים גנריים סתם כדי למלא, ואל תחזור על מה שכבר קיים.",
+    payload?.notes ? "סיכום שיחת האפיון (המקור העיקרי, קרא אותו טוב):\n" + String(payload.notes).slice(0, 14000) : "",
+    "הצע בין 4 ל-10 פריטים חדשים שבאמת מוסיפים ערך לפרויקט הספציפי הזה ומתאימים לעסק הזה, שעדיין לא נמצאים בהיקף. אל תמציא פריטים גנריים סתם כדי למלא, ואל תחזור על מה שכבר קיים.",
     "לכל פריט: label , שם קצר וברור בעברית (מוצג ללקוח); desc , משפט הסבר קצר ללקוח על מה הפריט נותן; value , מחיר מוערך בשקלים לפני מע\"מ שמתאים לסטודיו פרימיום (הערכה בלבד, האדמין יתאים; אם אתה לא בטוח, החזר 0).",
     "כתוב בעברית, פנייה ניטרלית (הקהל מעורב, זכר ונקבה). בלי באזזוורדס.",
     "כתוב reasoning: משפט קצר לאדמין (לא ללקוח) שמסביר את ההיגיון של ההצעות.",
     EM_DASH_RULE,
-    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף.",
+    "החזר אובייקט JSON יחיד לפי הסכימה, בלי טקסט נוסף. חובה להחזיר לפחות פריט אחד.",
   ].filter(Boolean).join(NL);
 }
 
-const QUOTE_PROPOSE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    items: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          kind: { type: "STRING" },
-          label: { type: "STRING" },
-          desc: { type: "STRING" },
-          value: { type: "NUMBER" },
-        },
-        required: ["kind", "label"],
-      },
-    },
-    reasoning: { type: "STRING" },
-  },
-  required: ["items"],
+const PROPOSE_KINDS: Record<string, string[]> = {
+  website: ["page", "feature"],
+  system: ["module"],
+  automation: ["automation"],
 };
+
+// kind is constrained to the type's allowed values via an enum, so the model
+// can't return a variant ("Page", "עמוד", "page (עמוד)") that the client would
+// then filter out , that mismatch was silently dropping every proposed item.
+function quoteProposeSchema(type: string) {
+  const kinds = PROPOSE_KINDS[type] ?? ["page", "feature"];
+  return {
+    type: "OBJECT",
+    properties: {
+      items: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            kind: { type: "STRING", enum: kinds },
+            label: { type: "STRING" },
+            desc: { type: "STRING" },
+            value: { type: "NUMBER" },
+          },
+          required: ["kind", "label"],
+        },
+      },
+      reasoning: { type: "STRING" },
+    },
+    required: ["items"],
+  };
+}
 
 async function generateQuotePropose(apiKey: string, payload: any) {
   const prompt = quoteProposePrompt(payload);
+  const schema = quoteProposeSchema(String(payload?.type ?? "website"));
   const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
   let lastStatus = 0;
   let lastReason = "";
   for (const model of models) {
     const generationConfig: Record<string, unknown> = {
       temperature: 0.6,
-      maxOutputTokens: 4000,
+      maxOutputTokens: 6000,
       responseMimeType: "application/json",
-      responseSchema: QUOTE_PROPOSE_SCHEMA,
+      responseSchema: schema,
     };
     if (model === "gemini-2.5-flash") {
       generationConfig.thinkingConfig = { thinkingBudget: 0 };
