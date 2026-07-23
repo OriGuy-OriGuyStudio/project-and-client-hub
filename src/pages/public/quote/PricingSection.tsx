@@ -198,12 +198,15 @@ export function PricingSection({
     ];
   }, [optionalScopeItems, upsells, selected.optional_ids, selected.upsell_ids]);
 
-  // Item 4: bonuses amplify the perceived value of the total, pure display ,
-  // `gross` (pre-discount project + extras) is exactly `totals.net +
-  // totals.discount` (quoteTotals' own internal `gross` before the discount
-  // was subtracted), so this never re-derives pricing math of its own.
+  // Item 4: the "full value" line amplifies perceived value, pure display. It's
+  // the price the client would pay (`totals.net + totals.discount`, i.e.
+  // quoteTotals' own pre-discount gross) PLUS everything given at no charge: the
+  // bonus gifts AND the scope items marked "כלול ללא עלות" (free, ₪0 to the
+  // anchor but real value stacked into the package). Never re-derives price math.
   const bonusesTotal = (content.bonuses ?? []).reduce((sum, b) => sum + (Number(b.value) || 0), 0);
-  const grossWithBonuses = totals.net + totals.discount + bonusesTotal;
+  const freeScopeValue = (content.scope ?? []).reduce((sum, it) => sum + (it.free ? Number(it.value) || 0 : 0), 0);
+  const giftsTotal = bonusesTotal + freeScopeValue;
+  const grossWithBonuses = totals.net + totals.discount + giftsTotal;
 
   // Functional updates so rapid taps in one React batch never clobber each
   // other (a stale-closure spread over `selected` would drop the earlier tap).
@@ -337,7 +340,7 @@ export function PricingSection({
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-center sm:p-5">
-                  {bonusesTotal > 0 && (
+                  {giftsTotal > 0 && (
                     <p className="text-sm text-muted-foreground line-through decoration-muted-foreground/60">
                       שווי מלא כולל מתנות: {shekel(grossWithBonuses)}
                     </p>
