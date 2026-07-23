@@ -11,6 +11,7 @@ const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString("he-I
 export function PerfChart({
   metrics,
   field,
+  compute,
   color,
   name,
   unit = "",
@@ -18,17 +19,22 @@ export function PerfChart({
   height = 180,
 }: {
   metrics: SiteMetric[];
-  field: keyof SiteMetric;
+  /** A raw metric column to plot. Ignored when `compute` is given. */
+  field?: keyof SiteMetric;
+  /** A derived value per day (e.g. cache-hit %, MB). Return null to skip a day. */
+  compute?: (m: SiteMetric) => number | null;
   color: string;
   name: string;
   unit?: string;
   domain?: [number | "auto", number | "auto"];
   height?: number;
 }) {
+  const valueOf = (m: SiteMetric): number | null =>
+    compute ? compute(m) : field != null && m[field] != null ? Number(m[field]) : null;
   const data = [...metrics]
     .reverse()
-    .filter((m) => m[field] != null)
-    .map((m) => ({ date: fmtDay(m.metric_date), value: Number(m[field]) }));
+    .map((m) => ({ date: fmtDay(m.metric_date), value: valueOf(m) }))
+    .filter((d): d is { date: string; value: number } => d.value != null);
 
   if (data.length < 2) {
     return (
@@ -38,7 +44,9 @@ export function PerfChart({
     );
   }
 
-  const gid = `perf-${String(field)}`;
+  // Unique gradient id per chart. `field` is undefined for computed charts, so
+  // fall back to a slug of the name to keep two computed charts from colliding.
+  const gid = `perf-${String(field ?? name).replace(/[^a-zA-Z0-9]+/g, "-")}`;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 10, left: -14, bottom: 0 }}>

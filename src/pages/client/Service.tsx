@@ -407,25 +407,16 @@ export function ServiceBoard({
   const showSecurity = svc.tier === "pro" || svc.tier === "ultra";
   const showTraffic = svc.tier === "pro" || svc.tier === "ultra";
 
-  // site_metrics has no per-day backup count column, so derive a small
-  // zero-filled daily series straight from the maintenance log the page
-  // already loads (kind === "backup"), last 14 days. Never a fake value: if
-  // the log has no backup entries in range the chart is simply skipped.
-  const backupSeries = useMemo(() => {
-    const days = 14;
-    const buckets = new Array(days).fill(0) as number[];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (const m of log) {
-      if (m.kind !== "backup") continue;
-      const d = new Date(m.occurred_at);
-      d.setHours(0, 0, 0, 0);
-      const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
-      if (diff >= 0 && diff < days) buckets[days - 1 - diff] += m.count ?? 1;
-    }
-    return buckets;
-  }, [log]);
-  const hasBackupHistory = backupSeries.some((v) => v > 0);
+  // A per-day backup COUNT chart is meaningless (it's ~1/day by design), so
+  // instead surface the most recent backup as a reassurance line, and replace
+  // the old spark with real Cloudflare trends (cache-hit, bandwidth) below.
+  const lastBackup = useMemo(
+    () =>
+      [...log]
+        .filter((m) => m.kind === "backup")
+        .sort((a, b) => +new Date(b.occurred_at) - +new Date(a.occurred_at))[0] ?? null,
+    [log],
+  );
 
   // Health ring color + label must match the score, never green-on-bad.
   const ps = latest?.pagespeed ?? null;
@@ -438,6 +429,27 @@ export function ServiceBoard({
   const monthCount = (kinds: string[]) =>
     log.filter((m) => kinds.includes(m.kind) && new Date(m.occurred_at).getTime() >= monthStart.getTime())
       .reduce((a, m) => a + (m.count ?? 1), 0);
+
+  // Sparse Cloudflare counters (Turnstile especially) can be null for the most
+  // recent day even when there IS real recent history — the CF API emits no row
+  // for a zero-activity day, so `latest` (today) is null on a quiet day. Sum the
+  // current month from the metrics we have (null only when the whole month has
+  // none) so the headline card matches the trend graph beside it and never
+  // flashes "בקרוב" while the chart clearly shows activity.
+  const metricMonthSum = (field: keyof SiteMetric) => {
+    let any = false;
+    let sum = 0;
+    for (const m of metrics) {
+      if (new Date(`${m.metric_date}T00:00:00`).getTime() < monthStart.getTime()) continue;
+      const v = m[field];
+      if (v == null) continue;
+      any = true;
+      sum += Number(v) || 0;
+    }
+    return any ? sum : null;
+  };
+  const turnstileMonth = metricMonthSum("turnstile_blocked");
+  const threatsMonth = metricMonthSum("threats_blocked");
 
   const nextTier: ServiceTier | null =
     svc.tier === "core" ? "pro" : svc.tier === "pro" ? "ultra" : null;
@@ -525,7 +537,7 @@ export function ServiceBoard({
             <Metric
               icon={ShieldCheck}
               label="איומים שנחסמו"
-              value={latest?.threats_blocked != null ? String(latest.threats_blocked) : "בקרוב"}
+              value={threatsMonth != null ? threatsMonth.toLocaleString("he-IL") : "בקרוב"}
               sub={wp ? "Malware + Firewall" : "Cloudflare Firewall"}
             />
           )}
@@ -533,7 +545,7 @@ export function ServiceBoard({
             <Metric
               icon={Bot}
               label="בדיקות אנטי-בוט"
-              value={latest?.turnstile_blocked != null ? String(latest.turnstile_blocked) : "בקרוב"}
+              value={turnstileMonth != null ? turnstileMonth.toLocaleString("he-IL") : "בקרוב"}
               sub="הגנת Cloudflare Turnstile"
               tone="cyan"
             />
@@ -590,13 +602,58 @@ export function ServiceBoard({
             tone="cyan"
           />
         </div>
-        {hasBackupHistory && (
-          <div className="mt-3 rounded-2xl border border-border bg-card p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">גיבויים לאורך זמן</p>
-              <span className="text-xs text-muted-foreground">14 ימים אחרונים</span>
-            </div>
-            <Spark data={backupSeries} color={CYAN} />
+        {/* backup reassurance + real Cloudflare trend charts (replaces the old
+            always-1/day backups spark, which told no story) */}
+        {(lastBackup || (showTraffic && metrics.length > 1)) && (
+          <div className="mt-3 space-y-3">
+            {lastBackup && (
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
+                <DatabaseBackup className="size-4 shrink-0 text-brand-cyan-base" />
+                <span className="text-foreground">האתר מגובה אוטומטית</span>
+                <span className="text-muted-foreground">
+                  · גיבוי אחרון:{" "}
+                  {new Date(lastBackup.occurred_at).toLocaleDateString("he-IL", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </span>
+                <Check className="ms-auto size-4 shrink-0 text-primary" />
+              </div>
+            )}
+            {showTraffic && (
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">יחס קאש לאורך זמן</p>
+                    <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
+                  </div>
+                  <PerfChart
+                    metrics={metrics}
+                    compute={(m) => (m.requests ? Math.round((100 * (m.cached_requests ?? 0)) / m.requests) : null)}
+                    color={GREEN}
+                    name="יחס קאש"
+                    unit="%"
+                    domain={[0, 100]}
+                    height={150}
+                  />
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">תעבורה שהוגשה</p>
+                    <span className="text-xs text-muted-foreground">{metrics.length} ימים אחרונים</span>
+                  </div>
+                  <PerfChart
+                    metrics={metrics}
+                    compute={(m) => (m.bytes != null ? Math.round((m.bytes / 1e6) * 10) / 10 : null)}
+                    color={CYAN}
+                    name="תעבורה"
+                    unit=" MB"
+                    height={150}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

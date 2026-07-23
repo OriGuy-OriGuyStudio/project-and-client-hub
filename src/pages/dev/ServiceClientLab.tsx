@@ -19,6 +19,12 @@ const METRICS = [0, 1, 2, 3, 4, 5, 6].map((d, i) => ({
   inp_ms: 90,
   uptime_pct: 99.98,
   threats_blocked: 47,
+  // turnstile is null for today on purpose (CF emits no row on a quiet day),
+  // so the card must fall back to the month sum instead of showing "בקרוב".
+  turnstile_blocked: [null, 12, 8, 5, 20, 3, 6][i],
+  requests: [196, 5056, 3555, 4664, 3027, 1431, 4058][i],
+  cached_requests: [39, 625, 157, 86, 532, 57, 630][i],
+  bytes: [2498980, 160182868, 37217201, 43834095, 21003983, 8374629, 28644715][i],
   meta: null,
   created_at: new Date().toISOString(),
 }));
