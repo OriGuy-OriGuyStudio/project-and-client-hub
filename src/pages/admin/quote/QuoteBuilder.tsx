@@ -472,6 +472,22 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const updateContent = useUpdateQuoteContentV2();
   const markSent = useMarkQuoteSent();
 
+  // Catalog original label/desc/value per row id, so an admin can reset a
+  // per-quote text/price override back to what the catalog says. Only
+  // catalog-sourced items appear here , custom and AI-proposed items have no
+  // original (their id isn't a catalog id) and are never touched by a reset.
+  const catalogOriginals = useMemo(() => {
+    const m = new Map<string, { label: string; desc?: string; value: number }>();
+    for (const r of catalogRows ?? []) {
+      m.set(r.id, {
+        label: r.label,
+        desc: r.description ?? undefined,
+        value: Number(r.base_price ?? 0) * Number(r.default_mult ?? 1),
+      });
+    }
+    return m;
+  }, [catalogRows]);
+
   const [content, setContent] = useState<QuoteContentV2 | null>(null);
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
@@ -612,6 +628,43 @@ function QuoteBuilderShell({ id }: { id: string }) {
       value: 0,
     };
     setContent((prev) => (prev ? { ...prev, scope: [...prev.scope, item] } : prev));
+  }
+
+  /** Reset ONE catalog-sourced item's label/desc/value back to the catalog
+   *  original (leaves its include/optional/free mode alone , that's a
+   *  deliberate per-quote choice, not a text override). No-op for custom /
+   *  AI-proposed items (no catalog original) and for the subtype base line. */
+  function resetScopeItem(itemId: string) {
+    if (locked) return;
+    const o = catalogOriginals.get(itemId);
+    if (!o) return;
+    setContent((prev) =>
+      prev
+        ? {
+            ...prev,
+            scope: prev.scope.map((it) =>
+              it.id === itemId && it.kind !== "subtype" ? { ...it, label: o.label, desc: o.desc, value: o.value } : it,
+            ),
+          }
+        : prev,
+    );
+  }
+
+  /** Reset every catalog-sourced item at once (custom/AI items untouched). */
+  function resetAllScopeItems() {
+    if (locked) return;
+    setContent((prev) =>
+      prev
+        ? {
+            ...prev,
+            scope: prev.scope.map((it) => {
+              if (it.kind === "subtype") return it;
+              const o = catalogOriginals.get(it.id);
+              return o ? { ...it, label: o.label, desc: o.desc, value: o.value } : it;
+            }),
+          }
+        : prev,
+    );
   }
 
   function setScopeMode(itemId: string, mode: ScopeItemMode) {
@@ -1114,6 +1167,9 @@ function QuoteBuilderShell({ id }: { id: string }) {
             onReorderKind={applyScopeOrder}
             onAiOrder={() => void handleAiOrder()}
             aiOrderPending={aiOrderPending}
+            catalogOriginals={catalogOriginals}
+            onReset={resetScopeItem}
+            onResetAll={resetAllScopeItems}
           />
 
           {content.type === "automation" && <AutomationGuide />}

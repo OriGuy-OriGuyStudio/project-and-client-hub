@@ -12,8 +12,8 @@
 // , the array order within a kind IS the order the client reads. "סדר עם AI"
 // orders them all into a logical landing-page flow in one click.
 
-import { type CSSProperties } from "react";
-import { Plus, X, GripVertical, Sparkles, Loader2 } from "lucide-react";
+import { useState, type CSSProperties } from "react";
+import { Plus, X, GripVertical, Sparkles, Loader2, RotateCcw } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -31,9 +31,27 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { ScopeItem, ScopeItemKind } from "@/lib/quote-pricing";
 import { MODE_OPTIONS, type ScopeItemMode } from "./ScopeSection";
+
+/** Catalog original label/desc/value per row id (from QuoteBuilder). */
+export type CatalogOriginals = Map<string, { label: string; desc?: string; value: number }>;
+
+/** True when a catalog-sourced item's label/desc/value was overridden , i.e.
+ *  there's something to reset. Custom/AI items (not in the map) and the subtype
+ *  base line never count as changed. */
+function isOverridden(item: ScopeItem, originals: CatalogOriginals): boolean {
+  if (item.kind === "subtype") return false;
+  const o = originals.get(item.id);
+  if (!o) return false;
+  return (
+    item.label !== o.label ||
+    (item.desc ?? "") !== (o.desc ?? "") ||
+    Number(item.value) !== Number(o.value)
+  );
+}
 
 function modeOf(item: ScopeItem): ScopeItemMode {
   if (item.free) return "free";
@@ -46,6 +64,7 @@ type RowHandlers = {
   onPatch: (itemId: string, patch: Partial<ScopeItem>) => void;
   onSetMode: (itemId: string, mode: ScopeItemMode) => void;
   onRemove: (itemId: string) => void;
+  onReset: (itemId: string) => void;
 };
 
 /** Presentational row: label + value + desc + mode toggles + remove. `drag`
@@ -56,9 +75,13 @@ function ScopeRow({
   onPatch,
   onSetMode,
   onRemove,
+  onReset,
+  resettable,
   drag,
 }: RowHandlers & {
   item: ScopeItem;
+  /** Shows the reset-to-catalog button (catalog item with an override). */
+  resettable?: boolean;
   drag?: {
     setNodeRef: (el: HTMLElement | null) => void;
     style: CSSProperties;
@@ -107,6 +130,21 @@ function ScopeRow({
           className="h-9 w-24 shrink-0 text-end text-sm"
           aria-label={`ערך עבור ${item.label || "פריט"}`}
         />
+        {!isBase && resettable && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onReset(item.id)}
+            aria-label={`אפס את ${item.label || "הפריט"} למקור מהקטלוג`}
+            title="אפס למקור מהקטלוג"
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary",
+              disabled && "cursor-not-allowed opacity-60",
+            )}
+          >
+            <RotateCcw className="size-4" />
+          </button>
+        )}
         {!isBase && (
           <button
             type="button"
@@ -160,7 +198,7 @@ function ScopeRow({
 }
 
 /** Sortable wrapper , owns the dnd transform, drags only from the grip handle. */
-function SortableScopeRow(props: RowHandlers & { item: ScopeItem }) {
+function SortableScopeRow(props: RowHandlers & { item: ScopeItem; resettable?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.item.id,
     disabled: props.disabled,
@@ -184,11 +222,13 @@ function KindGroup({
   title,
   items,
   onReorder,
+  isChanged,
   ...handlers
 }: RowHandlers & {
   title: string;
   items: ScopeItem[];
   onReorder: (orderedIds: string[]) => void;
+  isChanged: (item: ScopeItem) => boolean;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -217,7 +257,7 @@ function KindGroup({
         <SortableContext items={items.map((it) => it.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((it) => (
-              <SortableScopeRow key={it.id} item={it} {...handlers} />
+              <SortableScopeRow key={it.id} item={it} resettable={isChanged(it)} {...handlers} />
             ))}
           </div>
         </SortableContext>
@@ -233,10 +273,13 @@ export function ScopeItemsEditor({
   onPatch,
   onSetMode,
   onRemove,
+  onReset,
+  onResetAll,
   onAddCustom,
   onReorderKind,
   onAiOrder,
   aiOrderPending,
+  catalogOriginals,
 }: {
   items: ScopeItem[];
   /** The quote type's scope kinds + Hebrew titles (KIND_SECTIONS entry). */
@@ -245,15 +288,23 @@ export function ScopeItemsEditor({
   onPatch: (itemId: string, patch: Partial<ScopeItem>) => void;
   onSetMode: (itemId: string, mode: ScopeItemMode) => void;
   onRemove: (itemId: string) => void;
+  /** Reset one catalog item's label/desc/value back to the catalog original. */
+  onReset: (itemId: string) => void;
+  /** Reset every overridden catalog item at once. */
+  onResetAll: () => void;
   onAddCustom: (kind: ScopeItemKind) => void;
   /** New order of a single kind's item ids after a drag. */
   onReorderKind: (orderedIds: string[]) => void;
   onAiOrder: () => void;
   aiOrderPending?: boolean;
+  catalogOriginals: CatalogOriginals;
 }) {
-  const rowHandlers: RowHandlers = { disabled, onPatch, onSetMode, onRemove };
+  const [confirmReset, setConfirmReset] = useState(false);
+  const rowHandlers: RowHandlers = { disabled, onPatch, onSetMode, onRemove, onReset };
+  const isChanged = (item: ScopeItem) => isOverridden(item, catalogOriginals);
   const baseItems = items.filter((it) => it.kind === "subtype");
   const orderableCount = items.filter((it) => it.kind !== "subtype").length;
+  const changedCount = items.filter(isChanged).length;
 
   return (
     <Card className="space-y-3 p-5">
@@ -264,19 +315,42 @@ export function ScopeItemsEditor({
             מה שכתוב כאן הוא בדיוק מה שהלקוח רואה. הסדר בכל קבוצה הוא הסדר שבו זה יופיע בדף הנחיתה , גרור כדי לסדר.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={disabled || aiOrderPending || orderableCount < 2}
-          onClick={onAiOrder}
-          className={cn(
-            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-primary/40 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10",
-            (disabled || aiOrderPending || orderableCount < 2) && "cursor-not-allowed opacity-60",
-          )}
-        >
-          {aiOrderPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-          {aiOrderPending ? "מסדר…" : "סדר עם AI"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={disabled || changedCount === 0}
+            onClick={() => setConfirmReset(true)}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary",
+              (disabled || changedCount === 0) && "cursor-not-allowed opacity-60",
+            )}
+          >
+            <RotateCcw className="size-4" />
+            {changedCount > 0 ? `אפס שינויים (${changedCount})` : "אפס שינויים"}
+          </button>
+          <button
+            type="button"
+            disabled={disabled || aiOrderPending || orderableCount < 2}
+            onClick={onAiOrder}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-primary/40 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10",
+              (disabled || aiOrderPending || orderableCount < 2) && "cursor-not-allowed opacity-60",
+            )}
+          >
+            {aiOrderPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {aiOrderPending ? "מסדר…" : "סדר עם AI"}
+          </button>
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title="לאפס את כל השינויים?"
+        description={`${changedCount} פריטים מהקטלוג יחזרו לשם, לתיאור ולערך המקוריים. פריטים מותאמים ופריטים שה-AI הציע לא יושפעו. אי אפשר לבטל.`}
+        confirmLabel="אפס הכול"
+        onConfirm={onResetAll}
+      />
 
       {items.length === 0 && (
         <p className="rounded-xl border border-dashed border-border p-3 text-center text-sm text-muted-foreground">
@@ -292,7 +366,7 @@ export function ScopeItemsEditor({
             <h4 className="text-sm font-semibold text-foreground">הבסיס</h4>
           </div>
           {baseItems.map((it) => (
-            <ScopeRow key={it.id} item={it} {...rowHandlers} />
+            <ScopeRow key={it.id} item={it} resettable={false} {...rowHandlers} />
           ))}
         </div>
       )}
@@ -307,6 +381,7 @@ export function ScopeItemsEditor({
             title={s.title}
             items={group}
             onReorder={onReorderKind}
+            isChanged={isChanged}
             {...rowHandlers}
           />
         );
