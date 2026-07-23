@@ -890,11 +890,18 @@ function QuoteBuilderShell({ id }: { id: string }) {
     const type = content.type;
     setProposePending(true);
     try {
+      // "Already available" = what's in the scope AND every catalog row for this
+      // type. The AI proposes only genuinely NEW items (catalog items are added
+      // via "מלא היקף"), so a proposed custom item can never duplicate a catalog
+      // page/feature , which was leaving an un-removable twin in the list.
+      const catalogLabels = KIND_SECTIONS[type].flatMap((s) =>
+        catalogFor(catalogRows, s.kind, type).map((r) => r.label),
+      );
       const result = await quoteAiPropose({
         type,
         notes,
         client_business: clientBusiness.trim() || undefined,
-        existing_labels: content.scope.map((it) => it.label).filter(Boolean),
+        existing_labels: [...content.scope.map((it) => it.label), ...catalogLabels].filter(Boolean),
       });
       let addedCount = 0;
       setContent((prev) => {
