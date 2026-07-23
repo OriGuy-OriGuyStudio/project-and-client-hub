@@ -1481,6 +1481,106 @@ async function generateQuoteUpsells(apiKey: string, payload: any) {
   };
 }
 
+// action="order": reorder the scope items (pages + features, or modules /
+// automations) into the logical sequence they'd appear on the deliverable, so
+// the client's quote reads top-to-bottom like the real site's flow. Never adds,
+// removes, or renames , only returns a permutation of the given ids.
+function quoteOrderPrompt(payload: any): string {
+  const items: any[] = Array.isArray(payload?.items) ? payload.items : [];
+  const byKind: Record<string, any[]> = {};
+  for (const it of items) {
+    const k = String(it?.kind ?? "");
+    (byKind[k] ??= []).push(it);
+  }
+  const KIND_HE: Record<string, string> = {
+    page: "עמודים",
+    feature: "פיצ'רים",
+    module: "מודולים",
+    automation: "אוטומציות",
+  };
+  const blocks = Object.entries(byKind).map(([kind, arr]) => {
+    const lines = arr
+      .map((it) => `- id=${it.id} | ${String(it.label ?? "")}${it.desc ? " , " + String(it.desc) : ""}`)
+      .join(NL);
+    return `${KIND_HE[kind] ?? kind}:\n${lines}`;
+  });
+  return [
+    "אתה עוזר לאדמין של סטודיו אתרים לסדר את הפריטים בהצעת מחיר לפי הסדר ההגיוני שבו הם יופיעו בתוצר עצמו (דף הנחיתה / האתר).",
+    "כלל ברזל: אסור להוסיף, למחוק או לשנות פריטים. החזר בדיוק את אותם ה-id שקיבלת, כל אחד פעם אחת, רק בסדר אחר.",
+    "עמודים: סדר לפי זרימה טבעית של דף נחיתה או אתר, מלמעלה למטה: בית / הירו קודם, אחר כך אודות, שירותים או מוצרים, גלריה או תיק עבודות, המלצות, מחירון, שאלות נפוצות, וצור קשר בסוף. אם עמוד לא מתאים לתבנית, מקם אותו במקום ההגיוני ביותר.",
+    "פיצ'רים / מודולים / אוטומציות: סדר לפי חשיבות והיגיון, מהמרכזי והבסיסי אל המשלים.",
+    payload?.notes ? "הקשר, סיכום שיחת האפיון של הלקוח:\n" + String(payload.notes).slice(0, 6000) : "",
+    "הפריטים לסידור (לפי קבוצות):\n" + (blocks.join(NL + NL) || "אין פריטים"),
+    "כתוב reasoning: משפט קצר לאדמין (לא ללקוח) שמסביר את הסדר שבחרת.",
+    EM_DASH_RULE,
+    "החזר אובייקט JSON יחיד לפי הסכימה, ב-ordered_ids את כל ה-id בסדר החדש, בלי טקסט נוסף.",
+  ].filter(Boolean).join(NL);
+}
+
+const QUOTE_ORDER_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    ordered_ids: { type: "ARRAY", items: { type: "STRING" } },
+    reasoning: { type: "STRING" },
+  },
+  required: ["ordered_ids"],
+};
+
+async function generateQuoteOrder(apiKey: string, payload: any) {
+  const prompt = quoteOrderPrompt(payload);
+  const models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastStatus = 0;
+  let lastReason = "";
+  for (const model of models) {
+    const generationConfig: Record<string, unknown> = {
+      temperature: 0.2,
+      maxOutputTokens: 4000,
+      responseMimeType: "application/json",
+      responseSchema: QUOTE_ORDER_SCHEMA,
+    };
+    if (model === "gemini-2.5-flash") {
+      generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? "").join("") ?? "";
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return { ok: false, status: 502, error: "התקבלה תשובה לא תקינה מה-AI. נסה שוב." };
+      }
+      if (!parsed || !Array.isArray(parsed.ordered_ids)) {
+        return { ok: false, status: 502, error: "לא התקבל סידור תקין. נסה שוב." };
+      }
+      return { ok: true, data: parsed };
+    }
+    const detail = await res.text();
+    console.error("gemini quote_ai order error", model, res.status, detail);
+    lastStatus = res.status;
+    try {
+      lastReason = JSON.parse(detail)?.error?.message ?? detail;
+    } catch {
+      lastReason = detail;
+    }
+    if (res.status !== 404) break;
+  }
+  return {
+    ok: false,
+    status: 502,
+    error: "ה-AI לא הצליח לענות (Gemini " + lastStatus + "): " + lastReason.slice(0, 300),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -1553,6 +1653,11 @@ Deno.serve(async (req) => {
     }
     if (action === "upsells") {
       const r = await generateQuoteUpsells(apiKey, payload);
+      if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
+      return json({ ok: true, data: r.data });
+    }
+    if (action === "order") {
+      const r = await generateQuoteOrder(apiKey, payload);
       if (!r.ok) return json({ ok: false, error: r.error }, r.status ?? 502);
       return json({ ok: true, data: r.data });
     }

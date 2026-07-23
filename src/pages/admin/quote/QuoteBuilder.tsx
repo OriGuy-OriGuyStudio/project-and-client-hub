@@ -69,7 +69,7 @@ import { ScopeItemsEditor } from "./ScopeItemsEditor";
 import { PricePanel } from "./PricePanel";
 import { ProposalEditors, AddonsEditors, TermsEditors } from "./QuoteContentEditorsV2";
 import { AutomationGuide } from "./AutomationGuide";
-import { quoteAiScopeFill, type QuoteAiCatalogEntry } from "@/lib/quote-ai";
+import { quoteAiScopeFill, quoteAiOrder, type QuoteAiCatalogEntry } from "@/lib/quote-ai";
 
 const TYPE_TABS: { value: QuoteType; label: string }[] = [
   { value: "website", label: "אתר" },
@@ -238,6 +238,31 @@ function applySubtypeSelection(
   }
 
   return { subtype: row.label, scope: next };
+}
+
+/** Reorders `scope` so that, within each kind, items follow `desiredOrder` (a
+ *  list of item ids; ids missing from it keep their original relative order,
+ *  appended after the ordered ones). The output is canonical: subtype line(s)
+ *  first, then each section kind's items in order, then any stragglers. Used by
+ *  both manual drag (desiredOrder = one kind's new id order) and AI order
+ *  (desiredOrder = ids across all kinds) , order never affects the anchor math
+ *  (anchorValue sums regardless of order), only what the client reads. Pure. */
+function reorderScope(
+  scope: ScopeItem[],
+  sections: { kind: ScopeItemKind; title: string }[],
+  desiredOrder: string[],
+): ScopeItem[] {
+  const rank = new Map(desiredOrder.map((id, i) => [id, i]));
+  const byOrder = (group: ScopeItem[]) => {
+    const ranked = group.filter((it) => rank.has(it.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    const rest = group.filter((it) => !rank.has(it.id)); // keeps original order
+    return [...ranked, ...rest];
+  };
+  const known = new Set<ScopeItemKind>(["subtype", ...sections.map((s) => s.kind)]);
+  const out: ScopeItem[] = [...scope.filter((it) => it.kind === "subtype")];
+  for (const s of sections) out.push(...byOrder(scope.filter((it) => it.kind === s.kind)));
+  out.push(...scope.filter((it) => !known.has(it.kind)));
+  return out;
 }
 
 export default function QuoteBuilder() {
@@ -454,6 +479,7 @@ function QuoteBuilderShell({ id }: { id: string }) {
   const [tab, setTab] = useState<BuilderTab>("setup");
   const [switchingType, setSwitchingType] = useState(false);
   const [scopeFillPending, setScopeFillPending] = useState(false);
+  const [aiOrderPending, setAiOrderPending] = useState(false);
   const loadedIdRef = useRef<string | null>(null);
 
   // Load the row's content into local editable state once per quote id, so a
@@ -761,6 +787,44 @@ function QuoteBuilderShell({ id }: { id: string }) {
     }
   }
 
+  /** Manual drag reorder from the editor: `orderedIds` is the new order of a
+   *  single kind's items; reorderScope applies it and leaves other kinds put. */
+  function applyScopeOrder(orderedIds: string[]) {
+    setContent((prev) => (prev ? { ...prev, scope: reorderScope(prev.scope, sections, orderedIds) } : prev));
+  }
+
+  /** "סדר עם AI": order pages + features (or modules/automations) into the flow
+   *  they'd appear on the deliverable, from the discovery notes context. Only
+   *  reorders , the result is a permutation of the current ids (guaranteed by
+   *  quoteAiOrder), so no item is added or lost. */
+  async function handleAiOrder() {
+    if (!content || locked) return;
+    const orderable = content.scope.filter((it) => it.kind !== "subtype");
+    if (orderable.length < 2) return;
+    const type = content.type;
+    setAiOrderPending(true);
+    try {
+      const result = await quoteAiOrder({
+        type,
+        notes: (content.notes ?? "").trim() || undefined,
+        items: orderable.map((it) => ({ id: it.id, kind: it.kind, label: it.label, desc: it.desc })),
+      });
+      setContent((prev) => {
+        if (!prev || prev.type !== type) return prev;
+        return { ...prev, scope: reorderScope(prev.scope, sections, result.ordered_ids) };
+      });
+      toast({
+        title: "סידרתי את הפריטים לפי הזרימה של דף הנחיתה",
+        description: result.reasoning?.trim() || undefined,
+        variant: "success",
+      });
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "סידור הפריטים עם AI נכשל.");
+    } finally {
+      setAiOrderPending(false);
+    }
+  }
+
   return (
     <div className="space-y-5 pb-24">
       {quote && (
@@ -988,6 +1052,9 @@ function QuoteBuilderShell({ id }: { id: string }) {
             onSetMode={setScopeMode}
             onRemove={removeScopeItem}
             onAddCustom={addCustomScopeItem}
+            onReorderKind={applyScopeOrder}
+            onAiOrder={() => void handleAiOrder()}
+            aiOrderPending={aiOrderPending}
           />
 
           {content.type === "automation" && <AutomationGuide />}

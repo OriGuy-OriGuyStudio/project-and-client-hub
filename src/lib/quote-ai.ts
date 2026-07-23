@@ -1,4 +1,4 @@
-// Quote v2 , AI-assist client wrappers (`quote_ai` edge mode, 4 actions).
+// Quote v2 , AI-assist client wrappers (`quote_ai` edge mode, 5 actions).
 // The mechanical pricing engine (./quote-pricing, ./quote-v2) stays the source
 // of truth , these are suggestions the admin reviews and applies through the
 // existing handlers. Ids the model returns are validated against the catalog
@@ -161,5 +161,43 @@ export async function quoteAiUpsells(payload: QuoteAiUpsellsPayload): Promise<Qu
     return { picks };
   } catch (e) {
     return aiFail("upsells", "ה-AI לא הצליח להציע תוספות, נסה שוב.", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// action: order , reorder existing scope items into the logical sequence they'd
+// appear on the deliverable. Never adds/removes: the result is guaranteed to be
+// a permutation of the input ids (AI-omitted ids are appended in original order,
+// unknown ids dropped), so the builder can apply it without losing a single item.
+
+export type QuoteAiOrderItem = { id: string; kind: string; label: string; desc?: string };
+
+export type QuoteAiOrderPayload = {
+  type: QuoteType;
+  items: QuoteAiOrderItem[];
+  notes?: string;
+};
+
+export type QuoteAiOrderResult = { ordered_ids: string[]; reasoning: string };
+
+export async function quoteAiOrder(payload: QuoteAiOrderPayload): Promise<QuoteAiOrderResult> {
+  try {
+    const { data, error } = await supabase.functions.invoke("generate-deliverable", {
+      body: { mode: "quote_ai", action: "order", payload },
+    });
+    if (error) throw new Error(await fnErrorMessage(error));
+    if (data && data.ok === false) throw new Error(data.error || "generation failed");
+    const raw = (data?.data ?? {}) as QuoteAiOrderResult;
+    const inputIds = payload.items.map((i) => i.id);
+    const validIds = new Set(inputIds);
+    // The AI's order, minus hallucinated/duplicate ids...
+    const fromAi = filterAiIds(raw.ordered_ids ?? [], validIds);
+    // ...then every input id it forgot, appended in the original order, so the
+    // result is always a full permutation , no item silently disappears.
+    const seen = new Set(fromAi);
+    const ordered_ids = [...fromAi, ...inputIds.filter((id) => !seen.has(id))];
+    return { ordered_ids, reasoning: raw.reasoning ?? "" };
+  } catch (e) {
+    return aiFail("order", "ה-AI לא הצליח לסדר את הפריטים, נסה שוב.", e);
   }
 }
