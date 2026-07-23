@@ -30,6 +30,18 @@ function normalizeKind(raw: string): ScopeItemKind | null {
   return KIND_ALIASES[raw.trim().toLowerCase()] ?? null;
 }
 
+/** Loose label key for dedup: lowercased, whitespace collapsed, quotes/gershayim
+ *  and trailing punctuation stripped, so "מועדון לקוחות" == "מועדון לקוחות " and
+ *  "פרוביוטיקה" == "פרוביוטיקה." collapse to one key. */
+function normalizeLabel(raw: string): string {
+  return String(raw ?? "")
+    .toLowerCase()
+    .replace(/["'`׳״]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.,:;!?]+$/g, "")
+    .trim();
+}
+
 /** Logs the underlying failure for devtools and throws a fixed, Hebrew,
  *  action-specific message , the UI toast never leaks a raw/English error. */
 function aiFail(action: string, fallback: string, e: unknown): never {
@@ -248,12 +260,19 @@ export async function quoteAiPropose(payload: QuoteAiProposePayload): Promise<Qu
     if (data && data.ok === false) throw new Error(data.error || "generation failed");
     const raw = (data?.data ?? {}) as { items?: unknown; reasoning?: string };
     const allowed = new Set<ScopeItemKind>(PROPOSABLE_KINDS[payload.type] ?? []);
+    // Dedup so a second press (or a chatty model) never re-adds something that's
+    // already in the scope, and never repeats a label within its own batch. The
+    // model is told what's already there, but we don't rely on it.
+    const seen = new Set<string>((payload.existing_labels ?? []).map(normalizeLabel));
     const items: QuoteAiProposedItem[] = (Array.isArray(raw.items) ? raw.items : [])
       .flatMap((it) => {
         const o = (it ?? {}) as Record<string, unknown>;
         const kind = normalizeKind(String(o.kind ?? ""));
         const label = String(o.label ?? "").trim();
         if (kind == null || !allowed.has(kind) || !label) return [];
+        const key = normalizeLabel(label);
+        if (seen.has(key)) return [];
+        seen.add(key);
         const desc = String(o.desc ?? "").trim();
         return [{ kind, label, desc: desc || undefined, value: Math.max(0, Math.round(Number(o.value) || 0)) }];
       })
